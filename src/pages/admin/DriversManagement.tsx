@@ -1,0 +1,744 @@
+import React, { useState } from 'react';
+import LoadingSkeleton from '@/components/LoadingSkeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plus, MoreHorizontal, Edit, Trash, User, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Calendar, Package } from 'lucide-react';
+
+interface Driver {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  assignedBins: string[];
+  status: 'Active' | 'Inactive';
+  totalPickups: number;
+}
+
+interface Pickup {
+  id: string;
+  binNumber: string;
+  locationName: string;
+  pickupDate: string;
+  pickupTime: string;
+  status: 'Upcoming' | 'Completed' | 'In Progress';
+  loadType: 'A - Excellent' | 'B - Good' | 'C - Fair';
+  estimatedWeight: number;
+  actualWeight?: number;
+}
+
+function DriversManagement() {
+  const [isLoading] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([
+    {
+      id: '1',
+      name: 'John Smith',
+      email: 'john.smith@example.com',
+      phone: '(416) 555-0123',
+      assignedBins: ['BIN001', 'BIN002'],
+      status: 'Active',
+      totalPickups: 45
+    },
+    {
+      id: '2',
+      name: 'Sarah Johnson',
+      email: 'sarah.j@example.com',
+      phone: '(416) 555-0124',
+      assignedBins: ['BIN003'],
+      status: 'Active',
+      totalPickups: 38
+    },
+    {
+      id: '3',
+      name: 'Michael Brown',
+      email: 'mbrown@example.com',
+      phone: '(416) 555-0125',
+      assignedBins: ['BIN004', 'BIN005'],
+      status: 'Active',
+      totalPickups: 52
+    },
+    {
+      id: '4',
+      name: 'Emily Davis',
+      email: 'emily.d@example.com',
+      phone: '(416) 555-0126',
+      assignedBins: [],
+      status: 'Inactive',
+      totalPickups: 20
+    }
+  ]);
+
+  // Mock pickup data for each driver
+  const driverPickups: Record<string, Pickup[]> = {
+    '1': [
+      {
+        id: 'p1',
+        binNumber: 'BIN001',
+        locationName: 'Community Center',
+        pickupDate: '2024-01-25',
+        pickupTime: '10:00 AM',
+        status: 'Upcoming',
+        loadType: 'B - Good',
+        estimatedWeight: 45
+      },
+      {
+        id: 'p2',
+        binNumber: 'BIN002',
+        locationName: 'Shopping Mall',
+        pickupDate: '2024-01-20',
+        pickupTime: '2:00 PM',
+        status: 'Completed',
+        loadType: 'A - Excellent',
+        estimatedWeight: 38,
+        actualWeight: 42
+      }
+    ],
+    '2': [
+      {
+        id: 'p3',
+        binNumber: 'BIN003',
+        locationName: 'Public Library',
+        pickupDate: '2024-01-26',
+        pickupTime: '11:30 AM',
+        status: 'Upcoming',
+        loadType: 'B - Good',
+        estimatedWeight: 32
+      },
+      {
+        id: 'p4',
+        binNumber: 'BIN003',
+        locationName: 'Public Library',
+        pickupDate: '2024-01-18',
+        pickupTime: '9:00 AM',
+        status: 'Completed',
+        loadType: 'C - Fair',
+        estimatedWeight: 28,
+        actualWeight: 30
+      }
+    ],
+    '3': [
+      {
+        id: 'p5',
+        binNumber: 'BIN004',
+        locationName: 'Recreation Center',
+        pickupDate: '2024-01-24',
+        pickupTime: '8:30 AM',
+        status: 'In Progress',
+        loadType: 'A - Excellent',
+        estimatedWeight: 52
+      },
+      {
+        id: 'p6',
+        binNumber: 'BIN005',
+        locationName: 'School Campus',
+        pickupDate: '2024-01-22',
+        pickupTime: '1:00 PM',
+        status: 'Completed',
+        loadType: 'B - Good',
+        estimatedWeight: 40,
+        actualWeight: 38
+      }
+    ],
+    '4': []
+  };
+
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: ''
+  });
+  const [assignedBinsInput, setAssignedBinsInput] = useState('');
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedDrivers = () => {
+    if (!sortColumn) return drivers;
+    
+    return [...drivers].sort((a, b) => {
+      let aValue = a[sortColumn as keyof Driver];
+      let bValue = b[sortColumn as keyof Driver];
+      
+      // Handle special cases
+      if (sortColumn === 'totalPickups') {
+        return sortDirection === 'asc' 
+          ? (a.totalPickups - b.totalPickups)
+          : (b.totalPickups - a.totalPickups);
+      }
+      
+      if (sortColumn === 'assignedBins') {
+        aValue = a.assignedBins.length;
+        bValue = b.assignedBins.length;
+        return sortDirection === 'asc' 
+          ? (aValue as number - (bValue as number))
+          : ((bValue as number) - (aValue as number));
+      }
+      
+      // Convert to strings for comparison
+      aValue = String(aValue || '').toLowerCase();
+      bValue = String(bValue || '').toLowerCase();
+      
+      if (sortDirection === 'asc') {
+        return (aValue as string).localeCompare(bValue as string);
+      } else {
+        return (bValue as string).localeCompare(aValue as string);
+      }
+    });
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-gray-700" /> : 
+      <ChevronDown className="w-4 h-4 text-gray-700" />;
+  };
+
+  const handleAddDriver = () => {
+    const newDriver: Driver = {
+      id: String(drivers.length + 1),
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      assignedBins: [],
+      status: 'Active',
+      totalPickups: 0
+    };
+    setDrivers([...drivers, newDriver]);
+    setIsAddDialogOpen(false);
+    setFormData({ name: '', email: '', phone: '' });
+  };
+
+  const handleEditDriver = () => {
+    if (selectedDriver) {
+      setDrivers(drivers.map(driver => 
+        driver.id === selectedDriver.id 
+          ? { ...driver, ...formData }
+          : driver
+      ));
+      setIsEditDialogOpen(false);
+      setSelectedDriver(null);
+      setFormData({ name: '', email: '', phone: '' });
+    }
+  };
+
+  const handleAssignBins = () => {
+    if (selectedDriver) {
+      const bins = assignedBinsInput.split(',').map(bin => bin.trim()).filter(bin => bin);
+      setDrivers(drivers.map(driver => 
+        driver.id === selectedDriver.id 
+          ? { ...driver, assignedBins: bins }
+          : driver
+      ));
+      setIsAssignDialogOpen(false);
+      setSelectedDriver(null);
+      setAssignedBinsInput('');
+    }
+  };
+
+  const handleDeleteDriver = (driver: Driver) => {
+    setDriverToDelete(driver);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteDriver = () => {
+    if (driverToDelete) {
+      setDrivers(drivers.filter(driver => driver.id !== driverToDelete.id));
+      setIsDeleteDialogOpen(false);
+      setDriverToDelete(null);
+    }
+  };
+
+  const openEditDialog = (driver: Driver) => {
+    setSelectedDriver(driver);
+    setFormData({
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const openAssignDialog = (driver: Driver) => {
+    setSelectedDriver(driver);
+    setAssignedBinsInput(driver.assignedBins.join(', '));
+    setIsAssignDialogOpen(true);
+  };
+
+  const getStatusBadge = (status: Driver['status']) => {
+    const statusStyles = {
+      'Active': 'bg-green-100 text-green-800 border-green-200',
+      'Inactive': 'bg-gray-100 text-gray-800 border-gray-200'
+    };
+    return (
+      <Badge 
+        variant="outline" 
+        className={statusStyles[status]}
+      >
+        {status}
+      </Badge>
+    );
+  };
+
+  const getPickupStatusBadge = (status: Pickup['status']) => {
+    const statusStyles = {
+      'Upcoming': 'bg-blue-100 text-blue-800 border-blue-200',
+      'In Progress': 'bg-orange-100 text-orange-800 border-orange-200',
+      'Completed': 'bg-green-100 text-green-800 border-green-200'
+    };
+    return (
+      <Badge 
+        variant="outline" 
+        className={statusStyles[status]}
+      >
+        {status}
+      </Badge>
+    );
+  };
+
+  if (isLoading) {
+    return <LoadingSkeleton type="table" />;
+  }
+
+  return (
+    <div className="px-6 pt-10 pb-6 w-full min-w-full">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Drivers Management</h1>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Driver
+        </Button>
+      </div>
+
+      <Card className="w-full">
+        <div className="p-6">
+          <div className="w-full overflow-x-auto">
+            <Table 
+              className="w-full table-fixed" 
+              style={{
+                tableLayout: 'fixed', 
+                width: '100%', 
+                minWidth: '800px'
+              }}
+            >
+            <TableHeader>
+              <TableRow style={{width: '100%'}}>
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  onClick={() => handleSort('name')}
+                  style={{width: '20%'}}
+                >
+                  <div className="flex items-center gap-1">
+                    Name
+                    {getSortIcon('name')}
+                  </div>
+                </TableHead>
+                <TableHead style={{width: '30%'}}>Contact Information</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  onClick={() => handleSort('assignedBins')}
+                  style={{width: '25%'}}
+                >
+                  <div className="flex items-center gap-1">
+                    Assigned Bins
+                    {getSortIcon('assignedBins')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  onClick={() => handleSort('status')}
+                  style={{width: '10%'}}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    {getSortIcon('status')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  onClick={() => handleSort('totalPickups')}
+                  style={{width: '10%'}}
+                >
+                  <div className="flex items-center gap-1">
+                    Total Pickups
+                    {getSortIcon('totalPickups')}
+                  </div>
+                </TableHead>
+                <TableHead className="text-right" style={{width: '5%'}}>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+            {getSortedDrivers().map((driver) => {
+              const driverPickupList = driverPickups[driver.id] || [];
+              const upcomingPickups = driverPickupList.filter(p => p.status === 'Upcoming' || p.status === 'In Progress');
+              const completedPickups = driverPickupList.filter(p => p.status === 'Completed');
+              
+              return (
+                <React.Fragment key={driver.id}>
+                  <TableRow 
+                    className="cursor-pointer hover:bg-gray-50" 
+                    style={{width: '100%'}}
+                    onClick={() => setExpandedDriver(expandedDriver === driver.id ? null : driver.id)}
+                  >
+                    <TableCell className="font-medium" style={{width: '20%'}}>
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-gray-400" />
+                        {driver.name}
+                        {expandedDriver === driver.id ? (
+                          <ChevronUp className="w-4 h-4 text-gray-400 ml-1" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell style={{width: '25%'}}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-sm">
+                          <Mail className="w-3 h-3 text-gray-400" />
+                          {driver.email}
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Phone className="w-3 h-3 text-gray-400" />
+                          {driver.phone}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell style={{width: '25%'}}>
+                      {driver.assignedBins.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {driver.assignedBins.map(bin => (
+                            <Badge key={bin} variant="outline">{bin}</Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">None assigned</span>
+                      )}
+                    </TableCell>
+                    <TableCell style={{width: '10%'}}>{getStatusBadge(driver.status)}</TableCell>
+                    <TableCell style={{width: '10%'}}>{driver.totalPickups}</TableCell>
+                    <TableCell className="text-right" style={{width: '5%'}} onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(driver)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openAssignDialog(driver)}>
+                            <Truck className="mr-2 h-4 w-4" />
+                            Assign Bins
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteDriver(driver)}
+                            className="text-red-600"
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                  {expandedDriver === driver.id && (
+                    <TableRow style={{width: '100%'}}>
+                      <TableCell colSpan={7} className="p-0" style={{width: '100%'}}>
+                        <div className="bg-gray-50 p-4">
+                          {driverPickupList.length > 0 ? (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                              {/* Upcoming Pickups */}
+                              {upcomingPickups.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold text-sm flex items-center gap-1 mb-2 text-blue-700">
+                                    <Calendar className="w-4 h-4" />
+                                    Upcoming ({upcomingPickups.length})
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {upcomingPickups.map(pickup => (
+                                      <div key={pickup.id} className="border-l-2 border-l-blue-400 pl-2 py-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">{pickup.binNumber}</span>
+                                            <span className="text-xs text-gray-600">{pickup.locationName}</span>
+                                          </div>
+                                          <div className="text-xs">
+                                            {getPickupStatusBadge(pickup.status)}
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-4 text-xs text-gray-600">
+                                          <span>{pickup.pickupDate}</span>
+                                          <span>{pickup.pickupTime}</span>
+                                          <span>{pickup.loadType}</span>
+                                          <span>{pickup.estimatedWeight}kg</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Completed Pickups */}
+                              {completedPickups.length > 0 && (
+                                <div>
+                                  <h4 className="font-semibold text-sm flex items-center gap-1 mb-2 text-green-700">
+                                    <Package className="w-4 h-4" />
+                                    Completed ({completedPickups.length})
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {completedPickups.map(pickup => (
+                                      <div key={pickup.id} className="border-l-2 border-l-green-400 pl-2 py-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">{pickup.binNumber}</span>
+                                            <span className="text-xs text-gray-600">{pickup.locationName}</span>
+                                          </div>
+                                          <div className="text-xs">
+                                            {getPickupStatusBadge(pickup.status)}
+                                          </div>
+                                        </div>
+                                        <div className="flex gap-4 text-xs text-gray-600">
+                                          <span>{pickup.pickupDate}</span>
+                                          <span>{pickup.pickupTime}</span>
+                                          <span>{pickup.loadType}</span>
+                                          <span>Est: {pickup.estimatedWeight}kg</span>
+                                          {pickup.actualWeight && <span>Actual: {pickup.actualWeight}kg</span>}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 text-gray-500 italic text-sm">
+                              No pickup history available
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </React.Fragment>
+              );
+            })}
+            </TableBody>
+            </Table>
+          </div>
+        </div>
+      </Card>
+
+      {/* Add Driver Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Driver</DialogTitle>
+            <DialogDescription>
+              Add a new driver to the system.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-1 py-1">
+            <div>
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="e.g., John Smith"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="e.g., john@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="e.g., (416) 555-0123"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddDriver}>Add Driver</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Driver Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Driver</DialogTitle>
+            <DialogDescription>
+              Update the driver details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-1 py-1">
+            <div>
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="e.g., John Smith"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="e.g., john@example.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-phone">Phone Number</Label>
+              <Input
+                id="edit-phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="e.g., (416) 555-0123"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditDriver}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Bins Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Bins to Driver</DialogTitle>
+            <DialogDescription>
+              Enter bin numbers separated by commas.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-1 py-1">
+            <div>
+              <Label htmlFor="bins">Assigned Bins</Label>
+              <Input
+                id="bins"
+                value={assignedBinsInput}
+                onChange={(e) => setAssignedBinsInput(e.target.value)}
+                placeholder="e.g., BIN001, BIN002, BIN003"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Enter bin numbers separated by commas
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAssignBins}>Assign Bins</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the driver
+              {driverToDelete && (
+                <span className="font-semibold"> "{driverToDelete.name}"</span>
+              )}
+              {' '}and remove them from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteDialogOpen(false);
+              setDriverToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteDriver}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Driver
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+export default DriversManagement;
