@@ -3,21 +3,49 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Package, 
   Truck, 
-  Calendar,
   LogOut,
   ExternalLink,
-  FileText
+  FileText,
+  Route,
+  Archive
 } from 'lucide-react';
+
+interface NavSubItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavItem {
+  path: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  subItems?: NavSubItem[];
+}
 
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const navItems = [
-    { path: '/admin/bins', label: 'All Bins', icon: Package },
-    { path: '/admin/drivers', label: 'Drivers Management', icon: Truck },
-    { path: '/admin/pickups', label: 'Bin Pickups', icon: Calendar },
-    { path: '/admin/pickup-requests', label: 'Pickup Requests', icon: FileText },
+  const navItems: NavItem[] = [
+    { 
+      path: '/admin/bins', 
+      label: 'All Bins', 
+      icon: Package,
+      subItems: [
+        { path: '/admin/drivers/route-creation', label: 'Bin Routes', icon: Route }
+      ]
+    },
+    { 
+      path: '/admin/pickup-requests', 
+      label: 'Pickup Requests', 
+      icon: FileText,
+      subItems: [
+        { path: '/admin/pickup-requests/route-generator', label: 'Pickup Routes', icon: Route }
+      ]
+    },
+    { path: '/admin/bales', label: 'Bale Management', icon: Archive },
+    { path: '/admin/drivers', label: 'Driver Management', icon: Truck },
   ];
 
   const handleLogout = () => {
@@ -44,12 +72,15 @@ const AdminSidebar = () => {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const hasSubItems = item.subItems && item.subItems.length > 0;
+            const isParentActive = hasSubItems && item.subItems!.some(subItem => location.pathname === subItem.path);
+            
             return (
               <li key={item.path}>
                 <Link
                   to={item.path}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
+                    isActive || isParentActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
@@ -57,6 +88,31 @@ const AdminSidebar = () => {
                   <Icon className="w-5 h-5" />
                   <span>{item.label}</span>
                 </Link>
+                
+                {/* Sub-items */}
+                {hasSubItems && (
+                  <ul className="mt-2 ml-4 space-y-1">
+                    {(item.subItems || []).map((subItem) => {
+                      const SubIcon = subItem.icon;
+                      const isSubActive = location.pathname === subItem.path;
+                      return (
+                        <li key={subItem.path}>
+                          <Link
+                            to={subItem.path}
+                            className={`flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-sm ${
+                              isSubActive
+                                ? 'bg-primary/10 text-primary border-l-2 border-primary'
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-800'
+                            }`}
+                          >
+                            <SubIcon className="w-4 h-4" />
+                            <span>{subItem.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}

@@ -14,7 +14,7 @@ export interface PickupRequest {
     lng: number;
   };
   submittedAt: string;
-  status: 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled';
+  status: 'Pending' | 'Picked Up' | 'Cancelled';
   assignedDriver?: string;
   adminNotes?: string;
 }
@@ -123,12 +123,23 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
   }, [pickupRequests, isInitialized]);
 
   const addPickupRequest = (request: Omit<PickupRequest, 'id'>) => {
+    // Check for default driver if request doesn't have one assigned
+    const defaultDriver = localStorage.getItem('defaultPickupDriver');
+    
     const newRequest: PickupRequest = {
       ...request,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      // Auto-assign default driver if available and request is pending without a driver
+      assignedDriver: (request.status === 'Pending' && !request.assignedDriver && defaultDriver) 
+        ? defaultDriver 
+        : request.assignedDriver,
     };
     
     console.log('Adding new pickup request:', newRequest);
+    if (defaultDriver && request.status === 'Pending' && !request.assignedDriver) {
+      console.log('Auto-assigned default driver:', defaultDriver);
+    }
+    
     setPickupRequests(prev => {
       const updated = [...prev, newRequest];
       console.log('Updated pickup requests:', updated);

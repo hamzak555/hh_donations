@@ -7,13 +7,16 @@ interface BinLocation {
   address: string;
   lat: number;
   lng: number;
-  status: 'Available' | 'Unavailable' | 'Full';
+  status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full';
   pickupStatus: 'Scheduled' | 'Not Scheduled' | 'Completed';
   lastPickup?: string;
   contractFile?: string;
   contractFileName?: string;
   contractUploadDate?: string;
   distance?: number;
+  assignedDriver?: string;
+  createdDate?: string;
+  fullSince?: string; // ISO timestamp of when bin was marked as Full
 }
 
 interface BinsContextType {
@@ -36,7 +39,8 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Not Scheduled',
     lastPickup: '2024-01-10',
     lat: 43.6532,
-    lng: -79.3832
+    lng: -79.3832,
+    createdDate: '2023-06-15'
   },
   {
     id: '2',
@@ -47,7 +51,8 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Scheduled',
     lastPickup: '2024-01-12',
     lat: 43.6489,
-    lng: -79.3963
+    lng: -79.3963,
+    createdDate: '2023-07-22'
   },
   {
     id: '3',
@@ -58,7 +63,8 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Scheduled',
     lastPickup: '2024-01-05',
     lat: 43.6544,
-    lng: -79.3607
+    lng: -79.3607,
+    createdDate: '2023-08-10'
   },
   {
     id: '4',
@@ -69,7 +75,8 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Completed',
     lastPickup: '2024-01-15',
     lat: 43.6551,
-    lng: -79.3865
+    lng: -79.3865,
+    createdDate: '2023-09-05'
   },
   {
     id: '5',
@@ -80,7 +87,9 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Not Scheduled',
     lastPickup: '2024-01-08',
     lat: 43.6589,
-    lng: -79.4057
+    lng: -79.4057,
+    createdDate: '2023-10-12',
+    fullSince: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
   },
   {
     id: '6',
@@ -135,7 +144,8 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Not Scheduled',
     lastPickup: '2024-01-07',
     lat: 43.6471,
-    lng: -79.5157
+    lng: -79.5157,
+    fullSince: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() // 5 days ago
   },
   {
     id: '11',
@@ -190,7 +200,8 @@ const initialBins: BinLocation[] = [
     pickupStatus: 'Not Scheduled',
     lastPickup: '2024-01-04',
     lat: 43.6889,
-    lng: -79.4747
+    lng: -79.4747,
+    fullSince: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3 hours ago
   },
   {
     id: '16',
@@ -245,9 +256,23 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateBin = (id: string, updates: Partial<BinLocation>) => {
     setBins(prevBins => 
-      prevBins.map(bin => 
-        bin.id === id ? { ...bin, ...updates } : bin
-      )
+      prevBins.map(bin => {
+        if (bin.id === id) {
+          const updatedBin = { ...bin, ...updates };
+          
+          // Track when bin is marked as Full
+          if (updates.status === 'Full' && bin.status !== 'Full') {
+            updatedBin.fullSince = new Date().toISOString();
+          }
+          // Clear fullSince when status changes from Full to something else
+          else if (updates.status && updates.status !== 'Full' && bin.status === 'Full') {
+            updatedBin.fullSince = undefined;
+          }
+          
+          return updatedBin;
+        }
+        return bin;
+      })
     );
   };
 

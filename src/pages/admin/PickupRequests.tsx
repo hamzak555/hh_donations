@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { GoogleMap, LoadScript, Marker, useJsApiLoader, Autocomplete, DirectionsRenderer, MarkerF } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContext';
+import { useDrivers } from '@/contexts/DriversContext';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -46,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   MoreHorizontal, 
   Eye, 
@@ -57,35 +60,196 @@ import {
   Calendar, 
   Clock,
   User,
+  Users,
   ChevronUp, 
   ChevronDown, 
   ArrowUpDown, 
-  Search 
+  Search,
+  Route,
+  Settings
 } from 'lucide-react';
+
+const libraries: ("places")[] = ['places'];
 
 function PickupRequests() {
   const [isLoading] = useState(false);
-  const { pickupRequests, updatePickupRequest, deletePickupRequest, addPickupRequest } = usePickupRequests();
+  const { pickupRequests, updatePickupRequest, deletePickupRequest } = usePickupRequests();
+  const { drivers: contextDrivers } = useDrivers();
+  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
+  const [bulkDriverName, setBulkDriverName] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'picked-up' | 'cancelled'>('pending');
+  
+  // Route generation states
+  const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
+  const [selectedDriverForRoute, setSelectedDriverForRoute] = useState<string>('');
+  const [startingAddress, setStartingAddress] = useState<string>('');
+  const [startingCoordinates, setStartingCoordinates] = useState<{lat: number, lng: number} | null>(null);
+  const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  
+  // Default driver states
+  const [isDefaultDriverDialogOpen, setIsDefaultDriverDialogOpen] = useState(false);
+  const [defaultDriver, setDefaultDriver] = useState<string>('');
+  const [tempDefaultDriver, setTempDefaultDriver] = useState<string>('');
+  
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries
+  });
+  
+  // Load default driver from localStorage on mount
+  useEffect(() => {
+    const storedDefaultDriver = localStorage.getItem('defaultPickupDriver');
+    if (storedDefaultDriver) {
+      setDefaultDriver(storedDefaultDriver);
+    }
+  }, []);
+  
+  // Auto-assign default driver to new pending requests without a driver
+  useEffect(() => {
+    if (defaultDriver) {
+      pickupRequests.forEach(request => {
+        if (request.status === 'Pending' && !request.assignedDriver) {
+          updatePickupRequest(request.id, { assignedDriver: defaultDriver });
+        }
+      });
+    }
+  }, [defaultDriver, pickupRequests, updatePickupRequest]);
   
   console.log('PickupRequests admin page - Current requests:', pickupRequests);
   console.log('LocalStorage pickupRequests:', localStorage.getItem('pickupRequests'));
   
   const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<PickupRequest | null>(null);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<string | null>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
-  const [editFormData, setEditFormData] = useState({
-    status: 'Pending' as PickupRequest['status'],
-    assignedDriver: '',
-    adminNotes: ''
-  });
 
-  const drivers = ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emily Davis'];
+  // Use drivers from context
+  const drivers = contextDrivers.filter(d => d.status === 'Active').map(d => d.name);
+  
+  // Route generation functions
+  const onAutocompleteLoad = (autocomplete: google.maps.places.Autocomplete) => {
+    autocompleteRef.current = autocomplete;
+  };
+
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.formatted_address) {
+        setStartingAddress(place.formatted_address);
+        if (place.geometry?.location) {
+          setStartingCoordinates({
+            lat: place.geometry.location.lat(),
+            lng: place.geometry.location.lng()
+          });
+        }
+      }
+    }
+  };
+  
+  // Calculate distance between two points using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in kilometers
+  };
+  
+  // Sort pickup requests by distance from starting point
+  const sortRequestsByDistance = useCallback((requestsToSort: PickupRequest[]) => {
+    if (!startingCoordinates) return requestsToSort;
+    
+    return [...requestsToSort].sort((a, b) => {
+      if (!a.location || !b.location) return 0;
+      
+      const distanceA = calculateDistance(
+        startingCoordinates.lat, 
+        startingCoordinates.lng, 
+        a.location.lat, 
+        a.location.lng
+      );
+      const distanceB = calculateDistance(
+        startingCoordinates.lat, 
+        startingCoordinates.lng, 
+        b.location.lat, 
+        b.location.lng
+      );
+      return distanceA - distanceB;
+    });
+  }, [startingCoordinates]);
+  
+  // Calculate route when driver and starting address are set
+  const calculateRoute = useCallback(() => {
+    if (!isLoaded || !selectedDriverForRoute || !startingCoordinates) {
+      setDirectionsResponse(null);
+      return;
+    }
+    
+    // Get pending requests for the selected driver (only those with location data)
+    const driverRequests = pickupRequests.filter(request => 
+      request.status === 'Pending' &&
+      request.assignedDriver === selectedDriverForRoute &&
+      request.location
+    );
+    
+    if (driverRequests.length === 0) return;
+    
+    const sortedRequests = sortRequestsByDistance(driverRequests);
+    
+    // Calculate route using DirectionsService
+    const directionsService = new google.maps.DirectionsService();
+    
+    const waypoints = sortedRequests.slice(0, -1).map(request => ({
+      location: request.location!,
+      stopover: true
+    }));
+    
+    const lastRequest = sortedRequests[sortedRequests.length - 1];
+    
+    directionsService.route(
+      {
+        origin: startingCoordinates,
+        destination: lastRequest.location!,
+        waypoints: waypoints,
+        optimizeWaypoints: false, // We already optimized by distance
+        travelMode: google.maps.TravelMode.DRIVING
+      },
+      (result, status) => {
+        if (status === 'OK' && result) {
+          setDirectionsResponse(result);
+        }
+      }
+    );
+  }, [isLoaded, selectedDriverForRoute, startingCoordinates, pickupRequests, sortRequestsByDistance]);
+  
+  useEffect(() => {
+    calculateRoute();
+  }, [calculateRoute]);
+  
+  const openRouteDialog = () => {
+    // Check if there are any pending requests with assigned drivers
+    const pendingWithDrivers = pickupRequests.filter(
+      r => r.status === 'Pending' && r.assignedDriver
+    );
+    
+    if (pendingWithDrivers.length === 0) {
+      alert('No pending requests with assigned drivers found. Please assign drivers to pending requests first.');
+      return;
+    }
+    
+    setIsRouteDialogOpen(true);
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -99,9 +263,22 @@ function PickupRequests() {
   const getFilteredAndSortedRequests = () => {
     let filteredRequests = pickupRequests;
     
+    // Filter by tab status
+    if (activeTab !== 'all') {
+      const statusMap: Record<string, string> = {
+        'pending': 'Pending',
+        'picked-up': 'Picked Up',
+        'cancelled': 'Cancelled'
+      };
+      filteredRequests = filteredRequests.filter(request => 
+        request.status === statusMap[activeTab]
+      );
+    }
+    
+    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filteredRequests = pickupRequests.filter(request => 
+      filteredRequests = filteredRequests.filter(request => 
         request.name.toLowerCase().includes(query) ||
         request.email.toLowerCase().includes(query) ||
         request.phone.toLowerCase().includes(query) ||
@@ -142,23 +319,6 @@ function PickupRequests() {
     setIsViewDialogOpen(true);
   };
 
-  const openEditDialog = (request: PickupRequest) => {
-    setSelectedRequest(request);
-    setEditFormData({
-      status: request.status,
-      assignedDriver: request.assignedDriver || '',
-      adminNotes: request.adminNotes || ''
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleEditRequest = () => {
-    if (selectedRequest) {
-      updatePickupRequest(selectedRequest.id, editFormData);
-      setIsEditDialogOpen(false);
-      setSelectedRequest(null);
-    }
-  };
 
   const handleDeleteRequest = (request: PickupRequest) => {
     setRequestToDelete(request);
@@ -173,23 +333,70 @@ function PickupRequests() {
     }
   };
 
+  const handleSelectAll = () => {
+    if (selectedRequests.size === getFilteredAndSortedRequests().length) {
+      setSelectedRequests(new Set());
+    } else {
+      setSelectedRequests(new Set(getFilteredAndSortedRequests().map(r => r.id)));
+    }
+  };
+
+  const handleSelectRequest = (requestId: string, event?: React.MouseEvent) => {
+    const filteredRequests = getFilteredAndSortedRequests();
+    const clickedIndex = filteredRequests.findIndex(r => r.id === requestId);
+    
+    if (event?.shiftKey && lastSelectedIndex !== null) {
+      // Shift-click: select range
+      const start = Math.min(lastSelectedIndex, clickedIndex);
+      const end = Math.max(lastSelectedIndex, clickedIndex);
+      const newSelection = new Set(selectedRequests);
+      
+      for (let i = start; i <= end; i++) {
+        newSelection.add(filteredRequests[i].id);
+      }
+      
+      setSelectedRequests(newSelection);
+    } else {
+      // Regular click: toggle selection
+      const newSelection = new Set(selectedRequests);
+      if (newSelection.has(requestId)) {
+        newSelection.delete(requestId);
+      } else {
+        newSelection.add(requestId);
+      }
+      setSelectedRequests(newSelection);
+      setLastSelectedIndex(clickedIndex);
+    }
+  };
+
+  const handleBulkAssignDriver = () => {
+    if (bulkDriverName && selectedRequests.size > 0) {
+      selectedRequests.forEach(requestId => {
+        updatePickupRequest(requestId, { 
+          assignedDriver: bulkDriverName
+        });
+      });
+      setSelectedRequests(new Set());
+      setIsBulkAssignDialogOpen(false);
+      setBulkDriverName('');
+    }
+  };
+
   const handleViewOnMap = (request: PickupRequest) => {
     setSelectedRequest(request);
     setIsMapDialogOpen(true);
   };
 
   const getStatusBadge = (status: PickupRequest['status']) => {
-    const statusStyles = {
+    const statusStyles: Record<string, string> = {
       'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Confirmed': 'bg-blue-100 text-blue-800 border-blue-200',
-      'In Progress': 'bg-orange-100 text-orange-800 border-orange-200',
-      'Completed': 'bg-green-100 text-green-800 border-green-200',
+      'Picked Up': 'bg-green-100 text-green-800 border-green-200',
       'Cancelled': 'bg-red-100 text-red-800 border-red-200'
     };
     return (
       <Badge 
         variant="outline" 
-        className={statusStyles[status]}
+        className={statusStyles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}
       >
         {status}
       </Badge>
@@ -204,6 +411,15 @@ function PickupRequests() {
     });
   };
 
+  const getStatusCounts = () => {
+    return {
+      all: pickupRequests.length,
+      pending: pickupRequests.filter(r => r.status === 'Pending').length,
+      pickedUp: pickupRequests.filter(r => r.status === 'Picked Up').length,
+      cancelled: pickupRequests.filter(r => r.status === 'Cancelled').length
+    };
+  };
+
   if (isLoading) {
     return <LoadingSkeleton type="table" />;
   }
@@ -213,54 +429,42 @@ function PickupRequests() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Pickup Requests</h1>
         <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => {
-              // Manually check localStorage
-              const stored = localStorage.getItem('pickupRequests');
-              console.log('Current localStorage data:', stored);
-              if (stored) {
-                try {
-                  const parsed = JSON.parse(stored);
-                  console.log('Parsed data:', parsed);
-                  console.log('Number of requests:', parsed.length);
-                } catch (e) {
-                  console.error('Error parsing localStorage data:', e);
-                }
-              }
-            }}
-          >
-            Check Storage
-          </Button>
-          <Button 
-            onClick={() => {
-              // Add a test request
-              const testRequest = {
-                name: 'Test User',
-                email: 'test@example.com',
-                phone: '(416) 555-0000',
-                address: '123 Test Street, Toronto, ON',
-                date: new Date().toISOString().split('T')[0],
-                time: '10:00 AM - 2:00 PM',
-                additionalNotes: 'This is a test request',
-                submittedAt: new Date().toISOString(),
-                status: 'Pending' as const
-              };
-              addPickupRequest(testRequest);
-              console.log('Added test request:', testRequest);
-            }}
-          >
-            Add Test Request
-          </Button>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              console.log('Refreshing page...');
-              window.location.reload();
-            }}
-          >
-            Refresh
-          </Button>
+          {activeTab === 'pending' && (
+            <>
+              <Button 
+                onClick={() => {
+                  setTempDefaultDriver(defaultDriver || "");
+                  setIsDefaultDriverDialogOpen(true);
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Default Driver {defaultDriver && `(${defaultDriver})`}
+              </Button>
+            </>
+          )}
+          {selectedRequests.size > 0 && (
+            <>
+              <Button 
+                onClick={() => setIsBulkAssignDialogOpen(true)}
+                variant="outline"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Assign Driver ({selectedRequests.size})
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedRequests(new Set());
+                  setLastSelectedIndex(null);
+                }}
+                variant="ghost"
+                size="sm"
+              >
+                Clear Selection
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -278,22 +482,93 @@ function PickupRequests() {
             />
           </div>
           <div className="text-sm text-gray-600">
-            {searchQuery.trim() ? (
-              <>Showing {getFilteredAndSortedRequests().length} of {pickupRequests.length} requests</>
-            ) : (
-              <>{pickupRequests.length} requests total</>
-            )}
+            {(() => {
+              // Get requests for current tab (before search filter)
+              let tabRequests = pickupRequests;
+              if (activeTab !== 'all') {
+                const statusMap: Record<string, string> = {
+                  'pending': 'Pending',
+                  'picked-up': 'Picked Up',
+                  'cancelled': 'Cancelled'
+                };
+                tabRequests = pickupRequests.filter(request => 
+                  request.status === statusMap[activeTab]
+                );
+              }
+              
+              const filteredRequests = getFilteredAndSortedRequests();
+              
+              if (searchQuery.trim()) {
+                return <>Showing {filteredRequests.length} of {tabRequests.length} {activeTab === 'all' ? '' : activeTab} requests</>;
+              } else {
+                return <>{tabRequests.length} {activeTab === 'all' ? '' : activeTab} requests total</>;
+              }
+            })()}
           </div>
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="p-6">
-          <Table>
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value as typeof activeTab);
+        setSelectedRequests(new Set()); // Clear selections when switching tabs
+        setLastSelectedIndex(null);
+      }}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="pending" className="gap-2">
+            Pending
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'pending'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {getStatusCounts().pending}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="picked-up" className="gap-2">
+            Picked Up
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'picked-up'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {getStatusCounts().pickedUp}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="cancelled" className="gap-2">
+            Cancelled
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'cancelled'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {getStatusCounts().cancelled}
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="all" className="gap-2">
+            All
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'all'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {getStatusCounts().all}
+            </span>
+          </TabsTrigger>
+        </TabsList>
+
+        <Card className="overflow-hidden">
+          <div className="p-6">
+            <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedRequests.size === getFilteredAndSortedRequests().length && getFilteredAndSortedRequests().length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center gap-1">
@@ -302,7 +577,7 @@ function PickupRequests() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('email')}
                 >
                   <div className="flex items-center gap-1">
@@ -311,7 +586,7 @@ function PickupRequests() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('address')}
                 >
                   <div className="flex items-center gap-1">
@@ -320,7 +595,7 @@ function PickupRequests() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('date')}
                 >
                   <div className="flex items-center gap-1">
@@ -329,7 +604,7 @@ function PickupRequests() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-1">
@@ -338,7 +613,7 @@ function PickupRequests() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('assignedDriver')}
                 >
                   <div className="flex items-center gap-1">
@@ -347,7 +622,7 @@ function PickupRequests() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('submittedAt')}
                 >
                   <div className="flex items-center gap-1">
@@ -361,13 +636,44 @@ function PickupRequests() {
             <TableBody>
               {getFilteredAndSortedRequests().length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                     No pickup requests found. Submit a request from the frontend to see it here.
                   </TableCell>
                 </TableRow>
               ) : (
                 getFilteredAndSortedRequests().map((request) => (
-                <TableRow key={request.id}>
+                <TableRow 
+                  key={request.id}
+                  className={`cursor-pointer select-none ${
+                    selectedRequests.has(request.id) ? 'bg-primary/5' : ''
+                  }`}
+                  onClick={(e) => {
+                    // Don't select if clicking on action buttons or dropdowns
+                    const target = e.target as HTMLElement;
+                    if (
+                      target.closest('button') || 
+                      target.closest('[role="combobox"]') ||
+                      target.closest('[role="listbox"]')
+                    ) {
+                      return;
+                    }
+                    handleSelectRequest(request.id, e);
+                  }}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedRequests.has(request.id)}
+                      onCheckedChange={(checked) => {
+                        // Get the event from the click
+                        const event = window.event as MouseEvent | undefined;
+                        handleSelectRequest(request.id, event as any);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectRequest(request.id, e);
+                      }}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{request.name}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
@@ -381,16 +687,64 @@ function PickupRequests() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      <div className="text-sm font-medium">{formatDate(request.date)}</div>
-                      <div className="text-xs text-gray-500">{request.time}</div>
-                    </div>
+                    <div className="text-sm font-medium">{formatDate(request.date)}</div>
                   </TableCell>
-                  <TableCell>{getStatusBadge(request.status)}</TableCell>
                   <TableCell>
-                    {request.assignedDriver || (
-                      <span className="text-gray-400 text-sm">Unassigned</span>
-                    )}
+                    <Select 
+                      value={request.status}
+                      onValueChange={(value) => {
+                        updatePickupRequest(request.id, { 
+                          status: value as PickupRequest['status']
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="w-32 h-8 border-0 p-0 bg-transparent">
+                        <SelectValue>
+                          {getStatusBadge(request.status)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pending">
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                            Pending
+                          </Badge>
+                        </SelectItem>
+                        <SelectItem value="Picked Up">
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                            Picked Up
+                          </Badge>
+                        </SelectItem>
+                        <SelectItem value="Cancelled">
+                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                            Cancelled
+                          </Badge>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell>
+                    <Select 
+                      value={request.assignedDriver || "unassigned"}
+                      onValueChange={(value) => {
+                        updatePickupRequest(request.id, { 
+                          assignedDriver: value === "unassigned" ? "" : value 
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="w-40 h-8">
+                        <SelectValue>
+                          {request.assignedDriver || <span className="text-gray-400">Unassigned</span>}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">
+                          <span className="text-gray-400">Unassigned</span>
+                        </SelectItem>
+                        {drivers.map(driver => (
+                          <SelectItem key={driver} value={driver}>{driver}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </TableCell>
                   <TableCell>{formatDate(request.submittedAt)}</TableCell>
                   <TableCell className="text-right">
@@ -404,10 +758,6 @@ function PickupRequests() {
                         <DropdownMenuItem onClick={() => openViewDialog(request)}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEditDialog(request)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit Status
                         </DropdownMenuItem>
                         {request.location && (
                           <DropdownMenuItem onClick={() => handleViewOnMap(request)}>
@@ -431,6 +781,7 @@ function PickupRequests() {
           </Table>
         </div>
       </Card>
+    </Tabs>
 
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
@@ -530,72 +881,6 @@ function PickupRequests() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Status Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Request</DialogTitle>
-            <DialogDescription>
-              Update the status and assignment for this pickup request.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 px-1 py-1">
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select 
-                value={editFormData.status}
-                onValueChange={(value) => setEditFormData({...editFormData, status: value as PickupRequest['status']})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Confirmed">Confirmed</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                  <SelectItem value="Cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="driver">Assigned Driver</Label>
-              <Select 
-                value={editFormData.assignedDriver}
-                onValueChange={(value) => setEditFormData({...editFormData, assignedDriver: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a driver" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
-                  {drivers.map(driver => (
-                    <SelectItem key={driver} value={driver}>{driver}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="adminNotes">Admin Notes</Label>
-              <textarea
-                id="adminNotes"
-                value={editFormData.adminNotes}
-                onChange={(e) => setEditFormData({...editFormData, adminNotes: e.target.value})}
-                placeholder="Add internal notes about this request..."
-                className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 min-h-[80px] resize-vertical"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditRequest}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* View on Map Dialog */}
       <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
@@ -641,6 +926,146 @@ function PickupRequests() {
               Get Directions
             </Button>
             <Button onClick={() => setIsMapDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Assign Driver Dialog */}
+      <Dialog open={isBulkAssignDialogOpen} onOpenChange={setIsBulkAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Assign Driver</DialogTitle>
+            <DialogDescription>
+              Assign a driver to {selectedRequests.size} selected request{selectedRequests.size !== 1 ? 's' : ''}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-driver">Select Driver</Label>
+              <Select 
+                value={bulkDriverName}
+                onValueChange={setBulkDriverName}
+              >
+                <SelectTrigger id="bulk-driver">
+                  <SelectValue placeholder="Choose a driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {drivers.map(driver => (
+                    <SelectItem key={driver} value={driver}>{driver}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                This will assign the selected driver to all chosen pickup requests.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsBulkAssignDialogOpen(false);
+                setBulkDriverName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkAssignDriver}
+              disabled={!bulkDriverName}
+            >
+              Assign Driver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Default Driver Dialog */}
+      <Dialog open={isDefaultDriverDialogOpen} onOpenChange={setIsDefaultDriverDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Default Driver</DialogTitle>
+            <DialogDescription>
+              Choose a default driver who will be automatically assigned to all new pending pickup requests.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="default-driver">Default Driver</Label>
+              <Select 
+                value={tempDefaultDriver || "none"}
+                onValueChange={(value) => setTempDefaultDriver(value === "none" ? "" : value)}
+              >
+                <SelectTrigger id="default-driver">
+                  <SelectValue placeholder="Select a default driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No default driver</SelectItem>
+                  {drivers.map(driverName => (
+                    <SelectItem key={driverName} value={driverName}>
+                      {driverName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-2">
+                {tempDefaultDriver 
+                  ? `New pending requests will be automatically assigned to ${tempDefaultDriver}.`
+                  : 'New pending requests will remain unassigned until manually assigned.'}
+              </p>
+            </div>
+            
+            {defaultDriver && defaultDriver !== tempDefaultDriver && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm text-amber-800">
+                  <strong>Note:</strong> Changing the default driver will not affect existing requests. 
+                  Only new incoming requests will be assigned to the new default driver.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsDefaultDriverDialogOpen(false);
+                setTempDefaultDriver(defaultDriver || "");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                setDefaultDriver(tempDefaultDriver);
+                if (tempDefaultDriver) {
+                  localStorage.setItem('defaultPickupDriver', tempDefaultDriver);
+                } else {
+                  localStorage.removeItem('defaultPickupDriver');
+                }
+                setIsDefaultDriverDialogOpen(false);
+                
+                // Auto-assign to existing unassigned pending requests
+                if (tempDefaultDriver) {
+                  const unassignedPending = pickupRequests.filter(
+                    r => r.status === 'Pending' && !r.assignedDriver
+                  );
+                  if (unassignedPending.length > 0) {
+                    const confirmAssign = window.confirm(
+                      `Do you want to assign ${tempDefaultDriver} to ${unassignedPending.length} existing unassigned pending request${unassignedPending.length !== 1 ? 's' : ''}?`
+                    );
+                    if (confirmAssign) {
+                      unassignedPending.forEach(request => {
+                        updatePickupRequest(request.id, { assignedDriver: tempDefaultDriver });
+                      });
+                    }
+                  }
+                }
+              }}
+            >
+              Save Default Driver
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

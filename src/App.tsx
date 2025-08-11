@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { BinsProvider } from './contexts/BinsContext';
 import { PickupRequestsProvider } from './contexts/PickupRequestsContext';
-import { PickupsProvider } from './contexts/PickupsContext';
+import { BalesProvider } from './contexts/BalesContext';
+import { DriversProvider } from './contexts/DriversContext';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
@@ -14,8 +15,10 @@ import TermsOfService from './pages/TermsOfService';
 import AdminLogin from './pages/admin/AdminLogin';
 import BinsManagement from './pages/admin/BinsManagement';
 import DriversManagement from './pages/admin/DriversManagement';
-import PickupManagement from './pages/admin/PickupManagement';
+import RouteCreation from './pages/admin/RouteCreation';
+import BaleManagement from './pages/admin/BaleManagement';
 import PickupRequests from './pages/admin/PickupRequests';
+import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
 import FAQ from './pages/FAQ';
 import Footer from './components/Footer';
 
@@ -23,8 +26,9 @@ function App() {
   return (
     <BinsProvider>
       <PickupRequestsProvider>
-        <PickupsProvider>
-          <Router>
+        <BalesProvider>
+          <DriversProvider>
+            <Router>
           <Routes>
           {/* Public Routes */}
           <Route element={<Layout />}>
@@ -46,14 +50,17 @@ function App() {
           <Route element={<AdminLayout />}>
             <Route path="/admin/bins" element={<BinsManagement />} />
             <Route path="/admin/drivers" element={<DriversManagement />} />
-            <Route path="/admin/pickups" element={<PickupManagement />} />
+            <Route path="/admin/drivers/route-creation" element={<RouteCreation />} />
             <Route path="/admin/pickup-requests" element={<PickupRequests />} />
+            <Route path="/admin/pickup-requests/route-generator" element={<PickupRouteGenerator />} />
+            <Route path="/admin/bales" element={<BaleManagement />} />
           </Route>
           
           <Route path="/" element={<Navigate to="/home" replace />} />
           </Routes>
         </Router>
-        </PickupsProvider>
+          </DriversProvider>
+        </BalesProvider>
       </PickupRequestsProvider>
     </BinsProvider>
   );

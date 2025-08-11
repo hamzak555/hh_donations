@@ -181,8 +181,9 @@ const FindBin = () => {
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Available': return 'text-green-600';
-      case 'Unavailable': return 'text-gray-600';
+      case 'Almost Full': return 'text-yellow-600';
       case 'Full': return 'text-red-600';
+      case 'Unavailable': return 'text-gray-600';
       default: return 'text-gray-600';
     }
   };

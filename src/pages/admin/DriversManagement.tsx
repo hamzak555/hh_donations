@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDrivers, Driver } from '@/contexts/DriversContext';
+import { useBins } from '@/contexts/BinsContext';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import {
   Table,
@@ -37,17 +39,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, MoreHorizontal, Edit, Trash, User, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Calendar, Package } from 'lucide-react';
-
-interface Driver {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  assignedBins: string[];
-  status: 'Active' | 'Inactive';
-  totalPickups: number;
-}
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, MoreHorizontal, Edit, Trash, User, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin } from 'lucide-react';
 
 interface Pickup {
   id: string;
@@ -63,44 +62,10 @@ interface Pickup {
 
 function DriversManagement() {
   const [isLoading] = useState(false);
-  const [drivers, setDrivers] = useState<Driver[]>([
-    {
-      id: '1',
-      name: 'John Smith',
-      email: 'john.smith@example.com',
-      phone: '(416) 555-0123',
-      assignedBins: ['BIN001', 'BIN002'],
-      status: 'Active',
-      totalPickups: 45
-    },
-    {
-      id: '2',
-      name: 'Sarah Johnson',
-      email: 'sarah.j@example.com',
-      phone: '(416) 555-0124',
-      assignedBins: ['BIN003'],
-      status: 'Active',
-      totalPickups: 38
-    },
-    {
-      id: '3',
-      name: 'Michael Brown',
-      email: 'mbrown@example.com',
-      phone: '(416) 555-0125',
-      assignedBins: ['BIN004', 'BIN005'],
-      status: 'Active',
-      totalPickups: 52
-    },
-    {
-      id: '4',
-      name: 'Emily Davis',
-      email: 'emily.d@example.com',
-      phone: '(416) 555-0126',
-      assignedBins: [],
-      status: 'Inactive',
-      totalPickups: 20
-    }
-  ]);
+  const { drivers, setDrivers, addDriver: addDriverToContext, updateDriver: updateDriverInContext, deleteDriver: deleteDriverFromContext } = useDrivers();
+  const { bins, updateBin } = useBins();
+  
+  // Remove the problematic sync - we'll handle consistency in the action handlers instead
 
   // Mock pickup data for each driver
   const driverPickups: Record<string, Pickup[]> = {
@@ -178,16 +143,15 @@ function DriversManagement() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: ''
+    phone: '',
+    status: 'Active' as Driver['status']
   });
-  const [assignedBinsInput, setAssignedBinsInput] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
@@ -245,8 +209,11 @@ function DriversManagement() {
   };
 
   const handleAddDriver = () => {
+    // Generate a unique ID using timestamp to avoid collisions
+    const timestamp = Date.now();
+    const randomNum = Math.floor(Math.random() * 1000);
     const newDriver: Driver = {
-      id: String(drivers.length + 1),
+      id: `driver_${timestamp}_${randomNum}`,
       name: formData.name,
       email: formData.email,
       phone: formData.phone,
@@ -254,37 +221,33 @@ function DriversManagement() {
       status: 'Active',
       totalPickups: 0
     };
-    setDrivers([...drivers, newDriver]);
+    addDriverToContext(newDriver);
     setIsAddDialogOpen(false);
-    setFormData({ name: '', email: '', phone: '' });
+    setFormData({ name: '', email: '', phone: '', status: 'Active' });
+    setExpandedDriver(null); // Clear any expanded driver
   };
 
   const handleEditDriver = () => {
     if (selectedDriver) {
-      setDrivers(drivers.map(driver => 
-        driver.id === selectedDriver.id 
-          ? { ...driver, ...formData }
-          : driver
-      ));
+      // If marking driver as inactive, unassign from all bins
+      if (formData.status === 'Inactive' && selectedDriver.status === 'Active' && selectedDriver.assignedBins.length > 0) {
+        const driverName = selectedDriver.name;
+        bins.forEach(bin => {
+          if (bin.assignedDriver === driverName) {
+            updateBin(bin.id, { assignedDriver: undefined });
+          }
+        });
+        // Clear assigned bins for the driver
+        updateDriverInContext(selectedDriver.id, { ...formData, assignedBins: [] });
+      } else {
+        updateDriverInContext(selectedDriver.id, formData);
+      }
       setIsEditDialogOpen(false);
       setSelectedDriver(null);
-      setFormData({ name: '', email: '', phone: '' });
+      setFormData({ name: '', email: '', phone: '', status: 'Active' });
     }
   };
 
-  const handleAssignBins = () => {
-    if (selectedDriver) {
-      const bins = assignedBinsInput.split(',').map(bin => bin.trim()).filter(bin => bin);
-      setDrivers(drivers.map(driver => 
-        driver.id === selectedDriver.id 
-          ? { ...driver, assignedBins: bins }
-          : driver
-      ));
-      setIsAssignDialogOpen(false);
-      setSelectedDriver(null);
-      setAssignedBinsInput('');
-    }
-  };
 
   const handleDeleteDriver = (driver: Driver) => {
     setDriverToDelete(driver);
@@ -293,9 +256,19 @@ function DriversManagement() {
 
   const confirmDeleteDriver = () => {
     if (driverToDelete) {
-      setDrivers(drivers.filter(driver => driver.id !== driverToDelete.id));
+      // Unassign driver from all bins
+      if (driverToDelete.assignedBins.length > 0) {
+        const driverName = driverToDelete.name;
+        bins.forEach(bin => {
+          if (bin.assignedDriver === driverName) {
+            updateBin(bin.id, { assignedDriver: undefined });
+          }
+        });
+      }
+      deleteDriverFromContext(driverToDelete.id);
       setIsDeleteDialogOpen(false);
       setDriverToDelete(null);
+      setExpandedDriver(null); // Clear any expanded driver
     }
   };
 
@@ -304,16 +277,12 @@ function DriversManagement() {
     setFormData({
       name: driver.name,
       email: driver.email,
-      phone: driver.phone
+      phone: driver.phone,
+      status: driver.status
     });
     setIsEditDialogOpen(true);
   };
 
-  const openAssignDialog = (driver: Driver) => {
-    setSelectedDriver(driver);
-    setAssignedBinsInput(driver.assignedBins.join(', '));
-    setIsAssignDialogOpen(true);
-  };
 
   const getStatusBadge = (status: Driver['status']) => {
     const statusStyles = {
@@ -360,7 +329,8 @@ function DriversManagement() {
         </Button>
       </div>
 
-      <Card className="w-full">
+      {/* Drivers Table */}
+      <Card className="w-full mb-6">
         <div className="p-6">
           <div className="w-full overflow-x-auto">
             <Table 
@@ -372,9 +342,9 @@ function DriversManagement() {
               }}
             >
             <TableHeader>
-              <TableRow style={{width: '100%'}}>
+              <TableRow style={{width: '100%'}} className="hover:bg-transparent">
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('name')}
                   style={{width: '20%'}}
                 >
@@ -385,7 +355,7 @@ function DriversManagement() {
                 </TableHead>
                 <TableHead style={{width: '30%'}}>Contact Information</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('assignedBins')}
                   style={{width: '25%'}}
                 >
@@ -395,7 +365,7 @@ function DriversManagement() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('status')}
                   style={{width: '10%'}}
                 >
@@ -405,7 +375,7 @@ function DriversManagement() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('totalPickups')}
                   style={{width: '10%'}}
                 >
@@ -418,27 +388,34 @@ function DriversManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-            {getSortedDrivers().map((driver) => {
+            {getSortedDrivers().map((driver, index) => {
               const driverPickupList = driverPickups[driver.id] || [];
               const upcomingPickups = driverPickupList.filter(p => p.status === 'Upcoming' || p.status === 'In Progress');
               const completedPickups = driverPickupList.filter(p => p.status === 'Completed');
+              const isExpanded = expandedDriver !== null && expandedDriver === driver.id;
               
               return (
                 <React.Fragment key={driver.id}>
                   <TableRow 
                     className="cursor-pointer hover:bg-gray-50" 
                     style={{width: '100%'}}
-                    onClick={() => setExpandedDriver(expandedDriver === driver.id ? null : driver.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedDriver(prevExpanded => {
+                        // Use strict comparison and ensure same type
+                        const newValue = (prevExpanded === driver.id) ? null : driver.id;
+                        return newValue;
+                      });
+                    }}
                   >
                     <TableCell className="font-medium" style={{width: '20%'}}>
                       <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        {driver.name}
-                        {expandedDriver === driver.id ? (
-                          <ChevronUp className="w-4 h-4 text-gray-400 ml-1" />
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-gray-400" />
                         ) : (
-                          <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />
+                          <ChevronDown className="w-4 h-4 text-gray-400" />
                         )}
+                        {driver.name}
                       </div>
                     </TableCell>
                     <TableCell style={{width: '25%'}}>
@@ -455,10 +432,15 @@ function DriversManagement() {
                     </TableCell>
                     <TableCell style={{width: '25%'}}>
                       {driver.assignedBins.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {driver.assignedBins.map(bin => (
+                        <div className="flex flex-wrap gap-1 items-center">
+                          {driver.assignedBins.slice(0, 2).map(bin => (
                             <Badge key={bin} variant="outline">{bin}</Badge>
                           ))}
+                          {driver.assignedBins.length > 2 && (
+                            <span className="text-sm text-gray-600 font-medium">
+                              +{driver.assignedBins.length - 2}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-400">None assigned</span>
@@ -478,10 +460,6 @@ function DriversManagement() {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openAssignDialog(driver)}>
-                            <Truck className="mr-2 h-4 w-4" />
-                            Assign Bins
-                          </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => handleDeleteDriver(driver)}
                             className="text-red-600"
@@ -493,78 +471,59 @@ function DriversManagement() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                  {expandedDriver === driver.id && (
-                    <TableRow style={{width: '100%'}}>
-                      <TableCell colSpan={7} className="p-0" style={{width: '100%'}}>
+                  {isExpanded && (
+                    <TableRow key={`expanded-${driver.id}`} style={{width: '100%'}}>
+                      <TableCell colSpan={6} className="p-0" style={{width: '100%'}}>
                         <div className="bg-gray-50 p-4">
-                          {driverPickupList.length > 0 ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                              {/* Upcoming Pickups */}
-                              {upcomingPickups.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold text-sm flex items-center gap-1 mb-2 text-blue-700">
-                                    <Calendar className="w-4 h-4" />
-                                    Upcoming ({upcomingPickups.length})
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {upcomingPickups.map(pickup => (
-                                      <div key={pickup.id} className="border-l-2 border-l-blue-400 pl-2 py-1">
-                                        <div className="flex justify-between items-center mb-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm">{pickup.binNumber}</span>
-                                            <span className="text-xs text-gray-600">{pickup.locationName}</span>
-                                          </div>
-                                          <div className="text-xs">
-                                            {getPickupStatusBadge(pickup.status)}
-                                          </div>
-                                        </div>
-                                        <div className="flex gap-4 text-xs text-gray-600">
-                                          <span>{pickup.pickupDate}</span>
-                                          <span>{pickup.pickupTime}</span>
-                                          <span>{pickup.loadType}</span>
-                                          <span>{pickup.estimatedWeight}kg</span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Completed Pickups */}
-                              {completedPickups.length > 0 && (
-                                <div>
-                                  <h4 className="font-semibold text-sm flex items-center gap-1 mb-2 text-green-700">
-                                    <Package className="w-4 h-4" />
-                                    Completed ({completedPickups.length})
-                                  </h4>
-                                  <div className="space-y-2">
-                                    {completedPickups.map(pickup => (
-                                      <div key={pickup.id} className="border-l-2 border-l-green-400 pl-2 py-1">
-                                        <div className="flex justify-between items-center mb-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm">{pickup.binNumber}</span>
-                                            <span className="text-xs text-gray-600">{pickup.locationName}</span>
-                                          </div>
-                                          <div className="text-xs">
-                                            {getPickupStatusBadge(pickup.status)}
-                                          </div>
-                                        </div>
-                                        <div className="flex gap-4 text-xs text-gray-600">
-                                          <span>{pickup.pickupDate}</span>
-                                          <span>{pickup.pickupTime}</span>
-                                          <span>{pickup.loadType}</span>
-                                          <span>Est: {pickup.estimatedWeight}kg</span>
-                                          {pickup.actualWeight && <span>Actual: {pickup.actualWeight}kg</span>}
+                          {driver.assignedBins.length > 0 ? (
+                            <div>
+                              <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                                <Package className="w-4 h-4 text-gray-600" />
+                                Assigned Bins ({driver.assignedBins.length})
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {driver.assignedBins.map(binNumber => {
+                                  const bin = bins.find(b => b.binNumber === binNumber);
+                                  if (!bin) return null;
+                                  
+                                  const getStatusColor = (status: string) => {
+                                    switch(status) {
+                                      case 'Available': return 'bg-green-100 text-green-800 border-green-200';
+                                      case 'Almost Full': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+                                      case 'Full': return 'bg-red-100 text-red-800 border-red-200';
+                                      case 'Unavailable': return 'bg-gray-100 text-gray-800 border-gray-200';
+                                      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+                                    }
+                                  };
+                                  
+                                  return (
+                                    <div key={binNumber} className="border rounded-lg p-3 bg-white">
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                          <span className="font-semibold text-sm">{bin.binNumber}</span>
+                                          <Badge 
+                                            variant="outline" 
+                                            className={`ml-2 text-xs ${getStatusColor(bin.status)}`}
+                                          >
+                                            {bin.status}
+                                          </Badge>
                                         </div>
                                       </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                                      <div className="text-xs text-gray-600 space-y-1">
+                                        <div className="font-medium">{bin.locationName}</div>
+                                        <div className="flex items-start gap-1">
+                                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                          <span className="break-words">{bin.address}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           ) : (
                             <div className="text-center py-4 text-gray-500 italic text-sm">
-                              No pickup history available
+                              No bins assigned to this driver
                             </div>
                           )}
                         </div>
@@ -579,6 +538,7 @@ function DriversManagement() {
           </div>
         </div>
       </Card>
+
 
       {/* Add Driver Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -666,6 +626,28 @@ function DriversManagement() {
                 placeholder="e.g., (416) 555-0123"
               />
             </div>
+            <div>
+              <Label htmlFor="edit-status">Status</Label>
+              <Select 
+                value={formData.status}
+                onValueChange={(value) => setFormData({...formData, status: value as Driver['status']})}
+              >
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              {formData.status === 'Inactive' && selectedDriver?.status === 'Active' && selectedDriver?.assignedBins.length > 0 && (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Warning:</strong> Marking this driver as inactive will unassign them from {selectedDriver.assignedBins.length} bin{selectedDriver.assignedBins.length > 1 ? 's' : ''}.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
@@ -676,49 +658,29 @@ function DriversManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Assign Bins Dialog */}
-      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Assign Bins to Driver</DialogTitle>
-            <DialogDescription>
-              Enter bin numbers separated by commas.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 px-1 py-1">
-            <div>
-              <Label htmlFor="bins">Assigned Bins</Label>
-              <Input
-                id="bins"
-                value={assignedBinsInput}
-                onChange={(e) => setAssignedBinsInput(e.target.value)}
-                placeholder="e.g., BIN001, BIN002, BIN003"
-              />
-              <p className="text-sm text-gray-500 mt-1">
-                Enter bin numbers separated by commas
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAssignBins}>Assign Bins</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the driver
-              {driverToDelete && (
-                <span className="font-semibold"> "{driverToDelete.name}"</span>
-              )}
-              {' '}and remove them from the system.
+              <div className="space-y-2">
+                <p>
+                  This action cannot be undone. This will permanently delete the driver
+                  {driverToDelete && (
+                    <span className="font-semibold"> "{driverToDelete.name}"</span>
+                  )}
+                  {' '}and remove them from the system.
+                </p>
+                {driverToDelete && driverToDelete.assignedBins.length > 0 && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-800">
+                      <strong>Warning:</strong> This driver is currently assigned to {driverToDelete.assignedBins.length} bin{driverToDelete.assignedBins.length > 1 ? 's' : ''}. 
+                      Deleting this driver will unassign them from all bins.
+                    </p>
+                  </div>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,8 +1,8 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { useBins, BinLocation } from '@/contexts/BinsContext';
-import { usePickups, Pickup } from '@/contexts/PickupsContext';
+import { useDrivers } from '@/contexts/DriversContext';
 import {
   Table,
   TableBody,
@@ -49,8 +49,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, MoreHorizontal, Edit, Trash, MapPin, CalendarDays, FileText, Upload, ChevronUp, ChevronDown, ArrowUpDown, Search, Package } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash, MapPin, CalendarDays, FileText, Upload, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users } from 'lucide-react';
 import { format } from 'date-fns';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Use the shared Bin type from context
 type Bin = BinLocation;
@@ -58,7 +59,7 @@ type Bin = BinLocation;
 function BinsManagement() {
   const [isLoading] = useState(false);
   const { bins, addBin, updateBin, deleteBin } = useBins();
-  const { addPickup } = usePickups();
+  const { drivers, updateDriver, getActiveDrivers } = useDrivers();
   
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -71,7 +72,8 @@ function BinsManagement() {
   const [formData, setFormData] = useState({
     locationName: '',
     address: '',
-    status: 'Available' as Bin['status']
+    status: 'Available' as Bin['status'],
+    assignedDriver: 'none'
   });
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -90,13 +92,48 @@ function BinsManagement() {
     estimatedWeight: 0
   });
   const [pickupDate, setPickupDate] = useState<Date>();
+  const [selectedBins, setSelectedBins] = useState<Set<string>>(new Set());
+  const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
+  const [bulkDriverName, setBulkDriverName] = useState('');
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute to refresh "time since full" display
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Mock drivers list - in production, this would come from your backend
-  const drivers = ['John Smith', 'Sarah Johnson', 'Michael Brown', 'Emily Davis'];
+  // Helper function to calculate time since bin became full
+  const getTimeSinceFull = (fullSince: string | undefined): string | null => {
+    if (!fullSince) return null;
+    
+    const now = new Date();
+    const fullTime = new Date(fullSince);
+    const diffMs = now.getTime() - fullTime.getTime();
+    
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  };
+
+  // Get only active drivers
+  const activeDrivers = getActiveDrivers();
 
   // Handle autocomplete load for add dialog
   const onAddAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
@@ -118,6 +155,7 @@ function BinsManagement() {
 
   // Handle place selection for add dialog
   const onAddPlaceChanged = () => {
+    // Prevent any default behaviors that might close the dialog
     if (addAutocomplete) {
       const place = addAutocomplete.getPlace();
       console.log('Place selected:', place);
@@ -131,6 +169,11 @@ function BinsManagement() {
         console.log('Setting address and location:', place.formatted_address, newLocation);
         setFormData(prev => ({ ...prev, address: place.formatted_address || '' }));
         setSelectedLocation(newLocation);
+        
+        // Blur the input to close the dropdown
+        if (addAddressRef.current) {
+          addAddressRef.current.blur();
+        }
       } else {
         console.log('No formatted address or location found');
       }
@@ -166,6 +209,78 @@ function BinsManagement() {
     }
   };
 
+  const handleSelectBin = (binId: string, event?: React.MouseEvent) => {
+    const filteredBins = getFilteredAndSortedBins();
+    const clickedIndex = filteredBins.findIndex(b => b.id === binId);
+    
+    if (event?.shiftKey && lastSelectedIndex !== null) {
+      // Shift-click: select range
+      const start = Math.min(lastSelectedIndex, clickedIndex);
+      const end = Math.max(lastSelectedIndex, clickedIndex);
+      const newSelection = new Set(selectedBins);
+      
+      for (let i = start; i <= end; i++) {
+        newSelection.add(filteredBins[i].id);
+      }
+      
+      setSelectedBins(newSelection);
+    } else {
+      // Regular click: toggle selection
+      const newSelection = new Set(selectedBins);
+      if (newSelection.has(binId)) {
+        newSelection.delete(binId);
+      } else {
+        newSelection.add(binId);
+      }
+      setSelectedBins(newSelection);
+      setLastSelectedIndex(clickedIndex);
+    }
+  };
+
+  const handleSelectAll = () => {
+    const filteredBins = getFilteredAndSortedBins();
+    const uniqueFilteredIds = Array.from(new Set(filteredBins.map(bin => bin.id)));
+    
+    if (selectedBins.size === uniqueFilteredIds.length) {
+      setSelectedBins(new Set());
+    } else {
+      const newSelection = new Set(uniqueFilteredIds);
+      setSelectedBins(newSelection);
+    }
+    setLastSelectedIndex(null);
+  };
+
+  const handleBulkAssignDriver = () => {
+    if (bulkDriverName && selectedBins.size > 0) {
+      // Collect bin numbers that will be assigned
+      const binsToAssign: string[] = [];
+      
+      selectedBins.forEach(binId => {
+        const bin = bins.find(b => b.id === binId);
+        if (bin) {
+          updateBin(binId, { 
+            pickupStatus: 'Scheduled',
+            assignedDriver: bulkDriverName 
+          });
+          binsToAssign.push(bin.binNumber);
+          
+        }
+      });
+      
+      // Update the driver's assignedBins array
+      const driver = drivers.find(d => d.name === bulkDriverName);
+      if (driver) {
+        const updatedAssignedBins = Array.from(new Set([...driver.assignedBins, ...binsToAssign]));
+        updateDriver(driver.id, { assignedBins: updatedAssignedBins });
+      }
+      
+      setIsBulkAssignDialogOpen(false);
+      setSelectedBins(new Set());
+      setBulkDriverName('');
+      setLastSelectedIndex(null);
+    }
+  };
+
   const getFilteredAndSortedBins = () => {
     // First filter by search query
     let filteredBins = bins;
@@ -177,9 +292,7 @@ function BinsManagement() {
         bin.locationName.toLowerCase().includes(query) ||
         bin.address.toLowerCase().includes(query) ||
         bin.status.toLowerCase().includes(query) ||
-        bin.pickupStatus.toLowerCase().includes(query) ||
-        (bin.lastPickup && bin.lastPickup.includes(query)) ||
-        (bin.contractFileName && bin.contractFileName.toLowerCase().includes(query))
+        (bin.assignedDriver && bin.assignedDriver.toLowerCase().includes(query))
       );
     }
     
@@ -189,12 +302,6 @@ function BinsManagement() {
     return [...filteredBins].sort((a, b) => {
       let aValue = a[sortColumn as keyof Bin];
       let bValue = b[sortColumn as keyof Bin];
-      
-      // Handle special cases
-      if (sortColumn === 'contractFile') {
-        aValue = a.contractFile ? 'Yes' : 'No';
-        bValue = b.contractFile ? 'Yes' : 'No';
-      }
       
       // Convert to strings for comparison
       aValue = String(aValue || '').toLowerCase();
@@ -237,7 +344,8 @@ function BinsManagement() {
       status: formData.status,
       pickupStatus: 'Not Scheduled',
       lat: coordinates.lat,
-      lng: coordinates.lng
+      lng: coordinates.lng,
+      createdDate: new Date().toISOString().split('T')[0]
     };
 
     // Handle file upload if a file was selected
@@ -253,16 +361,59 @@ function BinsManagement() {
       };
     }
 
+    // Add assigned driver if selected
+    if (formData.assignedDriver && formData.assignedDriver !== 'none') {
+      newBin = {
+        ...newBin,
+        assignedDriver: formData.assignedDriver
+      };
+      
+      // Update the driver's assignedBins array
+      const driver = drivers.find(d => d.name === formData.assignedDriver);
+      if (driver) {
+        const updatedAssignedBins = [...driver.assignedBins, generateBinNumber()];
+        updateDriver(driver.id, { assignedBins: updatedAssignedBins });
+      }
+    }
+
     addBin(newBin);
     setIsAddDialogOpen(false);
-    setFormData({ locationName: '', address: '', status: 'Available' });
+    setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none' });
     setUploadedFile(null);
     setSelectedLocation(null);
   };
 
   const handleEditBin = () => {
     if (selectedBin) {
-      let updatedBin = { ...selectedBin, ...formData };
+      const oldDriverName = selectedBin.assignedDriver;
+      const newDriverName = formData.assignedDriver === 'none' ? undefined : formData.assignedDriver;
+      
+      let updatedBin = { 
+        ...selectedBin, 
+        ...formData,
+        assignedDriver: newDriverName
+      };
+      
+      // Update driver assignments if driver has changed
+      if (oldDriverName !== newDriverName) {
+        // Remove bin from old driver's assignedBins
+        if (oldDriverName) {
+          const oldDriver = drivers.find(d => d.name === oldDriverName);
+          if (oldDriver) {
+            const updatedBins = oldDriver.assignedBins.filter(bin => bin !== selectedBin.binNumber);
+            updateDriver(oldDriver.id, { assignedBins: updatedBins });
+          }
+        }
+        
+        // Add bin to new driver's assignedBins
+        if (newDriverName) {
+          const newDriver = drivers.find(d => d.name === newDriverName);
+          if (newDriver) {
+            const updatedBins = Array.from(new Set([...newDriver.assignedBins, selectedBin.binNumber]));
+            updateDriver(newDriver.id, { assignedBins: updatedBins });
+          }
+        }
+      }
       
       // Handle file upload if a new file was selected
       if (uploadedFile) {
@@ -280,7 +431,7 @@ function BinsManagement() {
       updateBin(selectedBin.id, updatedBin);
       setIsEditDialogOpen(false);
       setSelectedBin(null);
-      setFormData({ locationName: '', address: '', status: 'Available' });
+      setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none' });
       setUploadedFile(null);
     }
   };
@@ -292,6 +443,15 @@ function BinsManagement() {
 
   const confirmDeleteBin = () => {
     if (binToDelete) {
+      // If bin was assigned to a driver, remove it from driver's assignedBins
+      if (binToDelete.assignedDriver) {
+        const driver = drivers.find(d => d.name === binToDelete.assignedDriver);
+        if (driver) {
+          const updatedBins = driver.assignedBins.filter(bin => bin !== binToDelete.binNumber);
+          updateDriver(driver.id, { assignedBins: updatedBins });
+        }
+      }
+      
       deleteBin(binToDelete.id);
       setIsDeleteDialogOpen(false);
       setBinToDelete(null);
@@ -313,28 +473,16 @@ function BinsManagement() {
 
   const handleConfirmSchedulePickup = () => {
     if (selectedBin && pickupDate) {
-      // Update bin status
-      updateBin(selectedBin.id, { pickupStatus: 'Scheduled' });
+      // Update bin status and assign driver
+      updateBin(selectedBin.id, { 
+        pickupStatus: 'Scheduled',
+        assignedDriver: pickupFormData.driverName 
+      });
       
-      // Create pickup record
-      const newPickup: Pickup = {
-        id: String(Date.now()), // Simple ID generation
-        binNumber: selectedBin.binNumber,
-        locationName: selectedBin.locationName,
-        driverName: pickupFormData.driverName,
-        pickupDate: format(pickupDate, 'yyyy-MM-dd'),
-        pickupTime: pickupFormData.pickupTime,
-        loadType: pickupFormData.loadType,
-        status: 'Scheduled',
-        estimatedWeight: pickupFormData.estimatedWeight
-      };
-      
-      addPickup(newPickup);
       
       setIsScheduleDialogOpen(false);
       setSelectedBin(null);
       setPickupDate(undefined);
-      console.log('Pickup scheduled:', newPickup);
     } else if (!pickupDate) {
       alert('Please select a pickup date.');
     }
@@ -345,7 +493,8 @@ function BinsManagement() {
     setFormData({
       locationName: bin.locationName,
       address: bin.address,
-      status: bin.status
+      status: bin.status,
+      assignedDriver: bin.assignedDriver || 'none'
     });
     setUploadedFile(null);
     setIsEditDialogOpen(true);
@@ -356,37 +505,29 @@ function BinsManagement() {
     setIsMapDialogOpen(true);
   };
 
-  const getStatusBadge = (status: Bin['status']) => {
+  const getStatusBadge = (status: Bin['status'], fullSince?: string) => {
     const statusStyles = {
       'Available': 'bg-green-100 text-green-800 border-green-200',
-      'Unavailable': 'bg-gray-100 text-gray-800 border-gray-200',
-      'Full': 'bg-red-100 text-red-800 border-red-200'
+      'Almost Full': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'Full': 'bg-red-100 text-red-800 border-red-200',
+      'Unavailable': 'bg-gray-100 text-gray-800 border-gray-200'
     };
+    
+    const timeSinceFull = status === 'Full' ? getTimeSinceFull(fullSince) : null;
+    
     return (
       <Badge 
         variant="outline" 
         className={statusStyles[status]}
       >
         {status}
+        {timeSinceFull && (
+          <span className="ml-1 font-normal">({timeSinceFull})</span>
+        )}
       </Badge>
     );
   };
 
-  const getPickupBadge = (status: Bin['pickupStatus']) => {
-    const statusStyles = {
-      'Scheduled': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Not Scheduled': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Completed': 'bg-emerald-100 text-emerald-800 border-emerald-200'
-    };
-    return (
-      <Badge 
-        variant="outline" 
-        className={statusStyles[status]}
-      >
-        {status}
-      </Badge>
-    );
-  };
 
   if (isLoading) {
     return <LoadingSkeleton type="table" />;
@@ -396,10 +537,33 @@ function BinsManagement() {
     <div className="px-6 pt-10 pb-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">All Bins</h1>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Bin
-        </Button>
+        <div className="flex gap-2">
+          {selectedBins.size > 0 && (
+            <>
+              <Button 
+                onClick={() => setIsBulkAssignDialogOpen(true)}
+                variant="outline"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Assign Driver ({selectedBins.size})
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedBins(new Set());
+                  setLastSelectedIndex(null);
+                }}
+                variant="ghost"
+                size="sm"
+              >
+                Clear Selection
+              </Button>
+            </>
+          )}
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add New Bin
+          </Button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -429,9 +593,19 @@ function BinsManagement() {
         <div className="p-6">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="hover:!bg-transparent">
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={(() => {
+                      const filteredBins = getFilteredAndSortedBins();
+                      const uniqueFilteredIds = Array.from(new Set(filteredBins.map(bin => bin.id)));
+                      return selectedBins.size === uniqueFilteredIds.length && uniqueFilteredIds.length > 0;
+                    })()}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('binNumber')}
                 >
                   <div className="flex items-center gap-1">
@@ -440,7 +614,7 @@ function BinsManagement() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('locationName')}
                 >
                   <div className="flex items-center gap-1">
@@ -449,7 +623,7 @@ function BinsManagement() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('address')}
                 >
                   <div className="flex items-center gap-1">
@@ -458,7 +632,7 @@ function BinsManagement() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
+                  className="cursor-pointer select-none"
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-1">
@@ -467,93 +641,117 @@ function BinsManagement() {
                   </div>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort('pickupStatus')}
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('assignedDriver')}
                 >
                   <div className="flex items-center gap-1">
-                    Pickup Status
-                    {getSortIcon('pickupStatus')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort('contractFile')}
-                >
-                  <div className="flex items-center gap-1">
-                    Contract
-                    {getSortIcon('contractFile')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-gray-50 select-none"
-                  onClick={() => handleSort('lastPickup')}
-                >
-                  <div className="flex items-center gap-1">
-                    Last Pickup
-                    {getSortIcon('lastPickup')}
+                    Assigned Driver
+                    {getSortIcon('assignedDriver')}
                   </div>
                 </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-            {getFilteredAndSortedBins().map((bin) => (
-              <TableRow key={bin.id}>
-                <TableCell className="font-medium">{bin.binNumber}</TableCell>
-                <TableCell>{bin.locationName}</TableCell>
-                <TableCell>{bin.address}</TableCell>
-                <TableCell>{getStatusBadge(bin.status)}</TableCell>
-                <TableCell>{getPickupBadge(bin.pickupStatus)}</TableCell>
-                <TableCell>
-                  {bin.contractFile ? (
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-green-600" />
-                      <a 
-                        href={bin.contractFile} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline text-sm"
+              {getFilteredAndSortedBins().map((bin, index) => {
+                return (
+                  <TableRow key={`${bin.id}-${bin.binNumber}-${index}`} className="select-none">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedBins.has(bin.id)}
+                        onCheckedChange={(checked) => {
+                          handleSelectBin(bin.id);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{bin.binNumber}</TableCell>
+                    <TableCell>{bin.locationName}</TableCell>
+                    <TableCell>{bin.address}</TableCell>
+                    <TableCell>{getStatusBadge(bin.status, bin.fullSince)}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={bin.assignedDriver || 'unassigned'}
+                        onValueChange={(value) => {
+                          const oldDriverName = bin.assignedDriver;
+                          const newDriverName = value === 'unassigned' ? undefined : value;
+                          
+                          // Update the bin
+                          updateBin(bin.id, { assignedDriver: newDriverName });
+                          
+                          // Update driver assignments
+                          if (oldDriverName && oldDriverName !== newDriverName) {
+                            // Remove bin from old driver's assignedBins
+                            const oldDriver = drivers.find(d => d.name === oldDriverName);
+                            if (oldDriver) {
+                              const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
+                              updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                            }
+                          }
+                          
+                          if (newDriverName && newDriverName !== 'unassigned') {
+                            // Add bin to new driver's assignedBins
+                            const newDriver = drivers.find(d => d.name === newDriverName);
+                            if (newDriver) {
+                              const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
+                              updateDriver(newDriver.id, { assignedBins: updatedBins });
+                            }
+                          }
+                        }}
                       >
-                        View Contract
-                      </a>
-                    </div>
-                  ) : (
-                    <span className="text-gray-400 text-sm">No contract</span>
-                  )}
-                </TableCell>
-                <TableCell>{bin.lastPickup || '-'}</TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => openEditDialog(bin)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleSchedulePickup(bin)}>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        Schedule Pickup
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleViewOnMap(bin)}>
-                        <MapPin className="mr-2 h-4 w-4" />
-                        View on Map
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => handleDeleteBin(bin)}
-                        className="text-red-600"
-                      >
-                        <Trash className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
+                        <SelectTrigger className="h-8 w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">
+                            <span className="text-red-600">Unassigned</span>
+                          </SelectItem>
+                          {activeDrivers.map(driver => (
+                            <SelectItem key={driver.id} value={driver.name}>
+                              {driver.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(bin)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSchedulePickup(bin)}>
+                            <CalendarDays className="mr-2 h-4 w-4" />
+                            Schedule Pickup
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleViewOnMap(bin)}>
+                            <MapPin className="mr-2 h-4 w-4" />
+                            View on Map
+                          </DropdownMenuItem>
+                          {bin.contractFile && (
+                            <DropdownMenuItem onClick={() => window.open(bin.contractFile, '_blank')}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              View Contract
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteBin(bin)}
+                            className="text-red-600"
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
@@ -567,12 +765,25 @@ function BinsManagement() {
       >
       <Dialog 
         open={isAddDialogOpen} 
-        onOpenChange={() => {
-          // Completely disable auto-closing - only allow manual close via buttons
-          console.log('Dialog close attempt blocked');
-        }}
+        onOpenChange={setIsAddDialogOpen}
       >
-        <DialogContent className="z-[9999]">
+        <DialogContent 
+          className="z-[9999]"
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on autocomplete dropdown
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // Prevent closing when interacting with autocomplete
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Add New Bin</DialogTitle>
             <DialogDescription>
@@ -639,6 +850,40 @@ function BinsManagement() {
               </div>
             </div>
             <div>
+              <Label htmlFor="add-status">Status</Label>
+              <Select 
+                value={formData.status}
+                onValueChange={(value) => setFormData({...formData, status: value as Bin['status']})}
+              >
+                <SelectTrigger id="add-status">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent className="z-[99999]">
+                  <SelectItem value="Available">Available</SelectItem>
+                  <SelectItem value="Almost Full">Almost Full</SelectItem>
+                  <SelectItem value="Full">Full</SelectItem>
+                  <SelectItem value="Unavailable">Unavailable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="add-driver">Assign Driver (Optional)</Label>
+              <Select 
+                value={formData.assignedDriver}
+                onValueChange={(value) => setFormData({...formData, assignedDriver: value})}
+              >
+                <SelectTrigger id="add-driver">
+                  <SelectValue placeholder="Select a driver (optional)" />
+                </SelectTrigger>
+                <SelectContent className="z-[99999]">
+                  <SelectItem value="none">No driver assigned</SelectItem>
+                  {activeDrivers.map(driver => (
+                    <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label htmlFor="contract-upload-add">Location Agreement Contract (PDF)</Label>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
@@ -680,7 +925,7 @@ function BinsManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddDialogOpen(false);
-              setFormData({ locationName: '', address: '', status: 'Available' });
+              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none' });
               setUploadedFile(null);
               setSelectedLocation(null);
             }}>
@@ -693,11 +938,6 @@ function BinsManagement() {
       </LoadScript>
 
       {/* Edit Bin Dialog */}
-      <LoadScript 
-        googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-        libraries={['places']}
-        loadingElement={<div />}
-      >
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader className="flex-shrink-0">
@@ -720,32 +960,23 @@ function BinsManagement() {
               <Label htmlFor="edit-address">Address *</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-                <Autocomplete
-                  onLoad={onEditAutocompleteLoad}
-                  onPlaceChanged={onEditPlaceChanged}
-                  options={{
-                    componentRestrictions: { country: 'ca' },
-                    fields: ['formatted_address', 'geometry']
+                <Input
+                  ref={editAddressRef}
+                  id="edit-address"
+                  type="text"
+                  value={formData.address}
+                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
                   }}
-                >
-                  <Input
-                    ref={editAddressRef}
-                    id="edit-address"
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => handleInputChange('address', e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    placeholder="Enter bin location address"
-                    className="pl-10"
-                    required
-                  />
-                </Autocomplete>
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Enter bin location address"
+                  className="pl-10"
+                  required
+                />
               </div>
             </div>
             <div>
@@ -759,8 +990,41 @@ function BinsManagement() {
                 </SelectTrigger>
                 <SelectContent className="z-[99999]">
                   <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="Unavailable">Unavailable</SelectItem>
+                  <SelectItem value="Almost Full">Almost Full</SelectItem>
                   <SelectItem value="Full">Full</SelectItem>
+                  <SelectItem value="Unavailable">Unavailable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {selectedBin && (
+              <div>
+                <Label>Created Date</Label>
+                <div className="px-3 py-2 border rounded-md bg-gray-50 text-sm text-gray-600">
+                  {selectedBin.createdDate ? 
+                    new Date(selectedBin.createdDate).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    }) : 
+                    'Unknown'
+                  }
+                </div>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="edit-driver">Assigned Driver</Label>
+              <Select 
+                value={formData.assignedDriver}
+                onValueChange={(value) => setFormData({...formData, assignedDriver: value})}
+              >
+                <SelectTrigger id="edit-driver">
+                  <SelectValue placeholder="Select a driver" />
+                </SelectTrigger>
+                <SelectContent className="z-[99999]">
+                  <SelectItem value="none">No driver assigned</SelectItem>
+                  {activeDrivers.map(driver => (
+                    <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -827,7 +1091,6 @@ function BinsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </LoadScript>
 
       {/* Schedule Pickup Dialog */}
       <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
@@ -849,8 +1112,8 @@ function BinsManagement() {
                   <SelectValue placeholder="Select a driver" />
                 </SelectTrigger>
                 <SelectContent>
-                  {drivers.map(driver => (
-                    <SelectItem key={driver} value={driver}>{driver}</SelectItem>
+                  {activeDrivers.map(driver => (
+                    <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -931,11 +1194,6 @@ function BinsManagement() {
       </Dialog>
 
       {/* View on Map Dialog */}
-      <LoadScript 
-        googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-        libraries={['places']}
-        loadingElement={<div />}
-      >
       <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -974,7 +1232,7 @@ function BinsManagement() {
               </div>
               <div className="flex justify-between">
                 <span className="font-semibold">Status:</span>
-                <span>{selectedBin && getStatusBadge(selectedBin.status)}</span>
+                <span>{selectedBin && getStatusBadge(selectedBin.status, selectedBin.fullSince)}</span>
               </div>
             </div>
           </div>
@@ -994,7 +1252,6 @@ function BinsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </LoadScript>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -1025,6 +1282,59 @@ function BinsManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Assign Driver Dialog */}
+      <Dialog open={isBulkAssignDialogOpen} onOpenChange={setIsBulkAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Assign Driver</DialogTitle>
+            <DialogDescription>
+              Assign a driver to {selectedBins.size} selected bin{selectedBins.size !== 1 ? 's' : ''}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-driver">Select Driver</Label>
+              <Select 
+                value={bulkDriverName}
+                onValueChange={setBulkDriverName}
+              >
+                <SelectTrigger id="bulk-driver">
+                  <SelectValue placeholder="Choose a driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeDrivers.map(driver => (
+                    <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                This will schedule pickups for all selected bins with the assigned driver.
+                The pickup dates can be adjusted individually later.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setIsBulkAssignDialogOpen(false);
+                setBulkDriverName('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkAssignDriver}
+              disabled={!bulkDriverName}
+            >
+              Assign Driver
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
