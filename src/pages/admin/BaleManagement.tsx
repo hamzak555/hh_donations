@@ -57,14 +57,16 @@ import { format } from 'date-fns';
 
 // Photo Lightbox Component
 interface LightboxProps {
-  photos: string[];
+  photos: {id: string, data: string}[];
   isOpen: boolean;
   onClose: () => void;
   initialIndex?: number;
+  onDelete?: (photoId: string) => Promise<void>;
 }
 
-const PhotoLightbox = ({ photos, isOpen, onClose, initialIndex = 0 }: LightboxProps) => {
+const PhotoLightbox = ({ photos, isOpen, onClose, initialIndex = 0, onDelete }: LightboxProps) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setCurrentIndex(initialIndex);
@@ -80,8 +82,32 @@ const PhotoLightbox = ({ photos, isOpen, onClose, initialIndex = 0 }: LightboxPr
     setCurrentIndex((prev) => (prev < photos.length - 1 ? prev + 1 : 0));
   };
 
+  const handleDelete = async () => {
+    if (!onDelete || photos.length === 0) return;
+    
+    if (window.confirm('Are you sure you want to delete this photo?')) {
+      setDeleting(true);
+      try {
+        await onDelete(photos[currentIndex].id);
+        // If this was the last photo, close the lightbox
+        if (photos.length === 1) {
+          onClose();
+        } else {
+          // Adjust current index if we deleted the last photo
+          if (currentIndex >= photos.length - 1) {
+            setCurrentIndex(0);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to delete photo:', error);
+      } finally {
+        setDeleting(false);
+      }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={onClose}>
+    <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center" onClick={onClose}>
       <button
         className="absolute top-4 right-4 text-white hover:text-gray-300 z-50"
         onClick={onClose}
@@ -112,11 +138,11 @@ const PhotoLightbox = ({ photos, isOpen, onClose, initialIndex = 0 }: LightboxPr
         </>
       )}
       
-      <div className="relative max-w-6xl max-h-[90vh] mx-8" onClick={(e) => e.stopPropagation()}>
+      <div className="flex items-center justify-center w-full h-full" onClick={(e) => e.stopPropagation()}>
         <img
-          src={photos[currentIndex]}
+          src={photos[currentIndex]?.data}
           alt={`Bale ${currentIndex + 1}`}
-          className="max-w-full max-h-[90vh] object-contain"
+          className="max-w-full max-h-full object-contain"
         />
         {photos.length > 1 && (
           <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-3 py-1 rounded">
@@ -124,6 +150,17 @@ const PhotoLightbox = ({ photos, isOpen, onClose, initialIndex = 0 }: LightboxPr
           </div>
         )}
       </div>
+      
+      {onDelete && (
+        <button
+          className="absolute bottom-10 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleDelete}
+          disabled={deleting}
+        >
+          <Trash className="w-4 h-4" />
+          {deleting ? 'Deleting...' : 'Delete Photo'}
+        </button>
+      )}
     </div>
   );
 };
@@ -131,46 +168,96 @@ const PhotoLightbox = ({ photos, isOpen, onClose, initialIndex = 0 }: LightboxPr
 // Photos Preview Component
 interface PhotosPreviewProps {
   bale: Bale;
-  onAddPhotos: (photos: string[]) => void;
+  onAddPhotos: (photoFiles: File[]) => Promise<void>;
 }
 
 const PhotosPreview = ({ bale, onAddPhotos }: PhotosPreviewProps) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [actualPhotos, setActualPhotos] = useState<{id: string, data: string}[]>([]);
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const photos = bale.photos || [];
-  const photoCount = photos.length;
-  const displayPhotos = photos.slice(0, 2);
+  const { getPhotosWithIds, repairPhotoIntegrity, removePhoto } = useBales();
+  
+  // Load actual photo data from IndexedDB
+  useEffect(() => {
+    const loadPhotos = async () => {
+      if (bale.photos && bale.photos.length > 0) {
+        setLoading(true);
+        try {
+          const photoData = await getPhotosWithIds(bale.id);
+          setActualPhotos(photoData);
+          
+          // Check for photo mismatch and auto-repair
+          if (photoData.length !== bale.photos.length) {
+            console.warn(`Bale ${bale.baleNumber}: Expected ${bale.photos.length} photos, but loaded ${photoData.length} from IndexedDB - attempting repair`);
+            await repairPhotoIntegrity(bale.id);
+          }
+        } catch (error) {
+          console.error('Failed to load photos:', error);
+          setActualPhotos([]);
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        setActualPhotos([]);
+      }
+    };
+    
+    loadPhotos();
+  }, [bale.photos, bale.id, getPhotosWithIds, repairPhotoIntegrity]);
+  
+  const photoIds = bale.photos || [];
+  const photoCount = actualPhotos.length; // Use actual loaded photos count
+  const displayPhotos = actualPhotos.slice(0, 2);
   const remainingCount = photoCount > 2 ? photoCount - 2 : 0;
+  const hasMismatch = photoIds.length !== photoCount;
 
   const handlePhotoClick = (index: number) => {
     setLightboxIndex(index);
     setLightboxOpen(true);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newPhotos: string[] = [];
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (reader.result) {
-            newPhotos.push(reader.result as string);
-            if (newPhotos.length === files.length) {
-              onAddPhotos(newPhotos);
-            }
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+      setLoading(true);
+      try {
+        await onAddPhotos(Array.from(files));
+        // Reload photos after upload
+        const photoData = await getPhotosWithIds(bale.id);
+        setActualPhotos(photoData);
+      } catch (error) {
+        console.error('Failed to upload photos:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: string) => {
+    setLoading(true);
+    try {
+      await removePhoto(bale.id, photoId);
+      // Reload photos after deletion
+      const photoData = await getPhotosWithIds(bale.id);
+      setActualPhotos(photoData);
+    } catch (error) {
+      console.error('Failed to delete photo:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
       <div className="flex items-center gap-1">
+        {hasMismatch && (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-yellow-100 text-yellow-800 border border-yellow-200 mr-1" title="Photo count mismatch - auto-repairing">
+            ⚠
+          </span>
+        )}
         {photoCount === 0 ? (
           <Button
             variant="ghost"
@@ -185,12 +272,12 @@ const PhotosPreview = ({ bale, onAddPhotos }: PhotosPreviewProps) => {
           <>
             {displayPhotos.map((photo, index) => (
               <div
-                key={index}
+                key={photo.id}
                 className="w-8 h-8 rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500"
                 onClick={() => handlePhotoClick(index)}
               >
                 <img
-                  src={photo}
+                  src={photo.data}
                   alt={`Preview ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
@@ -224,10 +311,11 @@ const PhotosPreview = ({ bale, onAddPhotos }: PhotosPreviewProps) => {
         />
       </div>
       <PhotoLightbox
-        photos={photos}
+        photos={actualPhotos}
         isOpen={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
         initialIndex={lightboxIndex}
+        onDelete={handleDeletePhoto}
       />
     </>
   );
@@ -516,17 +604,23 @@ function BaleManagement() {
     }
   };
 
-  const getStatusBadge = (status: BaleStatus) => {
+  const getStatusBadge = (status: BaleStatus, containerNumber?: string) => {
     const statusStyles = {
       'Warehouse': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Assigned to Container': 'bg-orange-100 text-orange-800 border-orange-200',
+      'Container': 'bg-orange-100 text-orange-800 border-orange-200',
       'Shipped': 'bg-purple-100 text-purple-800 border-purple-200',
       'Sold': 'bg-green-100 text-green-800 border-green-200'
     };
     
+    let displayText: string = status;
+    // Show container number for both Container and Shipped statuses
+    if ((status === 'Container' || status === 'Shipped') && containerNumber) {
+      displayText = `${status} (${containerNumber})`;
+    }
+    
     return (
       <Badge variant="outline" className={statusStyles[status]}>
-        {status}
+        {displayText}
       </Badge>
     );
   };
@@ -802,7 +896,7 @@ function BaleManagement() {
                       <TableCell className="font-medium">{bale.baleNumber}</TableCell>
                       <TableCell>{getQualityBadge(bale.contents)}</TableCell>
                       <TableCell>{bale.weight} Kg</TableCell>
-                      <TableCell>{getStatusBadge(bale.status)}</TableCell>
+                      <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
                       <TableCell>
                         {format(new Date(bale.createdDate), 'MMM dd, yyyy')}
                       </TableCell>
@@ -820,7 +914,13 @@ function BaleManagement() {
                       <TableCell>
                         <PhotosPreview 
                           bale={bale}
-                          onAddPhotos={(photos) => addPhotos(bale.id, photos)}
+                          onAddPhotos={async (photoFiles) => {
+                            try {
+                              await addPhotos(bale.id, photoFiles);
+                            } catch (error) {
+                              console.error('Failed to add photos:', error);
+                            }
+                          }}
                         />
                       </TableCell>
                       <TableCell className="text-right">
@@ -955,7 +1055,13 @@ function BaleManagement() {
                       <TableCell>
                         <PhotosPreview 
                           bale={bale}
-                          onAddPhotos={(photos) => addPhotos(bale.id, photos)}
+                          onAddPhotos={async (photoFiles) => {
+                            try {
+                              await addPhotos(bale.id, photoFiles);
+                            } catch (error) {
+                              console.error('Failed to add photos:', error);
+                            }
+                          }}
                         />
                       </TableCell>
                       <TableCell className="text-right">
@@ -1033,22 +1139,6 @@ function BaleManagement() {
               />
             </div>
             <div>
-              <Label htmlFor="add-status">Status</Label>
-              <Select 
-                value={formData.status}
-                onValueChange={(value) => setFormData({...formData, status: value as BaleStatus})}
-              >
-                <SelectTrigger id="add-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Warehouse">Warehouse</SelectItem>
-                  <SelectItem value="Assigned to Container">Assigned to Container</SelectItem>
-                  <SelectItem value="Shipped">Shipped</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
               <Label htmlFor="add-notes">Notes (Optional)</Label>
               <Textarea
                 id="add-notes"
@@ -1121,7 +1211,7 @@ function BaleManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Warehouse">Warehouse</SelectItem>
-                  <SelectItem value="Assigned to Container">Assigned to Container</SelectItem>
+                  <SelectItem value="Container">Container</SelectItem>
                   <SelectItem value="Shipped">Shipped</SelectItem>
                 </SelectContent>
               </Select>

@@ -7,7 +7,8 @@ import {
   ExternalLink,
   FileText,
   Route,
-  Archive
+  Archive,
+  Container
 } from 'lucide-react';
 
 interface NavSubItem {
@@ -45,6 +46,7 @@ const AdminSidebar = () => {
       ]
     },
     { path: '/admin/bales', label: 'Bale Management', icon: Archive },
+    { path: '/admin/containers', label: 'Container Management', icon: Container },
     { path: '/admin/drivers', label: 'Driver Management', icon: Truck },
   ];
 
@@ -79,7 +81,7 @@ const AdminSidebar = () => {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-sm ${
                     isActive || isParentActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'

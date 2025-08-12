@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useDrivers, Driver } from '@/contexts/DriversContext';
 import { useBins } from '@/contexts/BinsContext';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
@@ -46,7 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, MoreHorizontal, Edit, Trash, User, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin } from 'lucide-react';
 
 interface Pickup {
   id: string;

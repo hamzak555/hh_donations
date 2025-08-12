@@ -659,8 +659,12 @@ function BinsManagement() {
                     <TableCell>
                       <Checkbox
                         checked={selectedBins.has(bin.id)}
-                        onCheckedChange={(checked) => {
-                          handleSelectBin(bin.id);
+                        onCheckedChange={() => {
+                          // Use onClick for proper event handling with shift key
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectBin(bin.id, e);
                         }}
                       />
                     </TableCell>

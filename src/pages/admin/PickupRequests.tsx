@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { GoogleMap, LoadScript, Marker, useJsApiLoader, Autocomplete, DirectionsRenderer, MarkerF } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Marker, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContext';
 import { useDrivers } from '@/contexts/DriversContext';
@@ -52,7 +52,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   MoreHorizontal, 
   Eye, 
-  Edit, 
   Trash, 
   MapPin, 
   Phone, 
@@ -65,7 +64,6 @@ import {
   ChevronDown, 
   ArrowUpDown, 
   Search,
-  Route,
   Settings
 } from 'lucide-react';
 
@@ -118,8 +116,6 @@ function PickupRequests() {
     }
   }, [defaultDriver, pickupRequests, updatePickupRequest]);
   
-  console.log('PickupRequests admin page - Current requests:', pickupRequests);
-  console.log('LocalStorage pickupRequests:', localStorage.getItem('pickupRequests'));
   
   const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -663,10 +659,8 @@ function PickupRequests() {
                   <TableCell>
                     <Checkbox
                       checked={selectedRequests.has(request.id)}
-                      onCheckedChange={(checked) => {
-                        // Get the event from the click
-                        const event = window.event as MouseEvent | undefined;
-                        handleSelectRequest(request.id, event as any);
+                      onCheckedChange={() => {
+                        // Use onClick for proper event handling with shift key
                       }}
                       onClick={(e) => {
                         e.stopPropagation();

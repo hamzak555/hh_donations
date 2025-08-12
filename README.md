@@ -1,46 +1,137 @@
-# Getting Started with Create React App
+# HH Donations Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A comprehensive web application for managing clothing donation bins, pickup requests, drivers, containers, and bales.
+
+## Features
+
+- **Bin Management**: Track donation bin locations, status, and pickup schedules
+- **Pickup Request System**: Allow users to request pickups with integrated Google Maps
+- **Driver Management**: Manage driver assignments and routes
+- **Container & Bale Tracking**: Track containers and bales from collection to shipment
+- **Route Optimization**: Generate optimized pickup routes for drivers
+- **Real-time Data Persistence**: All data stored locally with automatic saving
+
+## Tech Stack
+
+- **Frontend**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with shadcn/ui components
+- **Maps**: Google Maps API integration
+- **State Management**: React Context API
+- **Data Storage**: LocalStorage with automatic persistence
+- **Build Tool**: Create React App with react-app-rewired
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 16+ and npm
+- Google Maps API key (for map features)
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/hhdonations.git
+cd hhdonations
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+Edit `.env.local` and add your Google Maps API key:
+```
+REACT_APP_GOOGLE_MAPS_API_KEY=your_api_key_here
+```
+
+4. Start the development server:
+```bash
+npm start
+```
+The app will open at http://localhost:3000
+
+### Production Build
+
+To create an optimized production build:
+```bash
+npm run build
+```
+
+To serve the production build locally:
+```bash
+npx serve -s build -p 3000
+```
+
+## Project Structure
+
+```
+src/
+├── components/         # Reusable UI components
+│   ├── ui/            # shadcn/ui components
+│   └── ...            # Layout and navigation components
+├── contexts/          # React Context providers for state management
+├── pages/             # Page components
+│   ├── admin/         # Admin dashboard pages
+│   └── ...            # Public pages
+├── utils/             # Utility functions
+└── App.tsx            # Main application component
+```
+
+## Key Features
+
+### Admin Dashboard
+- **Bins Management**: Add, edit, delete donation bins
+- **Drivers Management**: Manage driver profiles and assignments
+- **Pickup Requests**: View and manage pickup requests
+- **Route Generator**: Create optimized routes for drivers
+- **Containers**: Track container status and contents
+- **Bales**: Manage bale creation and assignment
+
+### Public Pages
+- **Find a Bin**: Locate nearest donation bins on a map
+- **Request Pickup**: Submit pickup requests for large donations
+- **Contact**: Get in touch with the organization
+
+## Data Persistence
+
+All data is automatically saved to browser localStorage. Data persists across:
+- Page refreshes
+- Server restarts
+- Browser sessions
+
+**Note**: Data is stored per browser and domain. Clearing browser data will remove stored information.
 
 ## Available Scripts
 
-In the project directory, you can run:
+- `npm start` - Run development server
+- `npm run build` - Create production build
+- `npm test` - Run tests
+- `npm run eject` - Eject from Create React App (not recommended)
 
-### `npm start`
+## Browser Support
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Contributing
 
-### `npm test`
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## License
 
-### `npm run build`
+This project is proprietary and confidential.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Support
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+For support, please contact the development team.

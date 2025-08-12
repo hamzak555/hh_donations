@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { safeSetItem, checkDataIntegrity, attemptDataRecovery } from '../utils/storageManager';
+import { dbManager } from '../utils/indexedDbManager';
 
 export type BaleQuality = 'A-Quality' | 'B-Quality' | 'C-Quality' | 'Creme' | 'Shoes';
-export type BaleStatus = 'Warehouse' | 'Assigned to Container' | 'Shipped' | 'Sold';
+export type BaleStatus = 'Warehouse' | 'Container' | 'Shipped' | 'Sold';
 export type PaymentMethod = 'Cash' | 'Cheque' | 'Wire' | 'Credit Card';
 
 export interface NoteEntry {
@@ -22,19 +24,27 @@ export interface Bale {
   paymentMethod?: PaymentMethod;
   notes?: string; // Keep for backward compatibility
   notesTimeline?: NoteEntry[]; // New timeline notes
-  photos?: string[]; // Array of photo URLs
+  photos?: string[]; // Array of photo IDs (stored in IndexedDB)
+  containerNumber?: string; // Container assignment
 }
 
 interface BalesContextType {
   bales: Bale[];
   addBale: (bale: Omit<Bale, 'id' | 'baleNumber' | 'createdDate'>) => void;
   updateBale: (id: string, updates: Partial<Bale>) => void;
-  deleteBale: (id: string) => void;
+  deleteBale: (id: string) => Promise<void>;
   generateBaleNumber: () => string;
   markAsSold: (id: string, salePrice: number, paymentMethod: PaymentMethod) => void;
   revertToActive: (id: string) => void;
   addNoteToTimeline: (baleId: string, noteText: string) => void;
-  addPhotos: (baleId: string, photos: string[]) => void;
+  addPhotos: (baleId: string, photoFiles: File[]) => Promise<void>;
+  getPhotos: (baleId: string) => Promise<string[]>;
+  getPhotosWithIds: (baleId: string) => Promise<{id: string, data: string}[]>;
+  removePhoto: (baleId: string, photoId: string) => Promise<void>;
+  assignToContainer: (baleId: string, containerNumber: string) => void;
+  removeFromContainer: (baleId: string) => void;
+  getBalesByContainer: (containerNumber: string) => Bale[];
+  repairPhotoIntegrity: (baleId: string) => Promise<void>;
 }
 
 const BalesContext = createContext<BalesContextType | undefined>(undefined);
@@ -53,8 +63,14 @@ interface BalesProviderProps {
 
 export const BalesProvider = ({ children }: BalesProviderProps) => {
   const [bales, setBales] = useState<Bale[]>(() => {
+    // Check data integrity on startup
+    if (!checkDataIntegrity()) {
+      console.warn('Data integrity check failed, attempting recovery...');
+      attemptDataRecovery();
+    }
+    
     const savedBales = localStorage.getItem('bales');
-    if (savedBales) {
+    if (savedBales && savedBales !== 'undefined' && savedBales !== 'null') {
       const parsedBales = JSON.parse(savedBales);
       // Migrate old data formats
       const migratedBales = parsedBales.map((bale: any, index: number) => {
@@ -80,6 +96,11 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
           }];
         }
         
+        // Migrate old status format
+        if (bale.status === 'Assigned to Container') {
+          bale.status = 'Container';
+        }
+        
         return bale;
       });
       return migratedBales;
@@ -89,7 +110,11 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
 
   // Save to localStorage whenever bales change
   useEffect(() => {
-    localStorage.setItem('bales', JSON.stringify(bales));
+    const success = safeSetItem('bales', JSON.stringify(bales));
+    if (!success) {
+      console.error('Failed to save bales to localStorage - storage may be full');
+      // You could show a toast notification here
+    }
   }, [bales]);
 
   const generateBaleNumber = () => {
@@ -131,7 +156,13 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
     );
   };
 
-  const deleteBale = (id: string) => {
+  const deleteBale = async (id: string) => {
+    // Delete photos from IndexedDB before deleting bale
+    try {
+      await dbManager.deleteEntityFiles(id, 'bale');
+    } catch (error) {
+      console.warn('Failed to delete bale photos from IndexedDB:', error);
+    }
     setBales(prev => prev.filter(bale => bale.id !== id));
   };
 
@@ -141,13 +172,16 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
       status: 'Sold', 
       salePrice, 
       paymentMethod, 
-      soldDate 
+      soldDate
     });
   };
 
   const revertToActive = (id: string) => {
+    const bale = bales.find(b => b.id === id);
+    const newStatus = bale?.containerNumber ? 'Container' : 'Warehouse';
+    
     updateBale(id, { 
-      status: 'Warehouse',
+      status: newStatus,
       salePrice: undefined,
       paymentMethod: undefined,
       soldDate: undefined
@@ -177,19 +211,126 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
     );
   };
 
-  const addPhotos = (baleId: string, photos: string[]) => {
-    setBales(prev => 
-      prev.map(bale => {
-        if (bale.id === baleId) {
-          const currentPhotos = bale.photos || [];
-          return {
-            ...bale,
-            photos: [...currentPhotos, ...photos]
-          };
-        }
-        return bale;
-      })
-    );
+  const addPhotos = async (baleId: string, photoFiles: File[]): Promise<void> => {
+    try {
+      // Convert files to base64 and save to IndexedDB
+      const photoIds: string[] = [];
+      
+      for (const file of photoFiles) {
+        const base64 = await fileToBase64(file);
+        const photoId = await dbManager.savePhoto(baleId, 'bale', base64);
+        photoIds.push(photoId);
+      }
+      
+      // Update bale with photo IDs
+      setBales(prev => 
+        prev.map(bale => {
+          if (bale.id === baleId) {
+            const currentPhotos = bale.photos || [];
+            return {
+              ...bale,
+              photos: [...currentPhotos, ...photoIds]
+            };
+          }
+          return bale;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to add photos:', error);
+      throw error;
+    }
+  };
+  
+  const getPhotos = async (baleId: string): Promise<string[]> => {
+    try {
+      return await dbManager.getPhotos(baleId, 'bale');
+    } catch (error) {
+      console.error('Failed to get photos:', error);
+      return [];
+    }
+  };
+
+  const getPhotosWithIds = async (baleId: string): Promise<{id: string, data: string}[]> => {
+    try {
+      return await dbManager.getPhotosWithIds(baleId, 'bale');
+    } catch (error) {
+      console.error('Failed to get photos with IDs:', error);
+      return [];
+    }
+  };
+
+  const removePhoto = async (baleId: string, photoId: string): Promise<void> => {
+    try {
+      // Delete from IndexedDB
+      await dbManager.deletePhoto(photoId);
+      
+      // Remove photo ID from bale record
+      setBales(prev => 
+        prev.map(bale => {
+          if (bale.id === baleId) {
+            const updatedPhotos = (bale.photos || []).filter(id => id !== photoId);
+            return {
+              ...bale,
+              photos: updatedPhotos
+            };
+          }
+          return bale;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to remove photo:', error);
+      throw error;
+    }
+  };
+  
+  // Helper function to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const assignToContainer = (baleId: string, containerNumber: string) => {
+    updateBale(baleId, {
+      status: 'Container',
+      containerNumber: containerNumber
+    });
+  };
+
+  const removeFromContainer = (baleId: string) => {
+    updateBale(baleId, {
+      status: 'Warehouse',
+      containerNumber: undefined
+    });
+  };
+
+  const getBalesByContainer = (containerNumber: string): Bale[] => {
+    return bales.filter(bale => bale.containerNumber === containerNumber);
+  };
+
+  const repairPhotoIntegrity = async (baleId: string): Promise<void> => {
+    try {
+      const bale = bales.find(b => b.id === baleId);
+      if (!bale || !bale.photos) return;
+
+      // Get actual photos from IndexedDB
+      const actualPhotos = await dbManager.getPhotos(baleId, 'bale');
+      const actualPhotoIds = actualPhotos.map((_, index) => `photo_${baleId}_${index}`);
+      
+      // If there's a mismatch, update the bale record
+      if (bale.photos.length !== actualPhotos.length) {
+        console.log(`Repairing photo integrity for bale ${bale.baleNumber}: had ${bale.photos.length} IDs, found ${actualPhotos.length} actual photos`);
+        
+        updateBale(baleId, {
+          photos: actualPhotoIds
+        });
+      }
+    } catch (error) {
+      console.error('Failed to repair photo integrity:', error);
+    }
   };
 
   const contextValue: BalesContextType = {
@@ -201,7 +342,14 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
     markAsSold,
     revertToActive,
     addNoteToTimeline,
-    addPhotos
+    addPhotos,
+    getPhotos,
+    getPhotosWithIds,
+    removePhoto,
+    assignToContainer,
+    removeFromContainer,
+    getBalesByContainer,
+    repairPhotoIntegrity
   };
 
   return (

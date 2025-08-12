@@ -95,7 +95,7 @@ function PickupRouteGenerator() {
   const getRequestsForDate = useCallback(() => {
     const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
     return pickupRequests.filter(request => 
-      request.status === 'Pending' && 
+      (request.status === 'Pending' || request.status === 'Picked Up') && 
       request.date === selectedDateStr
     );
   }, [pickupRequests, selectedDate]);
@@ -174,7 +174,8 @@ function PickupRouteGenerator() {
     const request = pickupRequests.find(r => r.id === requestId);
     if (!request) return;
     
-    const isCurrentlyCollected = collectedRequests.has(requestId);
+    const isCurrentlyCollected = collectedRequests.has(requestId) || 
+      pickupRequests.find(req => req.id === requestId)?.status === 'Picked Up';
     
     // Show confirmation dialog
     setAlertData({
@@ -296,12 +297,6 @@ function PickupRouteGenerator() {
     calculateRoute();
   }, [calculateRoute]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
   const formatSelectedDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
@@ -586,7 +581,10 @@ function PickupRouteGenerator() {
                     request.assignedDriver === selectedDriver
                   ) : [];
                   
-                  const pickedUpCount = driverRequests.filter(r => collectedRequests.has(r.id)).length;
+                  const pickedUpCount = driverRequests.filter(r => 
+                    collectedRequests.has(r.id) || 
+                    pickupRequests.find(req => req.id === r.id)?.status === 'Picked Up'
+                  ).length;
                   const totalRequests = driverRequests.length;
                   const progressPercentage = totalRequests > 0 ? (pickedUpCount / totalRequests) * 100 : 0;
                   
@@ -640,7 +638,8 @@ function PickupRouteGenerator() {
                     return (
                       <>
                         {sortedRequestsWithLocation.map((request, index) => {
-                        const isCollected = collectedRequests.has(request.id);
+                        const isCollected = collectedRequests.has(request.id) || 
+                          pickupRequests.find(req => req.id === request.id)?.status === 'Picked Up';
                         return (
                           <div key={request.id} className={`bg-white border rounded p-3 transition-opacity ${isCollected ? 'opacity-50' : ''}`}>
                             <div className="flex items-center justify-between">
@@ -710,7 +709,8 @@ function PickupRouteGenerator() {
                             <div className="text-xs text-gray-500 font-medium mt-2">Without GPS coordinates:</div>
                           )}
                           {requestsWithoutLocation.map(request => {
-                            const isCollected = collectedRequests.has(request.id);
+                            const isCollected = collectedRequests.has(request.id) || 
+                          pickupRequests.find(req => req.id === request.id)?.status === 'Picked Up';
                             return (
                               <div key={request.id} className={`bg-gray-100 border border-gray-200 rounded p-3 opacity-75 ${isCollected ? 'opacity-50' : ''}`}>
                                 <div className="flex items-center justify-between">

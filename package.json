@@ -67,7 +67,9 @@
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
+    "compression": "^1.8.1",
     "customize-cra": "^1.0.0",
+    "express": "^5.1.0",
     "postcss": "^8.5.6",
     "react-app-rewired": "^2.2.1",
     "tailwindcss": "^3.4.17"

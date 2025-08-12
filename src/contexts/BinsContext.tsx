@@ -219,34 +219,33 @@ const initialBins: BinLocation[] = [
 const STORAGE_KEY = 'binsData';
 
 export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [bins, setBins] = useState<BinLocation[]>([]);
-
-  // Load bins from localStorage on mount
-  useEffect(() => {
+  const [bins, setBins] = useState<BinLocation[]>(() => {
+    // Initialize state directly from localStorage
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
+      
+      if (stored && stored !== 'undefined' && stored !== 'null') {
         const parsedBins = JSON.parse(stored);
-        setBins(Array.isArray(parsedBins) ? parsedBins : initialBins);
-      } else {
-        // Initialize with default bins if nothing in localStorage
-        setBins(initialBins);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialBins));
+        if (Array.isArray(parsedBins)) {
+          return parsedBins.length > 0 ? parsedBins : initialBins;
+        }
       }
+      
+      // Initialize with default bins if nothing in localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialBins));
+      return initialBins;
     } catch (error) {
-      console.error('Error loading bins:', error);
-      setBins(initialBins);
+      console.error('[BinsContext] Error loading bins:', error);
+      return initialBins;
     }
-  }, []);
+  });
 
   // Save to localStorage whenever bins change
   useEffect(() => {
-    if (bins.length > 0) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(bins));
-      } catch (error) {
-        console.error('Error saving bins:', error);
-      }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(bins));
+    } catch (error) {
+      console.error('[BinsContext] Error saving bins:', error);
     }
   }, [bins]);
 

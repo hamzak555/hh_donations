@@ -4,6 +4,7 @@ import { BinsProvider } from './contexts/BinsContext';
 import { PickupRequestsProvider } from './contexts/PickupRequestsContext';
 import { BalesProvider } from './contexts/BalesContext';
 import { DriversProvider } from './contexts/DriversContext';
+import { ContainersProvider } from './contexts/ContainersContext';
 import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
@@ -17,8 +18,11 @@ import BinsManagement from './pages/admin/BinsManagement';
 import DriversManagement from './pages/admin/DriversManagement';
 import RouteCreation from './pages/admin/RouteCreation';
 import BaleManagement from './pages/admin/BaleManagement';
+import ContainerManagement from './pages/admin/ContainerManagement';
 import PickupRequests from './pages/admin/PickupRequests';
 import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
+import RecoverData from './pages/admin/RecoverData';
+import DiagnosticPage from './pages/admin/DiagnosticPage';
 import FAQ from './pages/FAQ';
 import Footer from './components/Footer';
 
@@ -27,8 +31,9 @@ function App() {
     <BinsProvider>
       <PickupRequestsProvider>
         <BalesProvider>
-          <DriversProvider>
-            <Router>
+          <ContainersProvider>
+            <DriversProvider>
+              <Router>
           <Routes>
           {/* Public Routes */}
           <Route element={<Layout />}>
@@ -54,12 +59,16 @@ function App() {
             <Route path="/admin/pickup-requests" element={<PickupRequests />} />
             <Route path="/admin/pickup-requests/route-generator" element={<PickupRouteGenerator />} />
             <Route path="/admin/bales" element={<BaleManagement />} />
+            <Route path="/admin/containers" element={<ContainerManagement />} />
+            <Route path="/admin/recover" element={<RecoverData />} />
+            <Route path="/admin/diagnostic" element={<DiagnosticPage />} />
           </Route>
           
           <Route path="/" element={<Navigate to="/home" replace />} />
           </Routes>
-        </Router>
-          </DriversProvider>
+              </Router>
+            </DriversProvider>
+          </ContainersProvider>
         </BalesProvider>
       </PickupRequestsProvider>
     </BinsProvider>

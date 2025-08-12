@@ -32,23 +32,19 @@ const PickupRequestsContext = createContext<PickupRequestsContextType | undefine
 const STORAGE_KEY = 'pickupRequests';
 
 export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Load pickup requests from localStorage on mount
-  useEffect(() => {
+  const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(() => {
+    // Initialize state directly from localStorage
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      console.log('Loading pickup requests from localStorage:', stored);
-      if (stored) {
+      
+      if (stored && stored !== 'undefined' && stored !== 'null') {
         const parsedRequests = JSON.parse(stored);
-        setPickupRequests(Array.isArray(parsedRequests) ? parsedRequests : []);
-        console.log('Loaded pickup requests:', parsedRequests);
-      } else {
-        // Only initialize with sample data if explicitly needed
-        // Don't overwrite if user has already submitted requests
-        console.log('No pickup requests in localStorage, initializing empty array');
-        setPickupRequests([]);
+        if (Array.isArray(parsedRequests)) {
+          return parsedRequests;
+        }
+      }
+      
+      return [];
         // Optionally add sample data only for development
         // Commenting out to prevent overwriting user submissions
         /*
@@ -97,30 +93,20 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
         setPickupRequests(sampleRequests);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleRequests));
         */
-      }
-      setIsInitialized(true);
     } catch (error) {
-      console.error('Error loading pickup requests:', error);
-      setPickupRequests([]);
-      setIsInitialized(true);
+      console.error('[PickupRequestsContext] Error loading pickup requests:', error);
+      return [];
     }
-  }, []);
+  });
 
-  // Save to localStorage whenever pickupRequests change (but not on initial load)
+  // Save to localStorage whenever pickupRequests change
   useEffect(() => {
-    if (!isInitialized) {
-      console.log('Skipping save - not initialized yet');
-      return;
-    }
-    
     try {
-      console.log('Saving pickup requests to localStorage:', pickupRequests);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(pickupRequests));
-      console.log('Successfully saved to localStorage');
     } catch (error) {
-      console.error('Error saving pickup requests:', error);
+      console.error('[PickupRequestsContext] Error saving pickup requests:', error);
     }
-  }, [pickupRequests, isInitialized]);
+  }, [pickupRequests]);
 
   const addPickupRequest = (request: Omit<PickupRequest, 'id'>) => {
     // Check for default driver if request doesn't have one assigned
@@ -135,16 +121,7 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
         : request.assignedDriver,
     };
     
-    console.log('Adding new pickup request:', newRequest);
-    if (defaultDriver && request.status === 'Pending' && !request.assignedDriver) {
-      console.log('Auto-assigned default driver:', defaultDriver);
-    }
-    
-    setPickupRequests(prev => {
-      const updated = [...prev, newRequest];
-      console.log('Updated pickup requests:', updated);
-      return updated;
-    });
+    setPickupRequests(prev => [...prev, newRequest]);
   };
 
   const updatePickupRequest = (id: string, updates: Partial<PickupRequest>) => {
