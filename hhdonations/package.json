@@ -44,9 +44,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "NODE_OPTIONS='--max-old-space-size=512' react-app-rewired start",
-    "start:lite": "BROWSER=none PORT=3000 HOST=127.0.0.1 FAST_REFRESH=false NODE_OPTIONS='--max-old-space-size=512' react-app-rewired start",
-    "start:safe": "NODE_OPTIONS='--max-old-space-size=256' GENERATE_SOURCEMAP=false FAST_REFRESH=false react-app-rewired start",
+    "start": "react-app-rewired start",
+    "start:limited": "NODE_OPTIONS='--max-old-space-size=512' react-app-rewired start",
     "build": "react-app-rewired build",
     "serve": "npm run build && npx serve -s build -p 3000",
     "serve:quick": "npx serve -s build -p 3000",
