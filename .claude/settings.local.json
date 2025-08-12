@@ -42,7 +42,10 @@
       "Bash(git commit:*)",
       "Bash(chmod:*)",
       "Bash(ping:*)",
-      "Bash(top:*)"
+      "Bash(top:*)",
+      "Bash(git remote remove:*)",
+      "Bash(gh repo set-default:*)",
+      "Bash(git pull:*)"
     ],
     "deny": []
   }

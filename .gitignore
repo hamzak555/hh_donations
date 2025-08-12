@@ -1,5 +1,8 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
 # Dependencies
 node_modules/
+/node_modules
 /.pnp
 .pnp.js
 
@@ -14,6 +17,7 @@ node_modules/
 .DS_Store
 .env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
 .env.production.local
@@ -36,3 +40,13 @@ Thumbs.db
 
 # Server data
 hhdonations/server/data.json
+
+# Backup and utility files
+backup-data.js
+verify-persistence.js
+serve-production.js
+clear-storage.html
+
+# Temporary files
+*.tmp
+*.temp
