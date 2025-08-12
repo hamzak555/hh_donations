@@ -343,7 +343,7 @@ const NotesHoverCard = ({ bale, noteValue, onNoteChange, onAddNote }: NotesHover
           className="h-8 px-2 hover:bg-gray-100"
         >
           <MessageSquare className="w-4 h-4 mr-1" />
-          <span className="text-sm">{noteCount}</span>
+          <span className="text-sm">{noteCount} {noteCount === 1 ? 'note' : 'notes'}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96" align="center" side="left" sideOffset={5}>

@@ -869,7 +869,7 @@ Generated: ${new Date().toISOString()}
                       onClick={() => openAssignBalesDialog(container)}
                     >
                       <Package className="w-4 h-4 text-gray-400 mr-1.5" />
-                      <span className="text-xs">{getActualBaleCount(container.containerNumber)} bales</span>
+                      <span className="text-xs">{getActualBaleCount(container.containerNumber)} {getActualBaleCount(container.containerNumber) === 1 ? 'bale' : 'bales'}</span>
                     </Button>
                   </TableCell>
                   <TableCell>{getContainerTotalWeight(container.containerNumber)} Kg</TableCell>
@@ -1835,7 +1835,7 @@ const ContainerNotesHoverCard = ({ container, noteValue, onNoteChange, onAddNote
           className="h-8 px-3 text-left justify-start"
         >
           <MessageSquare className="w-4 h-4 text-gray-400 mr-1.5" />
-          <span className="text-xs">{noteCount} notes</span>
+          <span className="text-xs">{noteCount} {noteCount === 1 ? 'note' : 'notes'}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-96" align="center" side="left" sideOffset={5}>
