@@ -46,9 +46,9 @@ export default function DiagnosticPage() {
   useEffect(() => {
     loadStorageData();
     
-    // Auto-refresh every 2 seconds
-    const interval = setInterval(loadStorageData, 2000);
-    return () => clearInterval(interval);
+    // Disabled auto-refresh to prevent network instability
+    // const interval = setInterval(loadStorageData, 2000);
+    // return () => clearInterval(interval);
   }, []);
 
   const exportData = () => {

@@ -330,6 +330,7 @@ function ContainerManagement() {
     status: 'Warehouse'
   });
   const [selectedBalesForAssignment, setSelectedBalesForAssignment] = useState<string[]>([]);
+  const [baleSearchTerm, setBaleSearchTerm] = useState('');
   const [newNote, setNewNote] = useState('');
   const [hoverCardNotes, setHoverCardNotes] = useState<{ [containerId: string]: string }>({});
   const destinationAutocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
@@ -421,6 +422,17 @@ function ContainerManagement() {
   const availableBales = bales.filter(bale => 
     !bale.containerNumber && bale.status === 'Warehouse'
   );
+  
+  // Filter available bales by search term
+  const filteredAvailableBales = availableBales.filter(bale => {
+    if (!baleSearchTerm) return true;
+    const searchLower = baleSearchTerm.toLowerCase();
+    return (
+      bale.baleNumber.toLowerCase().includes(searchLower) ||
+      bale.contents.toLowerCase().includes(searchLower) ||
+      bale.weight.toString().includes(searchLower)
+    );
+  });
   
   // Get bales already assigned to the selected container (reactive)
   const getAssignedBales = () => {
@@ -697,42 +709,110 @@ function ContainerManagement() {
   };
 
   const exportManifest = (container: any) => {
-    const assignedBaleDetails = container.assignedBales?.map((baleId: string) => {
+    // Create CSV header
+    const csvHeaders = [
+      'Container Number',
+      'Destination',
+      'Status',
+      'Shipment Date',
+      'Estimated Arrival',
+      'Total Weight (kg)',
+      'Total Bales',
+      'Seal Number',
+      'Shipping Line',
+      'Vessel Name',
+      'Bill of Lading',
+      'Bale Number',
+      'Bale Contents',
+      'Bale Weight (kg)',
+      'Generated Date'
+    ];
+
+    // Get container data
+    const containerData = {
+      containerNumber: container.containerNumber,
+      destination: container.destination,
+      status: container.status,
+      shipmentDate: container.shipmentDate || '',
+      estimatedArrival: container.estimatedArrivalDate || '',
+      totalWeight: getContainerTotalWeight(container.containerNumber),
+      totalBales: getActualBaleCount(container.containerNumber),
+      sealNumber: container.sealNumber || '',
+      shippingLine: container.shippingLine || '',
+      vesselName: container.vesselName || '',
+      billOfLading: container.billOfLading || '',
+      generatedDate: new Date().toISOString()
+    };
+
+    // Get assigned bales data
+    const assignedBalesData = container.assignedBales?.map((baleId: string) => {
       const bale = bales.find(b => b.id === baleId);
-      return bale ? `${bale.baleNumber} - ${bale.contents} - ${bale.weight}kg` : '';
-    }).filter(Boolean).join('\n');
+      if (bale) {
+        return {
+          baleNumber: bale.baleNumber,
+          baleContents: bale.contents,
+          baleWeight: bale.weight
+        };
+      }
+      return null;
+    }).filter(Boolean) || [];
 
-    const manifest = `
-CONTAINER MANIFEST
-==================
-Container Number: ${container.containerNumber}
-Destination: ${container.destination}
-Status: ${container.status}
-Shipment Date: ${container.shipmentDate || 'Not set'}
-Estimated Arrival: ${container.estimatedArrivalDate || 'Not set'}
-Total Weight: ${getContainerTotalWeight(container.containerNumber)}kg
-Total Bales: ${getActualBaleCount(container.containerNumber)}
+    // Create CSV rows
+    const csvRows = [];
+    csvRows.push(csvHeaders.join(','));
 
-Shipping Details:
------------------
-Seal Number: ${container.sealNumber || 'Not set'}
-Shipping Line: ${container.shippingLine || 'Not set'}
-Vessel Name: ${container.vesselName || 'Not set'}
-Bill of Lading: ${container.billOfLading || 'Not set'}
+    // If there are bales, create a row for each bale
+    if (assignedBalesData.length > 0) {
+      assignedBalesData.forEach((bale: any, index: number) => {
+        const row = [
+          containerData.containerNumber,
+          `"${containerData.destination}"`,
+          containerData.status,
+          containerData.shipmentDate,
+          containerData.estimatedArrival,
+          containerData.totalWeight,
+          containerData.totalBales,
+          containerData.sealNumber,
+          `"${containerData.shippingLine}"`,
+          `"${containerData.vesselName}"`,
+          containerData.billOfLading,
+          bale.baleNumber,
+          bale.baleContents,
+          bale.baleWeight,
+          index === 0 ? containerData.generatedDate : ''
+        ];
+        csvRows.push(row.join(','));
+      });
+    } else {
+      // If no bales, create one row with container info only
+      const row = [
+        containerData.containerNumber,
+        `"${containerData.destination}"`,
+        containerData.status,
+        containerData.shipmentDate,
+        containerData.estimatedArrival,
+        containerData.totalWeight,
+        containerData.totalBales,
+        containerData.sealNumber,
+        `"${containerData.shippingLine}"`,
+        `"${containerData.vesselName}"`,
+        containerData.billOfLading,
+        '',
+        '',
+        '',
+        containerData.generatedDate
+      ];
+      csvRows.push(row.join(','));
+    }
 
-Assigned Bales:
----------------
-${assignedBaleDetails || 'No bales assigned'}
-
-Generated: ${new Date().toISOString()}
-    `;
-
-    const blob = new Blob([manifest], { type: 'text/plain' });
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${container.containerNumber}_manifest.txt`;
+    a.download = `${container.containerNumber}_manifest.csv`;
     a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   return (
@@ -981,12 +1061,6 @@ Generated: ${new Date().toISOString()}
         </div>
       </Card>
 
-      {/* Wrap all dialogs in a single LoadScript to avoid conflicts */}
-      <LoadScript 
-        googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-        libraries={['places']}
-        loadingElement={<div />}
-      >
       {/* Create Container Dialog */}
       <Dialog 
         open={isCreateDialogOpen} 
@@ -1011,19 +1085,25 @@ Generated: ${new Date().toISOString()}
           <div className="grid gap-4 py-4">
             <div>
               <Label htmlFor="destination">Destination</Label>
-              <Autocomplete
-                onLoad={onDestinationLoad}
-                onPlaceChanged={onDestinationPlaceChanged}
+              <LoadScript 
+                googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
+                libraries={['places']}
+                loadingElement={<Input placeholder="Loading..." disabled />}
               >
-                <Input
-                  id="destination"
-                  value={formData.destination}
-                  onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                  placeholder="Start typing a city name..."
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onFocus={(e) => e.stopPropagation()}
-                />
-              </Autocomplete>
+                <Autocomplete
+                  onLoad={onDestinationLoad}
+                  onPlaceChanged={onDestinationPlaceChanged}
+                >
+                  <Input
+                    id="destination"
+                    value={formData.destination}
+                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
+                    placeholder="Start typing a city name..."
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onFocus={(e) => e.stopPropagation()}
+                  />
+                </Autocomplete>
+              </LoadScript>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1156,19 +1236,25 @@ Generated: ${new Date().toISOString()}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="edit-destination">Destination</Label>
-                <Autocomplete
-                  onLoad={onEditDestinationLoad}
-                  onPlaceChanged={onEditDestinationPlaceChanged}
+                <LoadScript 
+                  googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
+                  libraries={['places']}
+                  loadingElement={<Input placeholder="Loading..." disabled />}
                 >
-                  <Input
-                    id="edit-destination"
-                    value={formData.destination}
-                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                    placeholder="Start typing a city name..."
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                  />
-                </Autocomplete>
+                  <Autocomplete
+                    onLoad={onEditDestinationLoad}
+                    onPlaceChanged={onEditDestinationPlaceChanged}
+                  >
+                    <Input
+                      id="edit-destination"
+                      value={formData.destination}
+                      onChange={(e) => setFormData({...formData, destination: e.target.value})}
+                      placeholder="Start typing a city name..."
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onFocus={(e) => e.stopPropagation()}
+                    />
+                  </Autocomplete>
+                </LoadScript>
               </div>
               <div>
                 <Label htmlFor="edit-status">Status</Label>
@@ -1559,7 +1645,12 @@ Generated: ${new Date().toISOString()}
       </Dialog>
 
       {/* Assign Bales Dialog */}
-      <Dialog open={isAssignBalesDialogOpen} onOpenChange={setIsAssignBalesDialogOpen}>
+      <Dialog open={isAssignBalesDialogOpen} onOpenChange={(open) => {
+        setIsAssignBalesDialogOpen(open);
+        if (!open) {
+          setBaleSearchTerm(''); // Clear search when closing
+        }
+      }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Assign Bales to Container</DialogTitle>
@@ -1567,6 +1658,18 @@ Generated: ${new Date().toISOString()}
               Select bales to assign to {selectedContainer?.containerNumber}
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Search Bar */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              type="text"
+              placeholder="Search bales by number, quality, or weight..."
+              value={baleSearchTerm}
+              onChange={(e) => setBaleSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           
           <ScrollArea className="h-[400px] border rounded-lg p-4">
             <div className="space-y-4">
@@ -1624,10 +1727,13 @@ Generated: ${new Date().toISOString()}
               
               {/* Available Bales */}
               <div>
-                <h4 className="text-sm font-semibold text-gray-700 mb-2">Available to Assign ({availableBales.length})</h4>
-                {availableBales.length > 0 ? (
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                  Available to Assign ({filteredAvailableBales.length}
+                  {baleSearchTerm && ` of ${availableBales.length}`})
+                </h4>
+                {filteredAvailableBales.length > 0 ? (
                   <div className="space-y-2">
-                    {availableBales.map((bale) => (
+                    {filteredAvailableBales.map((bale) => (
                   <div 
                     key={bale.id} 
                     className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
@@ -1669,7 +1775,9 @@ Generated: ${new Date().toISOString()}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    No available bales to assign
+                    {baleSearchTerm 
+                      ? `No bales found matching "${baleSearchTerm}"`
+                      : "No available bales to assign"}
                   </div>
                 )}
               </div>
@@ -1699,8 +1807,6 @@ Generated: ${new Date().toISOString()}
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      </LoadScript>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

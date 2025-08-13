@@ -45,7 +45,16 @@
       "Bash(top:*)",
       "Bash(git remote remove:*)",
       "Bash(gh repo set-default:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(nslookup:*)",
+      "Bash(nc:*)",
+      "Bash(sysctl:*)",
+      "Bash(./optimize-network.sh:*)",
+      "Bash(./fix-network-timeouts.sh:*)",
+      "Bash(pkill:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run dev:*)",
+      "Bash(kill:*)"
     ],
     "deny": []
   }

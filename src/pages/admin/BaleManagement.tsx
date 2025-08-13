@@ -418,7 +418,7 @@ function BaleManagement() {
   
   const [formData, setFormData] = useState({
     contents: 'A-Quality' as BaleQuality,
-    weight: 0,
+    weight: '' as any,
     status: 'Warehouse' as BaleStatus,
     notes: ''
   });
@@ -499,9 +499,9 @@ function BaleManagement() {
   };
 
   const handleAddBale = () => {
-    addBale(formData);
+    addBale({...formData, weight: parseFloat(formData.weight) || 0});
     setIsAddDialogOpen(false);
-    setFormData({ contents: 'A-Quality', weight: 0, status: 'Warehouse', notes: '' });
+    setFormData({ contents: 'A-Quality', weight: '', status: 'Warehouse', notes: '' });
   };
 
   const handleEditBale = () => {
@@ -509,7 +509,7 @@ function BaleManagement() {
       updateBale(selectedBale.id, formData);
       setIsEditDialogOpen(false);
       setSelectedBale(null);
-      setFormData({ contents: 'A-Quality', weight: 0, status: 'Warehouse', notes: '' });
+      setFormData({ contents: 'A-Quality', weight: '', status: 'Warehouse', notes: '' });
     }
   };
 
@@ -1135,7 +1135,8 @@ function BaleManagement() {
                 min="0"
                 step="0.1"
                 value={formData.weight}
-                onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})}
+                onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                placeholder="Enter weight in kilograms..."
               />
             </div>
             <div>
@@ -1152,7 +1153,7 @@ function BaleManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddDialogOpen(false);
-              setFormData({ contents: 'A-Quality', weight: 0, status: 'Warehouse', notes: '' });
+              setFormData({ contents: 'A-Quality', weight: '', status: 'Warehouse', notes: '' });
             }}>
               Cancel
             </Button>

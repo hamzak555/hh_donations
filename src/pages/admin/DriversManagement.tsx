@@ -173,11 +173,6 @@ function DriversManagement() {
       let bValue = b[sortColumn as keyof Driver];
       
       // Handle special cases
-      if (sortColumn === 'totalPickups') {
-        return sortDirection === 'asc' 
-          ? (a.totalPickups - b.totalPickups)
-          : (b.totalPickups - a.totalPickups);
-      }
       
       if (sortColumn === 'assignedBins') {
         aValue = a.assignedBins.length;
@@ -374,16 +369,6 @@ function DriversManagement() {
                     {getSortIcon('status')}
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('totalPickups')}
-                  style={{width: '10%'}}
-                >
-                  <div className="flex items-center gap-1">
-                    Total Pickups
-                    {getSortIcon('totalPickups')}
-                  </div>
-                </TableHead>
                 <TableHead className="text-right" style={{width: '5%'}}>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -447,7 +432,6 @@ function DriversManagement() {
                       )}
                     </TableCell>
                     <TableCell style={{width: '10%'}}>{getStatusBadge(driver.status)}</TableCell>
-                    <TableCell style={{width: '10%'}}>{driver.totalPickups}</TableCell>
                     <TableCell className="text-right" style={{width: '5%'}} onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -473,7 +457,7 @@ function DriversManagement() {
                   </TableRow>
                   {isExpanded && (
                     <TableRow key={`expanded-${driver.id}`} style={{width: '100%'}}>
-                      <TableCell colSpan={6} className="p-0" style={{width: '100%'}}>
+                      <TableCell colSpan={5} className="p-0" style={{width: '100%'}}>
                         <div className="bg-gray-50 p-4">
                           {driver.assignedBins.length > 0 ? (
                             <div>

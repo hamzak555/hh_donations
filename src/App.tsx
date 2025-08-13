@@ -25,6 +25,7 @@ import RecoverData from './pages/admin/RecoverData';
 import DiagnosticPage from './pages/admin/DiagnosticPage';
 import FAQ from './pages/FAQ';
 import Footer from './components/Footer';
+import { NetworkStatus } from './components/NetworkStatus';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
           <ContainersProvider>
             <DriversProvider>
               <Router>
+              <NetworkStatus />
           <Routes>
           {/* Public Routes */}
           <Route element={<Layout />}>

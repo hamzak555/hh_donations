@@ -6,7 +6,7 @@ const PROTECTED_KEYS = [
   'bales',
   'containers', 
   'bins',
-  'drivers',
+  'driversData',
   'pickupRequests',
   'adminAuth'
 ];
@@ -286,7 +286,7 @@ export const exportData = async (): Promise<void> => {
       bales: localStorage.getItem('bales'),
       containers: localStorage.getItem('containers'),
       bins: localStorage.getItem('bins'),
-      drivers: localStorage.getItem('drivers'),
+      drivers: localStorage.getItem('driversData'),
       pickupRequests: localStorage.getItem('pickupRequests')
     },
     indexedDB: indexedDBData,

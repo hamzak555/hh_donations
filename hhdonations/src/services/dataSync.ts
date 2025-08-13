@@ -7,9 +7,9 @@ export class HybridDataService {
   private syncInterval: NodeJS.Timeout | null = null;
   
   private constructor() {
-    this.checkConnection();
-    // Check API connection every 30 seconds
-    setInterval(() => this.checkConnection(), 30000);
+    // Disable automatic API connection checks to prevent network instability
+    // this.checkConnection();
+    // setInterval(() => this.checkConnection(), 30000);
   }
   
   static getInstance(): HybridDataService {
@@ -189,15 +189,16 @@ export class HybridDataService {
   }
   
   startAutoSync(intervalMs: number = 60000) {
-    if (this.syncInterval) {
-      clearInterval(this.syncInterval);
-    }
-    
-    this.syncInterval = setInterval(() => {
-      if (this.useAPI) {
-        this.syncLocalToServer();
-      }
-    }, intervalMs);
+    // Disabled auto-sync to prevent network instability
+    // if (this.syncInterval) {
+    //   clearInterval(this.syncInterval);
+    // }
+    // 
+    // this.syncInterval = setInterval(() => {
+    //   if (this.useAPI) {
+    //     this.syncLocalToServer();
+    //   }
+    // }, intervalMs);
   }
   
   stopAutoSync() {

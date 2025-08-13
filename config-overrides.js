@@ -6,45 +6,74 @@ module.exports = function override(config, env) {
     '@': path.resolve(__dirname, 'src'),
   };
   
-  // Add webpack dev server optimizations to prevent network issues
+  // CRITICAL: Fix webpack dev server to prevent network timeouts
   if (env === 'development') {
+    // Disable webpack features that cause excessive recompilation
+    config.watchOptions = {
+      aggregateTimeout: 2000, // Wait 2 seconds before rebuilding
+      poll: false, // Completely disable polling
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/build/**',
+        '**/dist/**',
+        '**/*.log',
+        '**/.env*'
+      ]
+    };
+
+    // Optimize module federation to prevent duplicate requests
+    config.optimization = {
+      ...config.optimization,
+      removeAvailableModules: false,
+      removeEmptyChunks: false,
+      splitChunks: false,
+      runtimeChunk: false,
+      sideEffects: false,
+      providedExports: false,
+      usedExports: false
+    };
+
+    // Configure dev server with HMR enabled
     config.devServer = {
       ...config.devServer,
-      // Only serve on localhost, don't expose to network
       host: 'localhost',
-      // Disable automatic browser opening
-      open: false,
-      // Reduce websocket connections
-      webSocketServer: 'ws',
-      // Disable hot module replacement to reduce network traffic
-      hot: false,
-      // Use less aggressive live reloading
-      liveReload: true,
-      // Compress responses to reduce bandwidth
-      compress: true,
-      // Set specific port
       port: 3000,
-      // Disable host checking
-      allowedHosts: 'auto',
-      // Client-side optimizations
+      hot: true, // Enable HMR
+      liveReload: true, // Enable live reload
+      webSocketServer: 'ws', // Enable WebSocket for HMR
+      static: {
+        watch: true // Enable static file watching
+      },
       client: {
-        webSocketURL: 'ws://localhost:3000/ws',
-        // Reduce overlay for errors
-        overlay: {
-          errors: true,
-          warnings: false,
-        },
-        // Reduce reconnect attempts
-        reconnect: 3,
+        overlay: true, // Show errors in browser
+        progress: true // Show compilation progress
       },
-      // Watch options to reduce file system polling
-      watchOptions: {
-        ignored: /node_modules/,
-        // Increase poll interval to reduce CPU/network usage
-        poll: 1000,
-        aggregateTimeout: 300,
-      },
+      compress: true,
+      historyApiFallback: true
     };
+
+    // Disable performance hints that cause overhead
+    config.performance = false;
+
+    // Enable filesystem cache for faster rebuilds
+    config.cache = {
+      type: 'filesystem',
+      allowCollectingMemory: true,
+      compression: false,
+      hashAlgorithm: 'md4',
+      idleTimeout: 60000,
+      idleTimeoutForInitialStore: 5000,
+      maxAge: 5184000000,
+      maxMemoryGenerations: 1,
+      memoryCacheUnaffected: true,
+      name: 'hhdonations-dev-cache',
+      store: 'pack',
+      version: '1.0.0'
+    };
+
+    // Disable source maps to reduce memory and CPU
+    config.devtool = false;
   }
   
   return config;

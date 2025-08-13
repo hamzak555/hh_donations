@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { SafeStorage } from '@/utils/safeStorage';
 
 export interface Driver {
   id: string;
@@ -27,9 +28,9 @@ const STORAGE_KEY = 'driversData';
 
 export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [drivers, setDrivers] = useState<Driver[]>(() => {
-    // Initialize state directly from localStorage
+    // Initialize state directly from localStorage using SafeStorage
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = SafeStorage.getLatestValue(STORAGE_KEY);
       
       if (stored && stored !== 'undefined' && stored !== 'null' && stored !== '[]') {
         const parsedDrivers = JSON.parse(stored);
@@ -40,7 +41,7 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
       
       // Only use initial drivers if localStorage is truly empty
       if (initialDrivers.length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialDrivers));
+        SafeStorage.setItem(STORAGE_KEY, JSON.stringify(initialDrivers));
       }
       return initialDrivers;
     } catch (error) {
@@ -49,13 +50,17 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   });
 
-  // Save to localStorage whenever drivers change
+  // Save to localStorage whenever drivers change using SafeStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(drivers));
-    } catch (error) {
-      console.error('[DriversContext] Error saving drivers:', error);
-    }
+    const saveDrivers = async () => {
+      try {
+        await SafeStorage.setItem(STORAGE_KEY, JSON.stringify(drivers));
+      } catch (error) {
+        console.error('[DriversContext] Error saving drivers:', error);
+      }
+    };
+    
+    saveDrivers();
   }, [drivers]);
 
   const addDriver = (newDriver: Driver) => {
