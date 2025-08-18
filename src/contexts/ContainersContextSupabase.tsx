@@ -39,10 +39,17 @@ interface ContainersContextType {
   addContainer: (container: Container) => Promise<void>;
   updateContainer: (id: string, updates: Partial<Container>) => Promise<void>;
   deleteContainer: (id: string) => Promise<void>;
+  generateContainerNumber: () => string;
   getWarehouseContainers: () => Container[];
   getShippedContainers: () => Container[];
   assignBaleToContainer: (containerId: string, baleId: string, baleWeight: number) => Promise<void>;
   removeBaleFromContainer: (containerId: string, baleId: string, baleWeight: number) => Promise<void>;
+  addNoteToTimeline: (containerId: string, noteText: string) => void;
+  addDocuments: (containerId: string, documents: DocumentEntry[]) => void;
+  deleteDocument: (containerId: string, documentId: string) => void;
+  markAsShipped: (id: string) => void;
+  unmarkAsShipped: (id: string) => void;
+  getContainerByBaleId: (baleId: string) => Container | undefined;
   refreshContainers: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -259,6 +266,51 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     });
   };
 
+  const generateContainerNumber = () => {
+    const existingNumbers = containers
+      .map(container => {
+        const match = container.containerNumber.match(/CNT(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter(num => !isNaN(num));
+    
+    const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+    return `CNT${String(nextNumber).padStart(4, '0')}`;
+  };
+
+  const addNoteToTimeline = (containerId: string, noteText: string) => {
+    if (!noteText.trim()) return;
+    
+    const container = containers.find(c => c.id === containerId);
+    if (!container) return;
+    
+    // This would typically update the container with a new note
+    // For now, we'll implement a basic version
+    console.log(`Adding note to container ${containerId}: ${noteText}`);
+  };
+
+  const addDocuments = (containerId: string, documents: DocumentEntry[]) => {
+    // Implementation for adding documents
+    console.log(`Adding ${documents.length} documents to container ${containerId}`);
+  };
+
+  const deleteDocument = (containerId: string, documentId: string) => {
+    // Implementation for deleting a document
+    console.log(`Deleting document ${documentId} from container ${containerId}`);
+  };
+
+  const markAsShipped = (id: string) => {
+    updateContainer(id, { status: 'Shipped', shipmentDate: new Date().toISOString().split('T')[0] });
+  };
+
+  const unmarkAsShipped = (id: string) => {
+    updateContainer(id, { status: 'Warehouse', shipmentDate: undefined });
+  };
+
+  const getContainerByBaleId = (baleId: string): Container | undefined => {
+    return containers.find(container => container.assignedBales.includes(baleId));
+  };
+
   const refreshContainers = async () => {
     await loadContainers();
   };
@@ -269,10 +321,17 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     addContainer,
     updateContainer,
     deleteContainer,
+    generateContainerNumber,
     getWarehouseContainers,
     getShippedContainers,
     assignBaleToContainer,
     removeBaleFromContainer,
+    addNoteToTimeline,
+    addDocuments,
+    deleteDocument,
+    markAsShipped,
+    unmarkAsShipped,
+    getContainerByBaleId,
     refreshContainers,
     isLoading,
     error
