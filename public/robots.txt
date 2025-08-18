@@ -1,4 +1,5 @@
 # https://www.robotstxt.org/robotstxt.html
+# Build Version: 2.1.0 - Updated 2025-01-18
 User-agent: *
 Allow: /
 
