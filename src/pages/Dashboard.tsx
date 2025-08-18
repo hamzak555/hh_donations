@@ -62,7 +62,7 @@ function Dashboard() {
                 <span className="text-primary block">Simple & Accessible</span>
               </h1>
               <p className="text-xl text-gray-600 mb-8">
-                Find donation bins in your community and make a lasting impact. Every donation 
+                Request a pickup or find donation bins in your community and make a lasting impact. Every donation 
                 helps families in need and strengthens our neighborhoods.
               </p>
               

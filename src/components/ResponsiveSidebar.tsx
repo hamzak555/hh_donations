@@ -59,7 +59,7 @@ const ResponsiveSidebar = () => {
     <>
       {/* Mobile Header - Only visible on mobile/tablet */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
-        <div className="px-8">
+        <div className="px-6 sm:px-8">
           <div className="flex items-center justify-between py-3 gap-4">
             <Link to="/home" className="flex items-center">
               <img 

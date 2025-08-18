@@ -384,7 +384,7 @@ const FindBin = () => {
           </div>
 
           {/* Nearby Bins List */}
-          <div className="lg:col-span-1 h-[300px] lg:h-full overflow-hidden flex-shrink-0 mt-6 lg:mt-0">
+          <div className="lg:col-span-1 h-[500px] lg:h-full overflow-hidden flex-shrink-0 mt-6 lg:mt-0">
             <Card className="h-full flex flex-col">
               <CardHeader className="flex-shrink-0 pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">
