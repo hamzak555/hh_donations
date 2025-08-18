@@ -1,47 +1,41 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Simple test component
 function TestHome() {
   return (
     <div style={{ padding: '40px', backgroundColor: '#f0f0f0', minHeight: '100vh' }}>
-      <h1>🏠 Home Page Works!</h1>
-      <p>React Router is functioning correctly</p>
-      <a href="/test" style={{ color: 'blue', textDecoration: 'underline' }}>Go to Test Page</a>
+      <h1>🏠 Step 2: Router + HelmetProvider Working!</h1>
+      <p>If you see this, React Router and HelmetProvider are working</p>
+      <p style={{ backgroundColor: '#e8f5e8', padding: '10px', borderRadius: '5px' }}>
+        ✅ React Router + HelmetProvider test successful
+      </p>
     </div>
   );
 }
 
-function TestPage() {
-  return (
-    <div style={{ padding: '40px', backgroundColor: '#e0f0e0', minHeight: '100vh' }}>
-      <h1>✅ Test Page Works!</h1>
-      <p>Navigation is working</p>
-      <a href="/" style={{ color: 'blue', textDecoration: 'underline' }}>Back to Home</a>
-    </div>
-  );
-}
-
-function DebugApp() {
-  console.log('🚀 Debug App is rendering...');
+function RouterTestApp() {
+  console.log('🚀 Router Test App is rendering...');
   
   return (
     <ErrorBoundary>
-      <Router>
-        <div style={{ backgroundColor: '#fff', minHeight: '100vh' }}>
-          <nav style={{ padding: '20px', backgroundColor: '#333', color: 'white' }}>
-            <h2>H&H Donations - Debug Mode</h2>
-          </nav>
-          <Routes>
-            <Route path="/home" element={<TestHome />} />
-            <Route path="/test" element={<TestPage />} />
-            <Route path="/" element={<Navigate to="/home" replace />} />
-          </Routes>
-        </div>
-      </Router>
+      <HelmetProvider>
+        <Router>
+          <div style={{ backgroundColor: '#fff', minHeight: '100vh' }}>
+            <nav style={{ padding: '20px', backgroundColor: '#333', color: 'white' }}>
+              <h2>H&H Donations - Router Test Mode</h2>
+            </nav>
+            <Routes>
+              <Route path="/" element={<TestHome />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </HelmetProvider>
     </ErrorBoundary>
   );
 }
 
-export default DebugApp;
+export default RouterTestApp;
