@@ -1,50 +1,117 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
+// Temporarily use localStorage versions to isolate issue
+import { BinsProvider } from './contexts/BinsContext';
+import { PickupRequestsProvider } from './contexts/PickupRequestsContext';
+import { BalesProvider } from './contexts/BalesContext';
+import { DriversProvider } from './contexts/DriversContext';
+import { ContainersProvider } from './contexts/ContainersContext';
+import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsContext';
+import Layout from './components/Layout';
+import ResponsiveLayout from './components/ResponsiveLayout';
+import AdminLayout from './components/AdminLayout';
+import ErrorBoundary from './components/ErrorBoundary';
+import Dashboard from './pages/Dashboard';
+import FindBin from './pages/FindBin';
+import RequestPickup from './pages/RequestPickup';
+import Contact from './pages/Contact';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import AdminLogin from './pages/admin/AdminLogin';
+import BinsManagement from './pages/admin/BinsManagement';
+import DriversManagement from './pages/admin/DriversManagement';
+import RouteCreation from './pages/admin/RouteCreation';
+import BaleManagement from './pages/admin/BaleManagement';
+import ContainerManagement from './pages/admin/ContainerManagement';
+import PickupRequests from './pages/admin/PickupRequests';
+import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
+import RecoverData from './pages/admin/RecoverData';
+import DiagnosticPage from './pages/admin/DiagnosticPage';
+import SensorTest from './pages/admin/SensorTest';
+import SupabaseMigration from './pages/admin/SupabaseMigration';
+import UserManagement from './pages/admin/UserManagement';
+import FAQ from './pages/FAQ';
+import WhatToDonate from './pages/WhatToDonate';
+import OurStory from './pages/OurStory';
+import Partnerships from './pages/Partnerships';
+import PartnerApplication from './pages/PartnerApplication';
+import PartnerApplications from './pages/admin/PartnerApplications';
+import Footer from './components/Footer';
+import { NetworkStatus } from './components/NetworkStatus';
+import ScrollToTop from './components/ScrollToTop';
+import ScrollToTopButton from './components/ScrollToTopButton';
+import './utils/seedData';
+import './utils/dataExportImport';
 
-function MinimalApp() {
-  console.log('Minimal App is rendering!');
+function App() {
+  console.log('App component rendering...');
+  console.log('Environment check:', {
+    SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'
+  });
   
   return (
-    <div style={{ 
-      padding: '40px', 
-      fontSize: '24px', 
-      backgroundColor: '#f0f0f0',
-      minHeight: '100vh',
-      fontFamily: 'Arial, sans-serif'
-    }}>
-      <h1 style={{ color: '#333', marginBottom: '20px' }}>
-        🚀 H&H Donations - Test Page
-      </h1>
-      <p style={{ color: '#666', marginBottom: '20px' }}>
-        If you can see this, React is working correctly!
-      </p>
-      <div style={{ backgroundColor: '#e8f5e8', padding: '15px', borderRadius: '5px', marginBottom: '20px' }}>
-        ✅ App is loading successfully
-      </div>
-      <div style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '5px', border: '1px solid #ddd' }}>
-        <h3>Environment Check:</h3>
-        <ul>
-          <li>SUPABASE_URL: {process.env.REACT_APP_SUPABASE_URL || 'Not set'}</li>
-          <li>SUPABASE_ANON_KEY: {process.env.REACT_APP_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Not set'}</li>
-          <li>NODE_ENV: {process.env.NODE_ENV}</li>
-        </ul>
-      </div>
-      <button 
-        onClick={() => alert('Button works!')} 
-        style={{ 
-          marginTop: '20px', 
-          padding: '10px 20px', 
-          fontSize: '16px', 
-          backgroundColor: '#007cba', 
-          color: 'white', 
-          border: 'none', 
-          borderRadius: '5px', 
-          cursor: 'pointer' 
-        }}
-      >
-        Test Button
-      </button>
-    </div>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <BinsProvider>
+          <PickupRequestsProvider>
+            <BalesProvider>
+              <ContainersProvider>
+                <DriversProvider>
+                  <PartnerApplicationsProvider>
+                    <Router>
+                      <ScrollToTop />
+                      <ScrollToTopButton />
+                      <NetworkStatus />
+                      <Routes>
+                        {/* Public Routes */}
+                        <Route element={<ResponsiveLayout />}>
+                          <Route path="/home" element={<Dashboard />} />
+                          <Route path="/find-bin" element={<FindBin />} />
+                          <Route path="/request-pickup" element={<RequestPickup />} />
+                          <Route path="/what-to-donate" element={<WhatToDonate />} />
+                          <Route path="/our-story" element={<OurStory />} />
+                          <Route path="/partnerships" element={<Partnerships />} />
+                          <Route path="/faq" element={<FAQ />} />
+                          <Route path="/contact" element={<Contact />} />
+                          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                          <Route path="/terms-of-service" element={<TermsOfService />} />
+                          <Route path="/partner-application" element={<PartnerApplication />} />
+                        </Route>
+                        
+                        {/* Admin Routes */}
+                        <Route element={<ResponsiveLayout />}>
+                          <Route path="/login" element={<AdminLogin />} />
+                        </Route>
+                        <Route element={<AdminLayout />}>
+                          <Route path="/admin/bins" element={<BinsManagement />} />
+                          <Route path="/admin/drivers" element={<DriversManagement />} />
+                          <Route path="/admin/drivers/route-creation" element={<RouteCreation />} />
+                          <Route path="/admin/pickup-requests" element={<PickupRequests />} />
+                          <Route path="/admin/pickup-requests/route-generator" element={<PickupRouteGenerator />} />
+                          <Route path="/admin/bales" element={<BaleManagement />} />
+                          <Route path="/admin/containers" element={<ContainerManagement />} />
+                          <Route path="/admin/partner-applications" element={<PartnerApplications />} />
+                          <Route path="/admin/recover" element={<RecoverData />} />
+                          <Route path="/admin/diagnostic" element={<DiagnosticPage />} />
+                          <Route path="/admin/sensor-test" element={<SensorTest />} />
+                          <Route path="/admin/supabase-migration" element={<SupabaseMigration />} />
+                          <Route path="/admin/users" element={<UserManagement />} />
+                        </Route>
+                        
+                        <Route path="/" element={<Navigate to="/home" replace />} />
+                      </Routes>
+                    </Router>
+                  </PartnerApplicationsProvider>
+                </DriversProvider>
+              </ContainersProvider>
+            </BalesProvider>
+          </PickupRequestsProvider>
+        </BinsProvider>
+      </HelmetProvider>
+    </ErrorBoundary>
   );
 }
 
-export default MinimalApp;
+export default App;
