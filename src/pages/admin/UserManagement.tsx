@@ -21,6 +21,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -36,7 +46,9 @@ function UserManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<DatabaseAdminUser | null>(null);
+  const [userToDelete, setUserToDelete] = useState<DatabaseAdminUser | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -110,15 +122,22 @@ function UserManagement() {
     }
   };
 
-  const handleDeleteUser = async (user: DatabaseAdminUser) => {
-    if (confirm(`Are you sure you want to delete user "${user.full_name}"?`)) {
-      try {
-        await SupabaseService.adminUsers.deleteAdminUser(user.id);
-        await loadUsers();
-      } catch (error) {
-        console.error('Error deleting user:', error);
-        alert('Error deleting user. Please try again.');
-      }
+  const handleDeleteUser = (user: DatabaseAdminUser) => {
+    setUserToDelete(user);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      await SupabaseService.adminUsers.deleteAdminUser(userToDelete.id);
+      await loadUsers();
+      setIsDeleteDialogOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Error deleting user. Please try again.');
     }
   };
 
@@ -422,6 +441,36 @@ function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user
+              {userToDelete && (
+                <span className="font-semibold"> "{userToDelete.full_name}"</span>
+              )}
+              {' '}and remove their access to the admin system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteDialogOpen(false);
+              setUserToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteUser}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
