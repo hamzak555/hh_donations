@@ -1,0 +1,8 @@
+# Netlify redirects configuration
+
+# Block search engine crawlers from admin pages at server level
+/admin/*  /admin/:splat  200!  X-Robots-Tag:noindex,nofollow
+/login    /login         200!  X-Robots-Tag:noindex,nofollow
+
+# SPA fallback - all routes go to index.html
+/*    /index.html   200

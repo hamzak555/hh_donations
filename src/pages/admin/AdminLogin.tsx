@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Lock, User } from 'lucide-react';
+import NoIndexSEO from '@/components/NoIndexSEO';
 
 function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -26,7 +27,9 @@ function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <>
+      <NoIndexSEO title="Admin Login" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
@@ -85,7 +88,8 @@ function AdminLogin() {
           </CardContent>
         </form>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }
 

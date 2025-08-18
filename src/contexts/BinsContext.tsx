@@ -17,6 +17,14 @@ interface BinLocation {
   assignedDriver?: string;
   createdDate?: string;
   fullSince?: string; // ISO timestamp of when bin was marked as Full
+  // Sensor integration fields
+  sensorId?: string; // Sensoneo sensor identifier
+  containerId?: number; // Sensoneo container ID
+  fillLevel?: number; // Current fill percentage (0-100)
+  lastSensorUpdate?: string; // Timestamp of last sensor reading
+  batteryLevel?: number; // Sensor battery voltage
+  temperature?: number; // Current temperature reading
+  sensorEnabled?: boolean; // Whether sensor tracking is enabled for this bin
 }
 
 interface BinsContextType {

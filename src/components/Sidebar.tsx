@@ -9,7 +9,8 @@ import {
   Phone,
   Shield,
   LayoutDashboard,
-  Truck
+  Truck,
+  Building
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -25,9 +26,10 @@ const Sidebar = () => {
   const navItems = [
     { path: '/home', label: 'Home', icon: Home },
     { path: '/find-bin', label: 'Find a Bin', icon: MapPin },
-    { path: '/request-pickup', label: 'Request A Pickup', icon: Truck },
+    { path: '/request-pickup', label: 'Request a Pickup', icon: Truck },
     { path: '/what-to-donate', label: 'What to Donate', icon: Gift },
     { path: '/our-story', label: 'Our Story', icon: BookOpen },
+    { path: '/partnerships', label: 'Partnerships', icon: Building },
     { path: '/faq', label: 'FAQ', icon: HelpCircle },
     { path: '/contact', label: 'Contact', icon: Phone },
   ];

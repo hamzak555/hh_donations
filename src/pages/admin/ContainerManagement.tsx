@@ -74,7 +74,9 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
-  Undo2
+  Undo2,
+  Image as ImageIcon,
+  FileCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Bale, BaleStatus } from '@/contexts/BalesContext';
@@ -1510,14 +1512,28 @@ function ContainerManagement() {
                 </div>
               </TabsContent>
               
-              <TabsContent value="documents">
+              <TabsContent value="documents" className="mt-4">
                 <div className="space-y-4">
                   {/* Upload Section */}
                   <div 
-                    className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center hover:border-gray-300 transition-colors"
-                    onDragOver={handleDragOver}
+                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${
+                      isUploading 
+                        ? 'border-blue-400 bg-blue-50/50' 
+                        : 'border-gray-200 hover:border-blue-300 bg-gradient-to-b from-gray-50/50 to-white hover:from-blue-50/30 hover:to-white'
+                    }`}
+                    onDragOver={(e) => {
+                      handleDragOver(e);
+                      e.currentTarget.classList.add('border-blue-400', 'bg-blue-50/50');
+                    }}
+                    onDragLeave={(e) => {
+                      e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50/50');
+                    }}
                     onDragEnter={handleDragEnter}
-                    onDrop={handleDrop}
+                    onDrop={(e) => {
+                      handleDrop(e);
+                      e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50/50');
+                    }}
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
                   >
                     <input
                       ref={fileInputRef}
@@ -1528,115 +1544,172 @@ function ContainerManagement() {
                       accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                       disabled={isUploading}
                     />
-                    <Upload className="w-10 h-10 mx-auto mb-3 text-gray-400" />
-                    <p className="text-sm text-gray-600 mb-3">
-                      Drag and drop files here, or click to browse
-                    </p>
-                    <Button 
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      variant="outline"
-                      className="relative"
-                    >
-                      {isUploading ? (
-                        <>
-                          <Upload className="w-4 h-4 mr-2 animate-pulse" />
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Choose Files
-                        </>
-                      )}
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Supported: PDF, DOC, DOCX, TXT, JPG, PNG
-                    </p>
+                    
+                    {/* Upload Icon */}
+                    <div className="flex flex-col items-center">
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-colors ${
+                        isUploading ? 'bg-blue-100' : 'bg-gray-100'
+                      }`}>
+                        <Upload className={`w-7 h-7 ${isUploading ? 'text-blue-500 animate-pulse' : 'text-gray-400'}`} />
+                      </div>
+                      
+                      {/* Upload Text */}
+                      <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                        {isUploading ? 'Uploading...' : 'Upload Documents'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mb-4">
+                        Drag and drop your files here, or click to browse
+                      </p>
+                      
+                      {/* Upload Button */}
+                      <Button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        disabled={isUploading}
+                        className="mb-3 h-8"
+                        size="sm"
+                      >
+                        {isUploading ? (
+                          <>
+                            <Upload className="w-3 h-3 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <FileCheck className="w-3 h-3 mr-2" />
+                            Select Files
+                          </>
+                        )}
+                      </Button>
+                      
+                      {/* File Type Icons */}
+                      <div className="flex items-center gap-4 text-xs text-gray-400">
+                        <div className="flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          <span>PDF, DOC</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ImageIcon className="w-3 h-3" />
+                          <span>JPG, PNG</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2">
+                        Max 10MB per file
+                      </p>
+                    </div>
                   </div>
                   
                   {/* Upload Progress */}
                   {isUploading && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Uploading files...</span>
-                        <span>{uploadProgress}%</span>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-blue-700 font-medium text-xs">Processing files...</span>
+                        </div>
+                        <span className="text-blue-900 font-semibold text-xs">{uploadProgress}%</span>
                       </div>
-                      <Progress value={uploadProgress} className="h-2" />
+                      <Progress value={uploadProgress} className="h-1.5" />
                     </div>
                   )}
                   
                   {/* Documents List */}
-                  <ScrollArea className="h-[300px]">
-                    {selectedContainer.documents?.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedContainer.documents.map((doc: any, index: number) => {
-                          const isDocumentEntry = typeof doc !== 'string';
-                          const documentName = isDocumentEntry ? doc.name : `Document ${index + 1}`;
-                          const documentData = isDocumentEntry ? doc.data : doc;
-                          const documentId = isDocumentEntry ? doc.id : null;
-                          const uploadedAt = isDocumentEntry ? doc.uploadedAt : null;
-                          
-                          // Get file extension from name or data URL
-                          const getFileIcon = () => {
-                            const name = documentName.toLowerCase();
-                            if (name.includes('.pdf')) return <FileText className="w-5 h-5 text-red-500" />;
-                            if (name.includes('.doc') || name.includes('.docx')) return <FileText className="w-5 h-5 text-blue-500" />;
-                            if (name.includes('.jpg') || name.includes('.jpeg') || name.includes('.png')) return <FileText className="w-5 h-5 text-green-500" />;
-                            return <FileText className="w-5 h-5 text-gray-400" />;
-                          };
-                          
-                          return (
-                            <div key={documentId || index} className="border rounded-lg p-3 hover:bg-gray-50 transition-colors">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 flex-1">
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-3 py-2 border-b">
+                      <h4 className="text-xs font-medium text-gray-700">
+                        Uploaded Documents ({selectedContainer.documents?.length || 0})
+                      </h4>
+                    </div>
+                    <ScrollArea className="h-[200px]">
+                      {selectedContainer.documents?.length > 0 ? (
+                        <div className="p-2 space-y-1">
+                          {selectedContainer.documents.map((doc: any, index: number) => {
+                            const isDocumentEntry = typeof doc !== 'string';
+                            const documentName = isDocumentEntry ? doc.name : `Document ${index + 1}`;
+                            const documentData = isDocumentEntry ? doc.data : doc;
+                            const documentId = isDocumentEntry ? doc.id : null;
+                            const uploadedAt = isDocumentEntry ? doc.uploadedAt : null;
+                            
+                            // Get file extension from name or data URL
+                            const getFileIcon = () => {
+                              const name = documentName.toLowerCase();
+                              if (name.includes('.pdf')) return (
+                                <div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="w-4 h-4 text-red-600" />
+                                </div>
+                              );
+                              if (name.includes('.doc') || name.includes('.docx')) return (
+                                <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="w-4 h-4 text-blue-600" />
+                                </div>
+                              );
+                              if (name.includes('.jpg') || name.includes('.jpeg') || name.includes('.png')) return (
+                                <div className="w-8 h-8 rounded bg-green-100 flex items-center justify-center flex-shrink-0">
+                                  <ImageIcon className="w-4 h-4 text-green-600" />
+                                </div>
+                              );
+                              return (
+                                <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                  <FileText className="w-4 h-4 text-gray-600" />
+                                </div>
+                              );
+                            };
+                            
+                            return (
+                              <div key={documentId || index} className="group relative rounded p-2 hover:bg-gray-50 transition-all duration-150">
+                                <div className="flex items-center gap-2">
                                   {getFileIcon()}
-                                  <div className="flex-1">
-                                    <p className="font-medium text-sm">{documentName}</p>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-xs text-gray-900 truncate">{documentName}</p>
                                     {uploadedAt && (
                                       <p className="text-xs text-gray-500">
-                                        Uploaded {format(new Date(uploadedAt), 'MMM dd, yyyy')}
+                                        {format(new Date(uploadedAt), 'MMM dd, yyyy')}
                                       </p>
                                     )}
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                      const a = document.createElement('a');
-                                      a.href = documentData;
-                                      a.download = documentName;
-                                      a.click();
-                                    }}
-                                    title="Download"
-                                  >
-                                    <Download className="w-4 h-4" />
-                                  </Button>
-                                  {documentId && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      onClick={() => setDocumentToDelete({id: documentId, name: documentName})}
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      title="Delete"
+                                      onClick={() => {
+                                        const a = document.createElement('a');
+                                        a.href = documentData;
+                                        a.download = documentName;
+                                        a.click();
+                                      }}
+                                      className="h-7 w-7 p-0"
+                                      title="Download"
                                     >
-                                      <Trash className="w-4 h-4" />
+                                      <Download className="w-3 h-3" />
                                     </Button>
-                                  )}
+                                    {documentId && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setDocumentToDelete({id: documentId, name: documentName})}
+                                        className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        title="Delete"
+                                      >
+                                        <Trash className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        No documents uploaded
-                      </div>
-                    )}
-                  </ScrollArea>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                          <FileText className="w-10 h-10 mb-2" />
+                          <p className="text-xs font-medium">No documents uploaded</p>
+                          <p className="text-xs mt-1">Upload documents to get started</p>
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>

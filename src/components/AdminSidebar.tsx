@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Package, 
@@ -8,7 +8,9 @@ import {
   FileText,
   Route,
   Archive,
-  Container
+  Container,
+  Wifi,
+  Users
 } from 'lucide-react';
 
 interface NavSubItem {
@@ -27,6 +29,44 @@ interface NavItem {
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [pendingCount, setPendingCount] = useState(0);
+  
+  // Load pickup requests from localStorage directly
+  useEffect(() => {
+    const loadPendingCount = () => {
+      try {
+        const storedData = localStorage.getItem('pickupRequests');
+        console.log('Loading pickup requests:', storedData ? 'found' : 'not found');
+        
+        if (storedData) {
+          const requests = JSON.parse(storedData);
+          // Note: Status is capitalized 'Pending' not 'pending'
+          const count = requests.filter((request: any) => request.status === 'Pending').length;
+          console.log('Pending pickup requests count:', count);
+          console.log('All statuses:', requests.map((r: any) => r.status));
+          setPendingCount(count);
+        }
+      } catch (error) {
+        console.error('Error loading pickup requests:', error);
+      }
+    };
+    
+    // Load initially
+    loadPendingCount();
+    
+    // Set up an interval to check for updates
+    const interval = setInterval(loadPendingCount, 2000); // Check every 2 seconds
+    
+    // Listen for storage events
+    const handleStorageChange = () => loadPendingCount();
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also reload when navigating
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [location.pathname]);
 
   const navItems: NavItem[] = [
     { 
@@ -45,9 +85,11 @@ const AdminSidebar = () => {
         { path: '/admin/pickup-requests/route-generator', label: 'Pickup Routes', icon: Route }
       ]
     },
+    { path: '/admin/partner-applications', label: 'Partner Applications', icon: Users },
     { path: '/admin/bales', label: 'Bale Management', icon: Archive },
     { path: '/admin/containers', label: 'Container Management', icon: Container },
     { path: '/admin/drivers', label: 'Driver Management', icon: Truck },
+    { path: '/admin/sensor-test', label: 'Sensor Test', icon: Wifi },
   ];
 
   const handleLogout = () => {
@@ -81,14 +123,29 @@ const AdminSidebar = () => {
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-sm ${
+                  className={`relative flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-sm ${
                     isActive || isParentActive
                       ? 'bg-primary text-white'
                       : 'text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <div className="flex items-center space-x-3">
+                    <Icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.path === '/admin/pickup-requests' && pendingCount > 0 && (
+                    <div className={`
+                      w-6 h-6
+                      flex items-center justify-center 
+                      text-xs font-bold rounded-full
+                      ${isActive || isParentActive
+                        ? 'bg-white text-primary'
+                        : 'bg-primary text-white'
+                      }
+                    `}>
+                      {pendingCount > 99 ? '99+' : pendingCount}
+                    </div>
+                  )}
                 </Link>
                 
                 {/* Sub-items */}

@@ -12,22 +12,22 @@ import Footer from '@/components/Footer';
 
 function FAQ() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/10 via-primary/5 to-white pt-10 pb-16 px-8">
+      <section className="pt-16 pb-12 px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Frequently Asked
             <span className="text-primary block">Questions</span>
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Find answers to common questions about donating with H&H Donations. Can't find what you're looking for? We're here to help!
           </p>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16 px-8 bg-white">
+      <section className="py-8 px-8">
         <div className="max-w-4xl mx-auto">
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="item-1" className="border border-gray-200 rounded-lg px-6">
@@ -98,7 +98,7 @@ function FAQ() {
                 What should I do if a donation bin is full?
               </AccordionTrigger>
               <AccordionContent className="text-gray-600 pb-6">
-                If you find a full bin, please don't leave items outside as they may get damaged by weather. Instead, try another nearby location, schedule a pickup service, or contact us to report the full bin so we can empty it promptly.
+                Our bins are equipped with smart sensors that alert us when they're approaching capacity, so full bins are rare. If you do encounter one, please don't leave items outside as they may get damaged by weather. Instead, try another nearby location, schedule a pickup service, or contact us to report the issue.
               </AccordionContent>
             </AccordionItem>
 
@@ -107,7 +107,7 @@ function FAQ() {
                 How often are donation bins emptied?
               </AccordionTrigger>
               <AccordionContent className="text-gray-600 pb-6">
-                We monitor our bins regularly and empty them based on usage patterns. High-traffic locations may be serviced daily, while others are checked weekly. We use smart monitoring systems to optimize collection schedules and prevent overflow.
+                Our bins feature advanced sensor technology that monitors fill levels in real-time. When a bin approaches capacity, our team is automatically notified and promptly dispatched to empty it. This smart system ensures bins are never overfilled and maintains cleanliness around donation sites.
               </AccordionContent>
             </AccordionItem>
 
@@ -158,6 +158,15 @@ function FAQ() {
 
             <AccordionItem value="item-15" className="border border-gray-200 rounded-lg px-6">
               <AccordionTrigger className="text-left font-semibold text-lg py-6 hover:no-underline">
+                How can my business or property become a donation bin location?
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                We're always looking for new location partners! By hosting a donation bin, you'll receive $1,000/year paid in advance, with zero operational burden - we handle everything including maintenance and collection. Our bins feature smart sensors to prevent overflow and maintain cleanliness. Visit our <a href="/partnerships" className="text-primary underline hover:no-underline">Partnerships page</a> to learn more and apply.
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="item-16" className="border border-gray-200 rounded-lg px-6">
+              <AccordionTrigger className="text-left font-semibold text-lg py-6 hover:no-underline">
                 How can I contact H&H Donations for other questions?
               </AccordionTrigger>
               <AccordionContent className="text-gray-600 pb-6">
@@ -169,7 +178,7 @@ function FAQ() {
       </section>
 
       {/* Contact Section */}
-      <section className="pt-8 pb-16 px-8 bg-white">
+      <section className="pt-8 pb-16 px-8">
         <div className="max-w-4xl mx-auto">
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-16 text-center">

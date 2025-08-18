@@ -54,8 +54,11 @@
       "Bash(pkill:*)",
       "Bash(git checkout:*)",
       "Bash(npm run dev:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "WebFetch(domain:developer.sensoneo.com)",
+      "WebFetch(domain:unsplash.com)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }

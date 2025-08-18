@@ -1,11 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { BinsProvider } from './contexts/BinsContext';
 import { PickupRequestsProvider } from './contexts/PickupRequestsContext';
 import { BalesProvider } from './contexts/BalesContext';
 import { DriversProvider } from './contexts/DriversContext';
 import { ContainersProvider } from './contexts/ContainersContext';
+import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsContext';
 import Layout from './components/Layout';
+import ResponsiveLayout from './components/ResponsiveLayout';
 import AdminLayout from './components/AdminLayout';
 import Dashboard from './pages/Dashboard';
 import FindBin from './pages/FindBin';
@@ -23,35 +26,51 @@ import PickupRequests from './pages/admin/PickupRequests';
 import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
 import RecoverData from './pages/admin/RecoverData';
 import DiagnosticPage from './pages/admin/DiagnosticPage';
+import SensorTest from './pages/admin/SensorTest';
 import FAQ from './pages/FAQ';
+import WhatToDonate from './pages/WhatToDonate';
+import OurStory from './pages/OurStory';
+import Partnerships from './pages/Partnerships';
+import PartnerApplication from './pages/PartnerApplication';
+import PartnerApplications from './pages/admin/PartnerApplications';
 import Footer from './components/Footer';
 import { NetworkStatus } from './components/NetworkStatus';
+import ScrollToTop from './components/ScrollToTop';
+import ScrollToTopButton from './components/ScrollToTopButton';
+import './utils/seedData';
+import './utils/dataExportImport';
 
 function App() {
   return (
-    <BinsProvider>
-      <PickupRequestsProvider>
-        <BalesProvider>
-          <ContainersProvider>
-            <DriversProvider>
-              <Router>
-              <NetworkStatus />
-          <Routes>
+    <HelmetProvider>
+      <BinsProvider>
+        <PickupRequestsProvider>
+          <BalesProvider>
+            <ContainersProvider>
+              <DriversProvider>
+                <PartnerApplicationsProvider>
+                  <Router>
+                <ScrollToTop />
+                <ScrollToTopButton />
+                <NetworkStatus />
+            <Routes>
           {/* Public Routes */}
-          <Route element={<Layout />}>
+          <Route element={<ResponsiveLayout />}>
             <Route path="/home" element={<Dashboard />} />
             <Route path="/find-bin" element={<FindBin />} />
             <Route path="/request-pickup" element={<RequestPickup />} />
-            <Route path="/what-to-donate" element={<div><div className="px-8 pt-10 pb-10"><h1 className="text-3xl font-bold">What to Donate</h1><p className="mt-4">Coming soon...</p></div><Footer /></div>} />
-            <Route path="/our-story" element={<div><div className="px-8 pt-10 pb-10"><h1 className="text-3xl font-bold">Our Story</h1><p className="mt-4">Coming soon...</p></div><Footer /></div>} />
+            <Route path="/what-to-donate" element={<WhatToDonate />} />
+            <Route path="/our-story" element={<OurStory />} />
+            <Route path="/partnerships" element={<Partnerships />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-of-service" element={<TermsOfService />} />
+            <Route path="/partner-application" element={<PartnerApplication />} />
           </Route>
           
           {/* Admin Routes */}
-          <Route element={<Layout />}>
+          <Route element={<ResponsiveLayout />}>
             <Route path="/login" element={<AdminLogin />} />
           </Route>
           <Route element={<AdminLayout />}>
@@ -62,18 +81,22 @@ function App() {
             <Route path="/admin/pickup-requests/route-generator" element={<PickupRouteGenerator />} />
             <Route path="/admin/bales" element={<BaleManagement />} />
             <Route path="/admin/containers" element={<ContainerManagement />} />
+            <Route path="/admin/partner-applications" element={<PartnerApplications />} />
             <Route path="/admin/recover" element={<RecoverData />} />
             <Route path="/admin/diagnostic" element={<DiagnosticPage />} />
+            <Route path="/admin/sensor-test" element={<SensorTest />} />
           </Route>
           
           <Route path="/" element={<Navigate to="/home" replace />} />
           </Routes>
-              </Router>
-            </DriversProvider>
-          </ContainersProvider>
-        </BalesProvider>
-      </PickupRequestsProvider>
-    </BinsProvider>
+                  </Router>
+                </PartnerApplicationsProvider>
+              </DriversProvider>
+            </ContainersProvider>
+          </BalesProvider>
+        </PickupRequestsProvider>
+      </BinsProvider>
+    </HelmetProvider>
   );
 }
 

@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MapPin, Navigation, Search, ExternalLink } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { MapPin, Navigation, Search, ExternalLink, AlertCircle } from 'lucide-react';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { useBins, BinLocation } from '@/contexts/BinsContext';
+import SEO from '@/components/SEO';
 
 const FindBin = () => {
   const [selectedBin, setSelectedBin] = useState<BinLocation | null>(null);
@@ -16,6 +18,9 @@ const FindBin = () => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string>('');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const binRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -36,7 +41,7 @@ const FindBin = () => {
 
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
-    setIsLoading(false);
+    // Don't set isLoading here - it's handled by LoadScript
   }, []);
 
   const onUnmount = useCallback(() => {
@@ -73,6 +78,19 @@ const FindBin = () => {
     }
   };
 
+  // Add a timeout to handle stuck loading states
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (isLoading && !mapsLoaded) {
+        console.warn('Maps loading timeout - forcing load complete');
+        setIsLoading(false);
+        setLoadError('Maps took too long to load. Some features may be limited.');
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading, mapsLoaded]);
+
   // Update nearby bins when user location changes
   useEffect(() => {
     if (userLocation) {
@@ -96,6 +114,7 @@ const FindBin = () => {
 
   // Get user's current location
   const getUserLocation = () => {
+    setLocationError('');
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -111,11 +130,11 @@ const FindBin = () => {
         },
         (error) => {
           console.error('Error getting location:', error);
-          alert('Unable to get your location. Please enable location services.');
+          setLocationError('Unable to get your location. Please enable location services.');
         }
       );
     } else {
-      alert('Geolocation is not supported by your browser.');
+      setLocationError('Geolocation is not supported by your browser.');
     }
   };
 
@@ -154,8 +173,9 @@ const FindBin = () => {
 
   // Handle manual search (when pressing Enter or clicking Search)
   const handleSearch = () => {
-    if (!searchQuery) return;
+    if (!searchQuery || !mapsLoaded) return;
     
+    setLocationError('');
     // If autocomplete hasn't triggered, use geocoding service
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address: searchQuery }, (results, status) => {
@@ -173,7 +193,7 @@ const FindBin = () => {
           map.setZoom(14);
         }
       } else {
-        alert('Address not found. Please try a different search.');
+        setLocationError('Address not found. Please try a different search.');
       }
     });
   };
@@ -189,17 +209,58 @@ const FindBin = () => {
   };
 
   return (
-    <LoadScript 
+    <>
+      <SEO 
+        title="Find Donation Bins Near You"
+        description="Locate H&H Donations clothing bins in your area. Use our interactive map to find the nearest donation bin, check availability, and get directions. Available 24/7 for your convenience."
+        keywords="donation bins near me, clothing donation locations, find donation bin, charity bins, H&H Donations map, textile recycling bins"
+        url="/find-bin"
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "Service",
+          "name": "H&H Donations Bin Locator",
+          "description": "Interactive map to find donation bins",
+          "provider": {
+            "@type": "Organization",
+            "name": "H&H Donations"
+          },
+          "areaServed": {
+            "@type": "Country",
+            "name": "Canada"
+          },
+          "serviceType": "Donation Collection"
+        }}
+      />
+      <LoadScript 
       googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
       libraries={['places']}
       loadingElement={<LoadingSkeleton type="findbin" />}
-      onLoad={() => setIsLoading(false)}
-      onError={() => {
-        console.error('Error loading Google Maps');
+      onLoad={() => {
+        setMapsLoaded(true);
+        setIsLoading(false);
+      }}
+      onError={(error) => {
+        console.error('Error loading Google Maps:', error);
+        setLoadError('Failed to load Google Maps. Please check your internet connection.');
         setIsLoading(false);
       }}
     >
-      {isLoading ? (
+      {loadError ? (
+        <div className="flex items-center justify-center h-screen">
+          <Card className="p-6 max-w-md">
+            <CardContent>
+              <h2 className="text-xl font-semibold text-red-600 mb-2">Map Loading Error</h2>
+              <p className="text-gray-600">{loadError}</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="mt-4"
+              >
+                Reload Page
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      ) : isLoading ? (
         <LoadingSkeleton type="findbin" />
       ) : (
         <div className="flex flex-col h-screen">
@@ -238,12 +299,22 @@ const FindBin = () => {
               <Button 
                 variant="outline" 
                 onClick={getUserLocation}
-                className="flex items-center justify-center gap-2 w-full h-10"
+                className="flex items-center justify-center gap-0.5 w-full h-10"
               >
                 <Navigation className="w-4 h-4" />
                 Use My Location
               </Button>
             </div>
+            
+            {/* Location Error Alert */}
+            {locationError && (
+              <Alert className="border-red-500 bg-red-50 flex items-center gap-3">
+                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                <AlertDescription className="text-red-800 flex-1">
+                  {locationError}
+                </AlertDescription>
+              </Alert>
+            )}
             
             {/* Map */}
             <Card className="flex-1">
@@ -286,6 +357,7 @@ const FindBin = () => {
                         origin: new google.maps.Point(0, 0),
                         anchor: new google.maps.Point(15, 30)
                       }}
+                      opacity={bin.status === 'Unavailable' ? 0.4 : 1}
                     />
                   ))}
 
@@ -324,56 +396,76 @@ const FindBin = () => {
               <CardContent className="flex-1 overflow-hidden p-0 px-4 pb-6">
                 <ScrollArea className="h-full" ref={scrollAreaRef}>
                   <div className="space-y-3 pr-4 pl-1 py-2">
-                    {nearbyBins.map((bin) => (
-                      <div 
-                        key={bin.id}
-                        ref={(el) => { binRefs.current[bin.id] = el; }}
-                        className={`p-4 border rounded-lg transition-all duration-300 ${
-                          selectedBin?.id === bin.id 
-                            ? 'bg-green-50 border-green-600 shadow-md ring-2 ring-green-200' 
-                            : 'hover:bg-gray-50 border-gray-200'
-                        }`}
-                      >
+                    {nearbyBins.map((bin) => {
+                      const isUnavailable = bin.status === 'Unavailable';
+                      return (
                         <div 
-                          className="cursor-pointer"
-                          onClick={() => {
-                            setSelectedBin(bin);
-                            if (map) {
-                              map.panTo({ lat: bin.lat, lng: bin.lng });
-                              map.setZoom(15);
-                            }
-                          }}
+                          key={bin.id}
+                          ref={(el) => { binRefs.current[bin.id] = el; }}
+                          className={`p-4 border rounded-lg transition-all duration-300 ${
+                            isUnavailable
+                              ? 'bg-gray-100 border-gray-300 opacity-60'
+                              : selectedBin?.id === bin.id 
+                                ? 'bg-green-50 border-green-600 shadow-md ring-2 ring-green-200' 
+                                : 'hover:bg-gray-50 border-gray-200'
+                          }`}
                         >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h4 className="font-semibold text-base">{bin.locationName}</h4>
-                              <p className="text-sm text-gray-500 mt-1">{bin.address}</p>
-                              <p className={`text-sm font-medium ${getStatusColor(bin.status)} mt-2`}>
-                                {bin.status}
-                              </p>
-                            </div>
-                            {bin.distance && (
-                              <div className="text-right">
-                                <span className="text-base font-medium">{bin.distance} km</span>
+                          <div 
+                            className={isUnavailable ? "cursor-not-allowed" : "cursor-pointer"}
+                            onClick={() => {
+                              if (!isUnavailable) {
+                                setSelectedBin(bin);
+                                if (map) {
+                                  map.panTo({ lat: bin.lat, lng: bin.lng });
+                                  map.setZoom(15);
+                                }
+                              }
+                            }}
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h4 className={`font-semibold text-base ${isUnavailable ? 'text-gray-500' : ''}`}>
+                                  {bin.locationName}
+                                </h4>
+                                <p className={`text-sm mt-1 ${isUnavailable ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {bin.address}
+                                </p>
+                                <p className={`text-sm font-medium ${getStatusColor(bin.status)} mt-2`}>
+                                  {bin.status}
+                                </p>
                               </div>
+                              {bin.distance && (
+                                <div className="text-right">
+                                  <span className={`text-base font-medium ${isUnavailable ? 'text-gray-400' : ''}`}>
+                                    {bin.distance} km
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-3 pt-3 border-t">
+                            {isUnavailable ? (
+                              <span className="inline-flex items-center gap-2 text-sm text-gray-400">
+                                <Navigation className="w-4 h-4" />
+                                Bin Currently Unavailable
+                              </span>
+                            ) : (
+                              <a
+                                href={`https://www.google.com/maps/dir/?api=1&destination=${bin.lat},${bin.lng}&destination_place_id=${encodeURIComponent(bin.locationName)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Navigation className="w-4 h-4" />
+                                Get Directions
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
                             )}
                           </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t">
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${bin.lat},${bin.lng}&destination_place_id=${encodeURIComponent(bin.locationName)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Navigation className="w-4 h-4" />
-                            Get Directions
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </CardContent>
@@ -382,7 +474,8 @@ const FindBin = () => {
         </div>
       </div>
       )}
-    </LoadScript>
+      </LoadScript>
+    </>
   );
 };
 
