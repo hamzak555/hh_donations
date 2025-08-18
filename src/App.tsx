@@ -1,67 +1,54 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
-// Test all localStorage contexts
-import { BinsProvider } from './contexts/BinsContext';
-import { PickupRequestsProvider } from './contexts/PickupRequestsContext';
-import { BalesProvider } from './contexts/BalesContext';
-import { DriversProvider } from './contexts/DriversContext';
-import { ContainersProvider } from './contexts/ContainersContext';
+import { BinsProvider } from './contexts/BinsContextSupabase';
+import { PickupRequestsProvider } from './contexts/PickupRequestsContextSupabase';
+import { BalesProvider } from './contexts/BalesContextSupabase';
+import { DriversProvider } from './contexts/DriversContextSupabase';
+import { ContainersProvider } from './contexts/ContainersContextSupabase';
 import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsContext';
-// Test basic layout components
+import Layout from './components/Layout';
 import ResponsiveLayout from './components/ResponsiveLayout';
 import AdminLayout from './components/AdminLayout';
+import ErrorBoundary from './components/ErrorBoundary';
+import Dashboard from './pages/Dashboard';
+import FindBin from './pages/FindBin';
+import RequestPickup from './pages/RequestPickup';
+import Contact from './pages/Contact';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
+import AdminLogin from './pages/admin/AdminLogin';
+import BinsManagement from './pages/admin/BinsManagement';
+import DriversManagement from './pages/admin/DriversManagement';
+import RouteCreation from './pages/admin/RouteCreation';
+import BaleManagement from './pages/admin/BaleManagement';
+import ContainerManagement from './pages/admin/ContainerManagement';
+import PickupRequests from './pages/admin/PickupRequests';
+import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
+import RecoverData from './pages/admin/RecoverData';
+import DiagnosticPage from './pages/admin/DiagnosticPage';
+import SensorTest from './pages/admin/SensorTest';
+import SupabaseMigration from './pages/admin/SupabaseMigration';
+import UserManagement from './pages/admin/UserManagement';
+import FAQ from './pages/FAQ';
+import WhatToDonate from './pages/WhatToDonate';
+import OurStory from './pages/OurStory';
+import Partnerships from './pages/Partnerships';
+import PartnerApplication from './pages/PartnerApplication';
+import PartnerApplications from './pages/admin/PartnerApplications';
+import Footer from './components/Footer';
 import { NetworkStatus } from './components/NetworkStatus';
 import ScrollToTop from './components/ScrollToTop';
 import ScrollToTopButton from './components/ScrollToTopButton';
-// Test simple bins page that uses localStorage contexts
-import { useBins } from './contexts/BinsContext';
-import ErrorBoundary from './components/ErrorBoundary';
+import './utils/seedData';
+import './utils/dataExportImport';
 
-// Simple test component
-function TestHome() {
-  return (
-    <div style={{ padding: '40px', backgroundColor: '#f0f0f0', minHeight: '100vh' }}>
-      <h1>🏠 Step 6: Testing with Real Admin Page</h1>
-      <p>If you see this, basic components work. Check the admin link to test BinsManagement.</p>
-      <div style={{ backgroundColor: '#e8f5e8', padding: '10px', borderRadius: '5px', margin: '10px 0' }}>
-        ✅ Testing with simple bins page using localStorage contexts
-      </div>
-      <p><strong>Next test:</strong> Try clicking "Bins" in the sidebar to test the simple bins page.</p>
-    </div>
-  );
-}
-
-// Simple bins test page using localStorage contexts
-function SimpleBinsPage() {
-  const { bins } = useBins();
-  
-  return (
-    <div style={{ padding: '40px' }}>
-      <h1>🗂️ Simple Bins Test Page</h1>
-      <p>If you see this, the bins context is working with localStorage!</p>
-      <div style={{ backgroundColor: '#e8f5e8', padding: '15px', borderRadius: '5px', margin: '20px 0' }}>
-        <strong>✅ Found {bins.length} bins in localStorage</strong>
-      </div>
-      <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px' }}>
-        <h3>Bins:</h3>
-        {bins.length === 0 ? (
-          <p>No bins found</p>
-        ) : (
-          <ul>
-            {bins.slice(0, 5).map(bin => (
-              <li key={bin.id}>{bin.binNumber} - {bin.locationName} ({bin.status})</li>
-            ))}
-            {bins.length > 5 && <li>... and {bins.length - 5} more</li>}
-          </ul>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PageTestApp() {
-  console.log('🚀 Page Test App is rendering...');
+function App() {
+  console.log('App component rendering...');
+  console.log('Environment check:', {
+    SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'
+  });
   
   return (
     <ErrorBoundary>
@@ -77,17 +64,42 @@ function PageTestApp() {
                       <ScrollToTopButton />
                       <NetworkStatus />
                       <Routes>
-                        {/* Test ResponsiveLayout for public */}
+                        {/* Public Routes */}
                         <Route element={<ResponsiveLayout />}>
-                          <Route path="/" element={<TestHome />} />
+                          <Route path="/home" element={<Dashboard />} />
+                          <Route path="/find-bin" element={<FindBin />} />
+                          <Route path="/request-pickup" element={<RequestPickup />} />
+                          <Route path="/what-to-donate" element={<WhatToDonate />} />
+                          <Route path="/our-story" element={<OurStory />} />
+                          <Route path="/partnerships" element={<Partnerships />} />
+                          <Route path="/faq" element={<FAQ />} />
+                          <Route path="/contact" element={<Contact />} />
+                          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                          <Route path="/terms-of-service" element={<TermsOfService />} />
+                          <Route path="/partner-application" element={<PartnerApplication />} />
                         </Route>
                         
-                        {/* Test AdminLayout with simple bins page */}
+                        {/* Admin Routes */}
+                        <Route element={<ResponsiveLayout />}>
+                          <Route path="/login" element={<AdminLogin />} />
+                        </Route>
                         <Route element={<AdminLayout />}>
-                          <Route path="/admin/bins" element={<SimpleBinsPage />} />
+                          <Route path="/admin/bins" element={<BinsManagement />} />
+                          <Route path="/admin/drivers" element={<DriversManagement />} />
+                          <Route path="/admin/drivers/route-creation" element={<RouteCreation />} />
+                          <Route path="/admin/pickup-requests" element={<PickupRequests />} />
+                          <Route path="/admin/pickup-requests/route-generator" element={<PickupRouteGenerator />} />
+                          <Route path="/admin/bales" element={<BaleManagement />} />
+                          <Route path="/admin/containers" element={<ContainerManagement />} />
+                          <Route path="/admin/partner-applications" element={<PartnerApplications />} />
+                          <Route path="/admin/recover" element={<RecoverData />} />
+                          <Route path="/admin/diagnostic" element={<DiagnosticPage />} />
+                          <Route path="/admin/sensor-test" element={<SensorTest />} />
+                          <Route path="/admin/supabase-migration" element={<SupabaseMigration />} />
+                          <Route path="/admin/users" element={<UserManagement />} />
                         </Route>
                         
-                        <Route path="*" element={<Navigate to="/" replace />} />
+                        <Route path="/" element={<Navigate to="/home" replace />} />
                       </Routes>
                     </Router>
                   </PartnerApplicationsProvider>
@@ -101,4 +113,4 @@ function PageTestApp() {
   );
 }
 
-export default PageTestApp;
+export default App;
