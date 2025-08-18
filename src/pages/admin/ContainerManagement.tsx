@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { LoadScript, Autocomplete } from '@react-google-maps/api';
-import { useContainers } from '@/contexts/ContainersContext';
-import { useBales } from '@/contexts/BalesContext';
+import { useContainers } from '@/contexts/ContainersContextSupabase';
+import { useBales } from '@/contexts/BalesContextSupabase';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,8 +79,8 @@ import {
   FileCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Bale, BaleStatus } from '@/contexts/BalesContext';
-import { DocumentEntry } from '@/contexts/ContainersContext';
+import { Bale, BaleStatus } from '@/contexts/BalesContextSupabase';
+import { DocumentEntry } from '@/contexts/ContainersContextSupabase';
 import { Progress } from "@/components/ui/progress";
 
 // Photo Lightbox Component
