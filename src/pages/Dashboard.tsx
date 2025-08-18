@@ -69,14 +69,14 @@ function Dashboard() {
               {/* Quick Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button size="lg" className="text-lg px-8 py-6" asChild>
-                  <a href="/find-bin" className="flex items-center gap-0.5">
-                    <MapPin className="h-5 w-5" />
-                    Find a Bin
+                  <a href="/request-pickup" className="flex items-center gap-0.5">
+                    <Package className="h-5 w-5" />
+                    Request a Pickup
                   </a>
                 </Button>
                 <Button variant="outline" size="lg" className="text-lg px-8 py-6" asChild>
-                  <a href="/our-story" className="flex items-center gap-0.5">
-                    Our Story
+                  <a href="/partnerships" className="flex items-center gap-0.5">
+                    Become a Partner
                     <ArrowRight className="h-5 w-5" />
                   </a>
                 </Button>

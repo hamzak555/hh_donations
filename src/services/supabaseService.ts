@@ -576,28 +576,28 @@ export class SupabaseService {
 
 // Export individual services and create default export instance
 export const supabaseService = {
-  getBins: () => BinsService.getAll(),
-  addBin: (bin: any) => BinsService.create(bin),
-  updateBin: (id: string, updates: any) => BinsService.update(id, updates),
-  deleteBin: (id: string) => BinsService.delete(id),
+  getBins: () => BinsService.getAllBins(),
+  addBin: (bin: any) => BinsService.createBin(bin),
+  updateBin: (id: string, updates: any) => BinsService.updateBin(id, updates),
+  deleteBin: (id: string) => BinsService.deleteBin(id),
   
-  getDrivers: () => DriversService.getAll(),
-  addDriver: (driver: any) => DriversService.create(driver),
-  updateDriver: (id: string, updates: any) => DriversService.update(id, updates),
-  deleteDriver: (id: string) => DriversService.delete(id),
+  getDrivers: () => DriversService.getAllDrivers(),
+  addDriver: (driver: any) => DriversService.createDriver(driver),
+  updateDriver: (id: string, updates: any) => DriversService.updateDriver(id, updates),
+  deleteDriver: (id: string) => DriversService.deleteDriver(id),
   
-  getContainers: () => ContainersService.getAll(),
-  addContainer: (container: any) => ContainersService.create(container),
-  updateContainer: (id: string, updates: any) => ContainersService.update(id, updates),
-  deleteContainer: (id: string) => ContainersService.delete(id),
+  getContainers: () => ContainersService.getAllContainers(),
+  addContainer: (container: any) => ContainersService.createContainer(container),
+  updateContainer: (id: string, updates: any) => ContainersService.updateContainer(id, updates),
+  deleteContainer: (id: string) => ContainersService.deleteContainer(id),
   
-  getBales: () => BalesService.getAll(),
-  addBale: (bale: any) => BalesService.create(bale),
-  updateBale: (id: string, updates: any) => BalesService.update(id, updates),
-  deleteBale: (id: string) => BalesService.delete(id),
+  getBales: () => BalesService.getAllBales(),
+  addBale: (bale: any) => BalesService.createBale(bale),
+  updateBale: (id: string, updates: any) => BalesService.updateBale(id, updates),
+  deleteBale: (id: string) => BalesService.deleteBale(id),
   
-  getPickupRequests: () => PickupRequestsService.getAll(),
-  addPickupRequest: (request: any) => PickupRequestsService.create(request),
-  updatePickupRequest: (id: string, updates: any) => PickupRequestsService.update(id, updates),
-  deletePickupRequest: (id: string) => PickupRequestsService.delete(id)
+  getPickupRequests: () => PickupRequestsService.getAllPickupRequests(),
+  addPickupRequest: (request: any) => PickupRequestsService.createPickupRequest(request),
+  updatePickupRequest: (id: string, updates: any) => PickupRequestsService.updatePickupRequest(id, updates),
+  deletePickupRequest: (id: string) => PickupRequestsService.deletePickupRequest(id)
 };

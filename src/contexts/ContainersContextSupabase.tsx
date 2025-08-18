@@ -31,28 +31,23 @@ export interface Container {
   vesselName?: string;
   bookingNumber?: string;
   notes?: string;
+  documents?: string[] | DocumentEntry[];
 }
 
 interface ContainersContextType {
   containers: Container[];
-  setContainers: React.Dispatch<React.SetStateAction<Container[]>>;
-  addContainer: (container: Omit<Container, 'id' | 'containerNumber' | 'createdDate' | 'totalWeight'>) => Promise<void>;
-  updateContainer: (id: string, updates: Partial<Container>) => Promise<void>;
-  deleteContainer: (id: string) => Promise<void>;
+  addContainer: (container: Omit<Container, 'id' | 'containerNumber' | 'createdDate' | 'totalWeight'>) => void;
+  updateContainer: (id: string, updates: Partial<Container>) => void;
+  deleteContainer: (id: string) => void;
   generateContainerNumber: () => string;
-  getWarehouseContainers: () => Container[];
-  getShippedContainers: () => Container[];
-  assignBaleToContainer: (containerId: string, baleId: string, baleWeight: number) => Promise<void>;
-  removeBaleFromContainer: (containerId: string, baleId: string, baleWeight: number) => Promise<void>;
+  assignBaleToContainer: (containerId: string, baleId: string) => void;
+  removeBaleFromContainer: (containerId: string, baleId: string) => void;
   addNoteToTimeline: (containerId: string, noteText: string) => void;
   addDocuments: (containerId: string, documents: DocumentEntry[]) => void;
   deleteDocument: (containerId: string, documentId: string) => void;
   markAsShipped: (id: string) => void;
   unmarkAsShipped: (id: string) => void;
   getContainerByBaleId: (baleId: string) => Container | undefined;
-  refreshContainers: () => Promise<void>;
-  isLoading: boolean;
-  error: string | null;
 }
 
 const ContainersContext = createContext<ContainersContextType | undefined>(undefined);
@@ -168,111 +163,96 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     loadContainers();
   }, [loadContainers]);
 
-  const addContainer = async (containerData: Omit<Container, 'id' | 'containerNumber' | 'createdDate' | 'totalWeight'>) => {
-    try {
-      const createdDate = new Date().toISOString().split('T')[0];
-      const newContainer: Container = {
-        ...containerData,
-        id: String(Date.now()),
-        containerNumber: generateContainerNumber(),
-        createdDate,
-        totalWeight: 0, // Will be calculated from bales
-        assignedBales: containerData.assignedBales || []
+  const addContainer = (containerData: Omit<Container, 'id' | 'containerNumber' | 'createdDate' | 'totalWeight'>) => {
+    const createdDate = new Date().toISOString().split('T')[0];
+    const newContainer: Container = {
+      ...containerData,
+      id: String(Date.now()),
+      containerNumber: generateContainerNumber(),
+      createdDate,
+      totalWeight: 0, // Will be calculated from bales
+      assignedBales: containerData.assignedBales || []
+    };
+
+    // Update local state immediately for responsive UI
+    const newContainers = [...containers, newContainer];
+    setContainers(newContainers);
+    SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
+
+    // Sync to Supabase in background if available
+    if (USE_SUPABASE) {
+      const dbContainer = {
+        id: newContainer.id,
+        container_number: newContainer.containerNumber,
+        type: 'Steel' as const, // Default type
+        capacity: 1000, // Default capacity
+        current_weight: newContainer.totalWeight,
+        location: newContainer.destination,
+        status: mapAppStatusToDbStatus(newContainer.status),
+        last_pickup: newContainer.shipmentDate
       };
-
-      if (USE_SUPABASE) {
-        // Convert to database format
-        const dbContainer = {
-          id: newContainer.id,
-          container_number: newContainer.containerNumber,
-          type: 'Steel' as const, // Default type
-          capacity: 1000, // Default capacity
-          current_weight: newContainer.totalWeight,
-          location: newContainer.destination,
-          status: mapAppStatusToDbStatus(newContainer.status),
-          last_pickup: newContainer.shipmentDate
-        };
-        
-        await SupabaseService.containers.createContainer(dbContainer);
-        await loadContainers(); // Reload to get the latest data
-      } else {
-        const newContainers = [...containers, newContainer];
-        setContainers(newContainers);
-        SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
-      }
-    } catch (err) {
-      console.error('[ContainersProvider] Error adding container:', err);
-      throw err;
+      
+      SupabaseService.containers.createContainer(dbContainer).catch(err => {
+        console.error('[ContainersProvider] Error syncing container to Supabase:', err);
+      });
     }
   };
 
-  const updateContainer = async (id: string, updates: Partial<Container>) => {
-    try {
-      if (USE_SUPABASE) {
-        // Convert updates to database format
-        const dbUpdates: any = {};
-        if (updates.containerNumber !== undefined) dbUpdates.container_number = updates.containerNumber;
-        if (updates.totalWeight !== undefined) dbUpdates.current_weight = updates.totalWeight;
-        if (updates.destination !== undefined) dbUpdates.location = updates.destination;
-        if (updates.status !== undefined) dbUpdates.status = mapAppStatusToDbStatus(updates.status);
-        if (updates.shipmentDate !== undefined) dbUpdates.last_pickup = updates.shipmentDate;
-        
-        await SupabaseService.containers.updateContainer(id, dbUpdates);
-        await loadContainers(); // Reload to get the latest data
-      } else {
-        const newContainers = containers.map(c => 
-          c.id === id ? { ...c, ...updates } : c
-        );
-        setContainers(newContainers);
-        SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
-      }
-    } catch (err) {
-      console.error('[ContainersProvider] Error updating container:', err);
-      throw err;
+  const updateContainer = (id: string, updates: Partial<Container>) => {
+    // Update local state immediately
+    const newContainers = containers.map(c => 
+      c.id === id ? { ...c, ...updates } : c
+    );
+    setContainers(newContainers);
+    SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
+
+    // Sync to Supabase in background if available
+    if (USE_SUPABASE) {
+      const dbUpdates: any = {};
+      if (updates.containerNumber !== undefined) dbUpdates.container_number = updates.containerNumber;
+      if (updates.totalWeight !== undefined) dbUpdates.current_weight = updates.totalWeight;
+      if (updates.destination !== undefined) dbUpdates.location = updates.destination;
+      if (updates.status !== undefined) dbUpdates.status = mapAppStatusToDbStatus(updates.status);
+      if (updates.shipmentDate !== undefined) dbUpdates.last_pickup = updates.shipmentDate;
+      
+      SupabaseService.containers.updateContainer(id, dbUpdates).catch(err => {
+        console.error('[ContainersProvider] Error syncing container update to Supabase:', err);
+      });
     }
   };
 
-  const deleteContainer = async (id: string) => {
-    try {
-      if (USE_SUPABASE) {
-        await SupabaseService.containers.deleteContainer(id);
-        await loadContainers(); // Reload to get the latest data
-      } else {
-        const newContainers = containers.filter(c => c.id !== id);
-        setContainers(newContainers);
-        SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
-      }
-    } catch (err) {
-      console.error('[ContainersProvider] Error deleting container:', err);
-      throw err;
+  const deleteContainer = (id: string) => {
+    // Update local state immediately
+    const newContainers = containers.filter(c => c.id !== id);
+    setContainers(newContainers);
+    SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
+
+    // Sync to Supabase in background if available
+    if (USE_SUPABASE) {
+      SupabaseService.containers.deleteContainer(id).catch(err => {
+        console.error('[ContainersProvider] Error syncing container deletion to Supabase:', err);
+      });
     }
   };
 
-  const getWarehouseContainers = () => {
-    return containers.filter(c => c.status === 'Warehouse');
-  };
 
-  const getShippedContainers = () => {
-    return containers.filter(c => c.status === 'Shipped' || c.status === 'In Transit' || c.status === 'Delivered');
-  };
-
-  const assignBaleToContainer = async (containerId: string, baleId: string, baleWeight: number) => {
+  const assignBaleToContainer = (containerId: string, baleId: string) => {
     const container = containers.find(c => c.id === containerId);
-    if (!container) throw new Error('Container not found');
+    if (!container) return;
 
-    await updateContainer(containerId, {
-      assignedBales: [...container.assignedBales, baleId],
-      totalWeight: container.totalWeight + baleWeight
-    });
+    if (!container.assignedBales.includes(baleId)) {
+      updateContainer(containerId, {
+        assignedBales: [...container.assignedBales, baleId]
+      });
+    }
   };
 
-  const removeBaleFromContainer = async (containerId: string, baleId: string, baleWeight: number) => {
+  const removeBaleFromContainer = (containerId: string, baleId: string) => {
     const container = containers.find(c => c.id === containerId);
-    if (!container) throw new Error('Container not found');
+    if (!container) return;
 
-    await updateContainer(containerId, {
-      assignedBales: container.assignedBales.filter(id => id !== baleId),
-      totalWeight: Math.max(0, container.totalWeight - baleWeight)
+    updateContainer(containerId, {
+      assignedBales: container.assignedBales.filter(id => id !== baleId)
     });
   };
 
@@ -321,19 +301,13 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     return containers.find(container => container.assignedBales.includes(baleId));
   };
 
-  const refreshContainers = async () => {
-    await loadContainers();
-  };
 
   const value = {
     containers,
-    setContainers,
     addContainer,
     updateContainer,
     deleteContainer,
     generateContainerNumber,
-    getWarehouseContainers,
-    getShippedContainers,
     assignBaleToContainer,
     removeBaleFromContainer,
     addNoteToTimeline,
@@ -341,10 +315,7 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     deleteDocument,
     markAsShipped,
     unmarkAsShipped,
-    getContainerByBaleId,
-    refreshContainers,
-    isLoading,
-    error
+    getContainerByBaleId
   };
 
   return (
