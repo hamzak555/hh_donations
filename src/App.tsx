@@ -10,6 +10,7 @@ import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsConte
 import Layout from './components/Layout';
 import ResponsiveLayout from './components/ResponsiveLayout';
 import AdminLayout from './components/AdminLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import FindBin from './pages/FindBin';
 import RequestPickup from './pages/RequestPickup';
@@ -43,8 +44,15 @@ import './utils/seedData';
 import './utils/dataExportImport';
 
 function App() {
+  console.log('App component rendering...');
+  console.log('Environment check:', {
+    SUPABASE_URL: process.env.REACT_APP_SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.REACT_APP_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET'
+  });
+  
   return (
-    <HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
       <BinsProvider>
         <PickupRequestsProvider>
           <BalesProvider>
@@ -101,6 +109,7 @@ function App() {
         </PickupRequestsProvider>
       </BinsProvider>
     </HelmetProvider>
+    </ErrorBoundary>
   );
 }
 
