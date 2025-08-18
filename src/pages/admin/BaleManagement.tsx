@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useBales, Bale, BaleQuality, BaleStatus, PaymentMethod } from '@/contexts/BalesContextSupabase';
+import { useBales, Bale, BaleQuality, BaleStatus, PaymentMethod } from '@/contexts/BalesContext';
 import {
   Table,
   TableBody,

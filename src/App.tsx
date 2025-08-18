@@ -1,12 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
-// Use Supabase contexts for consistent data source
-import { BinsProvider } from './contexts/BinsContextSupabase';
-import { PickupRequestsProvider } from './contexts/PickupRequestsContextSupabase';
-import { BalesProvider } from './contexts/BalesContextSupabase';
-import { DriversProvider } from './contexts/DriversContextSupabase';
-import { ContainersProvider } from './contexts/ContainersContextSupabase';
+// Use localStorage contexts until Supabase environment variables are set up
+import { BinsProvider } from './contexts/BinsContext';
+import { PickupRequestsProvider } from './contexts/PickupRequestsContext';
+import { BalesProvider } from './contexts/BalesContext';
+import { DriversProvider } from './contexts/DriversContext';
+import { ContainersProvider } from './contexts/ContainersContext';
 import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsContext';
 import Layout from './components/Layout';
 import ResponsiveLayout from './components/ResponsiveLayout';
