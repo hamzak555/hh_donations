@@ -36,7 +36,7 @@ export interface Container {
 interface ContainersContextType {
   containers: Container[];
   setContainers: React.Dispatch<React.SetStateAction<Container[]>>;
-  addContainer: (container: Container) => Promise<void>;
+  addContainer: (container: Omit<Container, 'id' | 'containerNumber' | 'createdDate' | 'totalWeight'>) => Promise<void>;
   updateContainer: (id: string, updates: Partial<Container>) => Promise<void>;
   deleteContainer: (id: string) => Promise<void>;
   generateContainerNumber: () => string;
@@ -168,25 +168,35 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     loadContainers();
   }, [loadContainers]);
 
-  const addContainer = async (container: Container) => {
+  const addContainer = async (containerData: Omit<Container, 'id' | 'containerNumber' | 'createdDate' | 'totalWeight'>) => {
     try {
+      const createdDate = new Date().toISOString().split('T')[0];
+      const newContainer: Container = {
+        ...containerData,
+        id: String(Date.now()),
+        containerNumber: generateContainerNumber(),
+        createdDate,
+        totalWeight: 0, // Will be calculated from bales
+        assignedBales: containerData.assignedBales || []
+      };
+
       if (USE_SUPABASE) {
         // Convert to database format
         const dbContainer = {
-          id: container.id,
-          container_number: container.containerNumber,
+          id: newContainer.id,
+          container_number: newContainer.containerNumber,
           type: 'Steel' as const, // Default type
           capacity: 1000, // Default capacity
-          current_weight: container.totalWeight,
-          location: container.destination,
-          status: mapAppStatusToDbStatus(container.status),
-          last_pickup: container.shipmentDate
+          current_weight: newContainer.totalWeight,
+          location: newContainer.destination,
+          status: mapAppStatusToDbStatus(newContainer.status),
+          last_pickup: newContainer.shipmentDate
         };
         
         await SupabaseService.containers.createContainer(dbContainer);
         await loadContainers(); // Reload to get the latest data
       } else {
-        const newContainers = [...containers, container];
+        const newContainers = [...containers, newContainer];
         setContainers(newContainers);
         SafeStorage.setItem(STORAGE_KEY, JSON.stringify(newContainers));
       }
