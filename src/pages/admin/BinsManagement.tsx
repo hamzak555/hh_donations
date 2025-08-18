@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import { useBins, BinLocation } from '@/contexts/BinsContext';
+import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
 import { useDrivers } from '@/contexts/DriversContext';
+import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 import {
   Table,
   TableBody,
@@ -69,11 +70,18 @@ function BinsManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedBin, setSelectedBin] = useState<Bin | null>(null);
   const [binToDelete, setBinToDelete] = useState<Bin | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    locationName: string;
+    address: string;
+    status: Bin['status'];
+    assignedDriver: string;
+    containerId?: number;
+  }>({
     locationName: '',
     address: '',
-    status: 'Available' as Bin['status'],
-    assignedDriver: 'none'
+    status: 'Available',
+    assignedDriver: 'none',
+    containerId: undefined
   });
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -97,6 +105,8 @@ function BinsManagement() {
   const [bulkDriverName, setBulkDriverName] = useState('');
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [, setCurrentTime] = useState(new Date());
+  const [sensorData, setSensorData] = useState<Map<number, MeasurementResponse>>(new Map());
+  const [isLoadingSensorData, setIsLoadingSensorData] = useState(false);
 
   // Update current time every minute to refresh "time since full" display
   useEffect(() => {
@@ -107,8 +117,191 @@ function BinsManagement() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch sensor data for bins that have container IDs
+  const fetchSensorData = async () => {
+    const binsWithSensors = bins.filter(bin => bin.containerId);
+    if (binsWithSensors.length === 0) {
+      setIsLoadingSensorData(false);
+      return;
+    }
+
+    setIsLoadingSensorData(true);
+    try {
+      const api = new SensoneoAPI();
+      const containerIds = binsWithSensors.map(bin => bin.containerId!);
+      
+      const measurements = await api.fetchBulkMeasurements(containerIds);
+      setSensorData(measurements);
+      
+      console.log('Sensor data fetched:', measurements.size, 'measurements');
+      
+      // Update bin statuses based on sensor data
+      measurements.forEach((measurement, containerId) => {
+        // Find ALL bins with this container ID (not just the first one)
+        const matchingBins = bins.filter(b => b.containerId === containerId);
+        
+        if (matchingBins.length > 0) {
+          console.log(`Container ID ${containerId} matches ${matchingBins.length} bin(s): ${matchingBins.map(b => b.binNumber).join(', ')}`);
+          
+          matchingBins.forEach(bin => {
+            const fillLevel = measurement.percentCalculated;
+            const newStatus = calculateDynamicStatus(fillLevel, bin.status);
+            
+            console.log(`BIN ${bin.binNumber} (ID: ${containerId}): Current status: ${bin.status}, Fill level: ${fillLevel}%, Calculated status: ${newStatus}`);
+            
+            // Only update if status has changed to avoid unnecessary re-renders
+            if (newStatus !== bin.status) {
+              console.log(`✓ Updating bin ${bin.binNumber} status from ${bin.status} to ${newStatus} (fill: ${fillLevel}%)`);
+              updateBin(bin.id, {
+                status: newStatus,
+                fillLevel: fillLevel,
+                batteryLevel: measurement.batteryStatus,
+                temperature: measurement.temperature,
+                lastSensorUpdate: measurement.measuredAt,
+                // Update fullSince timestamp when bin becomes full
+                fullSince: newStatus === 'Full' && bin.status !== 'Full' ? new Date().toISOString() : bin.fullSince
+              });
+            } else {
+              console.log(`- No status change needed for bin ${bin.binNumber}`);
+              // Update sensor data even if status hasn't changed
+              updateBin(bin.id, {
+                fillLevel: fillLevel,
+                batteryLevel: measurement.batteryStatus,
+                temperature: measurement.temperature,
+                lastSensorUpdate: measurement.measuredAt
+              });
+            }
+          });
+        } else {
+          console.log(`⚠️  No bin found for container ID: ${containerId}`);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to fetch sensor data:', error);
+    } finally {
+      setIsLoadingSensorData(false);
+    }
+  };
+
+  // Fetch sensor data on component mount and when bins with sensors change
+  useEffect(() => {
+    console.log('BinsManagement component mounted, bins count:', bins.length);
+    fetchSensorData();
+  }, []);
+
+  // Re-fetch sensor data when bins with container IDs change
+  useEffect(() => {
+    const binsWithSensors = bins.filter(bin => bin.containerId);
+    if (binsWithSensors.length > 0) {
+      console.log('Bins with sensors changed, re-fetching sensor data');
+      fetchSensorData();
+    }
+  }, [bins.map(bin => bin.containerId).join(',')]);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Calculate dynamic bin status based on fill level
+  const calculateDynamicStatus = (fillLevel: number, currentStatus: BinLocation['status']): BinLocation['status'] => {
+    // If bin is manually marked as unavailable, keep it unavailable
+    if (currentStatus === 'Unavailable') {
+      return 'Unavailable';
+    }
+    
+    // Dynamic status based on fill level: 0-49% Available, 50-79% Almost Full, 80-100% Full
+    if (fillLevel >= 80) return 'Full';
+    if (fillLevel >= 50) return 'Almost Full';
+    return 'Available';
+  };
+
+  // Helper functions for sensor data display
+  const getSensorMeasurement = (bin: BinLocation) => {
+    return bin.containerId ? sensorData.get(bin.containerId) : null;
+  };
+
+  const renderFillLevel = (bin: BinLocation) => {
+    const measurement = getSensorMeasurement(bin);
+    const fillLevel = measurement?.percentCalculated;
+    
+    if (fillLevel === undefined) {
+      return <span className="text-gray-400 text-sm">No sensor</span>;
+    }
+
+    // Battery-style fill level display
+    return (
+      <div className="flex items-center justify-start">
+        <div className="relative w-20 h-6 bg-gray-200 border-2 border-gray-300 rounded-md overflow-hidden">
+          {/* Battery tip */}
+          <div className="absolute -right-1 top-1.5 w-1 h-3 bg-gray-300 rounded-r-sm"></div>
+          
+          {/* Fill bar with clean color ranges */}
+          <div 
+            className={`h-full transition-all duration-500 ${
+              fillLevel >= 80 ? 'bg-red-500' :
+              fillLevel >= 50 ? 'bg-yellow-500' :
+              'bg-green-500'
+            }`}
+            style={{ width: `${fillLevel}%` }}
+          />
+          
+          {/* Percentage text overlay */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-xs font-bold ${
+              fillLevel > 50 ? 'text-white drop-shadow-sm' : 'text-gray-700'
+            }`}>
+              {fillLevel}%
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBatteryLevel = (bin: BinLocation) => {
+    const measurement = getSensorMeasurement(bin);
+    const batteryLevel = measurement?.batteryStatus;
+    
+    if (batteryLevel === undefined) {
+      return <span className="text-gray-400 text-sm">-</span>;
+    }
+
+    return (
+      <div className="flex items-center justify-start gap-1">
+        <span className={`text-sm ${
+          batteryLevel >= 3.7 ? 'text-green-600' :
+          batteryLevel >= 3.4 ? 'text-yellow-600' :
+          batteryLevel >= 3.0 ? 'text-orange-600' :
+          'text-red-600'
+        }`}>
+          {batteryLevel.toFixed(2)}V
+        </span>
+        <span className={`text-xs px-1 py-0.5 rounded ${
+          batteryLevel >= 3.7 ? 'bg-green-100 text-green-800' :
+          batteryLevel >= 3.4 ? 'bg-yellow-100 text-yellow-800' :
+          batteryLevel >= 3.0 ? 'bg-orange-100 text-orange-800' :
+          'bg-red-100 text-red-800'
+        }`}>
+          {SensoneoAPI.formatBatteryStatus(batteryLevel)}
+        </span>
+      </div>
+    );
+  };
+
+  const renderLastUpdate = (bin: BinLocation) => {
+    const measurement = getSensorMeasurement(bin);
+    const lastUpdate = measurement?.measuredAt;
+    
+    if (!lastUpdate) {
+      return <span className="text-gray-400 text-sm">Never</span>;
+    }
+
+    return (
+      <div className="text-sm">
+        <div>{new Date(lastUpdate).toLocaleDateString()}</div>
+        <div className="text-gray-500">{new Date(lastUpdate).toLocaleTimeString()}</div>
+      </div>
+    );
   };
 
   // Helper function to calculate time since bin became full
@@ -494,7 +687,8 @@ function BinsManagement() {
       locationName: bin.locationName,
       address: bin.address,
       status: bin.status,
-      assignedDriver: bin.assignedDriver || 'none'
+      assignedDriver: bin.assignedDriver || 'none',
+      containerId: bin.containerId
     });
     setUploadedFile(null);
     setIsEditDialogOpen(true);
@@ -559,6 +753,18 @@ function BinsManagement() {
               </Button>
             </>
           )}
+          <Button 
+            onClick={fetchSensorData}
+            variant="outline"
+            disabled={isLoadingSensorData}
+          >
+            {isLoadingSensorData ? (
+              <div className="animate-spin w-4 h-4 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full" />
+            ) : (
+              <div className="w-4 h-4 mr-2 text-blue-600">📡</div>
+            )}
+            Refresh Sensors
+          </Button>
           <Button onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             Add New Bin
@@ -649,6 +855,33 @@ function BinsManagement() {
                     {getSortIcon('assignedDriver')}
                   </div>
                 </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('fillLevel')}
+                >
+                  <div className="flex items-center gap-1">
+                    Fill Level
+                    {getSortIcon('fillLevel')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('batteryLevel')}
+                >
+                  <div className="flex items-center gap-1">
+                    Battery
+                    {getSortIcon('batteryLevel')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('lastSensorUpdate')}
+                >
+                  <div className="flex items-center gap-1">
+                    Last Updated
+                    {getSortIcon('lastSensorUpdate')}
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -716,6 +949,15 @@ function BinsManagement() {
                           ))}
                         </SelectContent>
                       </Select>
+                    </TableCell>
+                    <TableCell>
+                      {renderFillLevel(bin)}
+                    </TableCell>
+                    <TableCell>
+                      {renderBatteryLevel(bin)}
+                    </TableCell>
+                    <TableCell>
+                      {renderLastUpdate(bin)}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -999,6 +1241,19 @@ function BinsManagement() {
                   <SelectItem value="Unavailable">Unavailable</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-container-id">Sensoneo Container ID</Label>
+              <Input
+                id="edit-container-id"
+                type="number"
+                value={formData.containerId || ''}
+                onChange={(e) => setFormData({...formData, containerId: e.target.value ? parseInt(e.target.value) : undefined})}
+                placeholder="Enter Sensoneo container ID (optional)"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Link this bin to a Sensoneo sensor for real-time fill level monitoring
+              </p>
             </div>
             {selectedBin && (
               <div>

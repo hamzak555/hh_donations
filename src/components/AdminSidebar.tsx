@@ -10,7 +10,12 @@ import {
   Archive,
   Container,
   Wifi,
-  Users
+  Users,
+  Database,
+  Shield,
+  Settings,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 
 interface NavSubItem {
@@ -30,20 +35,18 @@ const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
   
   // Load pickup requests from localStorage directly
   useEffect(() => {
     const loadPendingCount = () => {
       try {
         const storedData = localStorage.getItem('pickupRequests');
-        console.log('Loading pickup requests:', storedData ? 'found' : 'not found');
         
         if (storedData) {
           const requests = JSON.parse(storedData);
           // Note: Status is capitalized 'Pending' not 'pending'
           const count = requests.filter((request: any) => request.status === 'Pending').length;
-          console.log('Pending pickup requests count:', count);
-          console.log('All statuses:', requests.map((r: any) => r.status));
           setPendingCount(count);
         }
       } catch (error) {
@@ -68,6 +71,14 @@ const AdminSidebar = () => {
     };
   }, [location.pathname]);
 
+  const toggleExpanded = (path: string) => {
+    setExpandedItems(prev => 
+      prev.includes(path) 
+        ? prev.filter(p => p !== path)
+        : [...prev, path]
+    );
+  };
+
   const navItems: NavItem[] = [
     { 
       path: '/admin/bins', 
@@ -89,7 +100,16 @@ const AdminSidebar = () => {
     { path: '/admin/bales', label: 'Bale Management', icon: Archive },
     { path: '/admin/containers', label: 'Container Management', icon: Container },
     { path: '/admin/drivers', label: 'Driver Management', icon: Truck },
-    { path: '/admin/sensor-test', label: 'Sensor Test', icon: Wifi },
+    { 
+      path: '/admin/administration', 
+      label: 'Administration', 
+      icon: Settings,
+      subItems: [
+        { path: '/admin/users', label: 'User Management', icon: Shield },
+        { path: '/admin/sensor-test', label: 'Sensor Test', icon: Wifi },
+        { path: '/admin/supabase-migration', label: 'Database Migration', icon: Database }
+      ]
+    },
   ];
 
   const handleLogout = () => {
@@ -118,38 +138,65 @@ const AdminSidebar = () => {
             const isActive = location.pathname === item.path;
             const hasSubItems = item.subItems && item.subItems.length > 0;
             const isParentActive = hasSubItems && item.subItems!.some(subItem => location.pathname === subItem.path);
+            const isExpanded = expandedItems.includes(item.path);
+            const isAdministration = item.path === '/admin/administration';
             
             return (
               <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`relative flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-sm ${
-                    isActive || isParentActive
-                      ? 'bg-primary text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
+                {isAdministration ? (
+                  // Administration dropdown
+                  <div>
+                    <button
+                      onClick={() => toggleExpanded(item.path)}
+                      className={`w-full relative flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-sm ${
+                        isParentActive
+                          ? 'bg-primary text-white'
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Icon className="w-5 h-5" />
+                        <span>{item.label}</span>
+                      </div>
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
-                  {item.path === '/admin/pickup-requests' && pendingCount > 0 && (
-                    <div className={`
-                      w-6 h-6
-                      flex items-center justify-center 
-                      text-xs font-bold rounded-full
-                      ${isActive || isParentActive
-                        ? 'bg-white text-primary'
-                        : 'bg-primary text-white'
-                      }
-                    `}>
-                      {pendingCount > 99 ? '99+' : pendingCount}
+                ) : (
+                  // Regular navigation items
+                  <Link
+                    to={item.path}
+                    className={`relative flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-sm ${
+                      isActive || isParentActive
+                        ? 'bg-primary text-white'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Icon className="w-5 h-5" />
+                      <span>{item.label}</span>
                     </div>
-                  )}
-                </Link>
+                    {item.path === '/admin/pickup-requests' && pendingCount > 0 && (
+                      <div className={`
+                        w-6 h-6
+                        flex items-center justify-center 
+                        text-xs font-bold rounded-full
+                        ${isActive || isParentActive
+                          ? 'bg-white text-primary'
+                          : 'bg-primary text-white'
+                        }
+                      `}>
+                        {pendingCount > 99 ? '99+' : pendingCount}
+                      </div>
+                    )}
+                  </Link>
+                )}
                 
                 {/* Sub-items */}
-                {hasSubItems && (
+                {hasSubItems && (isExpanded || !isAdministration) && (
                   <ul className="mt-2 ml-4 space-y-1">
                     {(item.subItems || []).map((subItem) => {
                       const SubIcon = subItem.icon;

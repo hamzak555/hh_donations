@@ -5,12 +5,12 @@ interface SensoneoConfig {
 }
 
 interface SensorMeasurement {
-  customerId?: number[];
+  customerIds?: number[];
   containerIds?: number[];
   containerCodes?: string[];
   standCodes?: string[];
-  dateFrom: string; // ISO date-time
-  dateTo: string; // ISO date-time
+  dateFrom?: string; // ISO date-time
+  dateTo?: string; // ISO date-time
   lastId?: number; // Get data from this ID
 }
 
@@ -30,12 +30,12 @@ interface MeasurementResponse {
 }
 
 interface CollectionData {
-  customerId?: number[];
+  customerIds?: number[];
   containerIds?: number[];
   containerCodes?: string[];
   standCodes?: string[];
-  dateFrom: string;
-  dateTo: string;
+  dateFrom?: string;
+  dateTo?: string;
   lastId?: number;
 }
 
@@ -91,14 +91,14 @@ class SensoneoAPI {
     const url = `${this.config.baseUrl}${endpoint}`;
     
     try {
+      // Sensoneo API uses specific header format
       const response = await fetch(url, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'api-version': this.config.apiVersion,
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          // Additional headers based on documentation
-          'application/json': 'application/json'
+          'Content-Type': `application/json; api-version=${this.config.apiVersion}`,
+          'x-api-key': this.config.apiKey,
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: body ? JSON.stringify(body) : undefined
       });
@@ -127,7 +127,7 @@ class SensoneoAPI {
    * Fetch latest sensor measurements for containers
    */
   async fetchMeasurements(params: Partial<SensorMeasurement> = {}): Promise<MeasurementResponse[]> {
-    const cacheKey = this.getCacheKey('/data/measurements', params);
+    const cacheKey = this.getCacheKey('/v2/sensors/measurements', params);
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached;
 
@@ -135,20 +135,34 @@ class SensoneoAPI {
     const now = new Date();
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
+    // Format dates properly for Sensoneo API
+    const formatDate = (date: Date) => {
+      return date.toISOString().split('.')[0] + 'Z';
+    };
+    
     const requestBody = {
-      dateFrom: yesterday.toISOString(),
-      dateTo: now.toISOString(),
-      ...params
+      customerIds: params.customerIds || [],
+      containerIds: params.containerIds || [],
+      containerCodes: params.containerCodes || [],
+      standCodes: params.standCodes || [],
+      dateFrom: params.dateFrom || formatDate(yesterday),
+      dateTo: params.dateTo || formatDate(now),
+      lastId: params.lastId || 0
     };
 
-    const response = await this.makeRequest<{ data: MeasurementResponse[] }>(
-      '/data/measurements',
-      'POST',
-      requestBody
-    );
+    try {
+      const response = await this.makeRequest<MeasurementResponse[]>(
+        '/data/measurements',
+        'POST',
+        requestBody
+      );
 
-    this.setCache(cacheKey, response.data || []);
-    return response.data || [];
+      this.setCache(cacheKey, response || []);
+      return response || [];
+    } catch (error) {
+      console.error('Failed to fetch measurements:', error);
+      return [];
+    }
   }
 
   /**
@@ -188,7 +202,7 @@ class SensoneoAPI {
    * Fetch collection events
    */
   async fetchCollections(params: Partial<CollectionData> = {}): Promise<CollectionResponse[]> {
-    const cacheKey = this.getCacheKey('/data/collections', params);
+    const cacheKey = this.getCacheKey('/v2/sensors/collections', params);
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached;
 
@@ -202,35 +216,123 @@ class SensoneoAPI {
       ...params
     };
 
-    const response = await this.makeRequest<{ data: CollectionResponse[] }>(
-      '/data/collections',
-      'POST',
-      requestBody
-    );
+    try {
+      const response = await this.makeRequest<CollectionResponse[]>(
+        '/data/collections',
+        'POST',
+        requestBody
+      );
 
-    this.setCache(cacheKey, response.data || []);
-    return response.data || [];
+      this.setCache(cacheKey, response || []);
+      return response || [];
+    } catch (error) {
+      console.error('Failed to fetch collections:', error);
+      return [];
+    }
   }
 
   /**
-   * Test API connection
+   * Test API connection with different approaches
    */
   async testConnection(): Promise<boolean> {
-    try {
-      // Try to fetch measurements for a short time period to test connection
-      const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const url = `${this.config.baseUrl}/data/measurements`;
+    const now = new Date();
+    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    console.log('Testing Sensoneo API connection...');
+    console.log('URL:', url);
+    console.log('API Key:', this.config.apiKey.substring(0, 8) + '...');
+    
+    // Format dates without milliseconds and timezone
+    const formatDate = (date: Date) => {
+      return date.toISOString().split('.')[0] + 'Z';
+    };
+    
+    // Try different request formats - the API error suggests it wants a 'request' field
+    const requestAttempts = [
+      {
+        name: 'Wrapped in request field',
+        body: {
+          request: {
+            customerIds: [],
+            containerIds: [],
+            containerCodes: [],
+            standCodes: [],
+            dateFrom: yesterday.toISOString(),
+            dateTo: now.toISOString(),
+            lastId: 0
+          }
+        }
+      },
+      {
+        name: 'Direct structure from screenshot',
+        body: {
+          customerIds: [],
+          containerIds: [],
+          containerCodes: [],
+          standCodes: [],
+          dateFrom: yesterday.toISOString(),
+          dateTo: now.toISOString(),
+          lastId: 0
+        }
+      },
+      {
+        name: 'Minimal request',
+        body: {
+          request: {}
+        }
+      }
+    ];
+    
+    console.log('Will try', requestAttempts.length, 'different request formats...');
+    
+    for (let i = 0; i < requestAttempts.length; i++) {
+      const attempt = requestAttempts[i];
+      console.log(`\nAttempt ${i + 1}: ${attempt.name}`);
+      console.log('Request body:', JSON.stringify(attempt.body, null, 2));
       
-      await this.fetchMeasurements({
-        dateFrom: oneHourAgo.toISOString(),
-        dateTo: now.toISOString()
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Connection test failed:', error);
-      return false;
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': `application/json; api-version=${this.config.apiVersion}`,
+            'x-api-key': this.config.apiKey,
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          },
+          body: JSON.stringify(attempt.body)
+        });
+
+        console.log(`Response status: ${response.status}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✓ Success with format:', attempt.name);
+          console.log('API Response data:', data);
+          return true;
+        } else {
+          const errorText = await response.text();
+          console.log(`✗ Failed with ${response.status}:`, errorText);
+          
+          // If this is the last attempt, throw the error
+          if (i === requestAttempts.length - 1) {
+            throw new Error(`All ${requestAttempts.length} request formats failed. Last error: ${response.status} - ${errorText}`);
+          }
+        }
+      } catch (error) {
+        console.log(`✗ Request failed:`, error);
+        
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+          throw new Error('Cannot connect to Sensoneo API from browser due to CORS. A backend proxy is required.');
+        }
+        
+        if (i === requestAttempts.length - 1) {
+          throw error;
+        }
+      }
     }
+    
+    return false;
   }
 
   /**

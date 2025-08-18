@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MapPin, Navigation, Search, ExternalLink, AlertCircle } from 'lucide-react';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import { useBins, BinLocation } from '@/contexts/BinsContext';
+import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
 import SEO from '@/components/SEO';
 
 const FindBin = () => {
@@ -30,8 +30,7 @@ const FindBin = () => {
 
   const mapContainerStyle = {
     width: '100%',
-    height: '100%',
-    minHeight: 'calc(100vh - 200px)' // Full height minus header and search bar
+    height: '100%'
   };
 
   const center = {
@@ -263,16 +262,16 @@ const FindBin = () => {
       ) : isLoading ? (
         <LoadingSkeleton type="findbin" />
       ) : (
-        <div className="flex flex-col h-screen">
+        <div className="flex flex-col lg:h-screen">
           {/* Header */}
           <div className="px-8 pt-10 pb-6">
             <h1 className="text-3xl font-bold">Find a Donation Bin</h1>
           </div>
 
           {/* Main Content Area - Full Height */}
-          <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 px-8 pb-6 overflow-hidden">
+          <div className="flex-1 flex flex-col lg:grid lg:grid-cols-3 gap-6 px-4 lg:px-8 pb-6 lg:overflow-hidden">
           {/* Map with Search Bar */}
-          <div className="lg:col-span-2 h-full flex flex-col gap-4">
+          <div className="lg:col-span-2 h-[300px] lg:h-full flex flex-col gap-4 flex-shrink-0">
             {/* Search Controls */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
               <div className="lg:col-span-2 relative autocomplete-container overflow-visible">
@@ -317,7 +316,7 @@ const FindBin = () => {
             )}
             
             {/* Map */}
-            <Card className="flex-1">
+            <Card className="h-full">
               <CardContent className="p-0 h-full">
                 <GoogleMap
                   mapContainerStyle={mapContainerStyle}
@@ -385,7 +384,7 @@ const FindBin = () => {
           </div>
 
           {/* Nearby Bins List */}
-          <div className="lg:col-span-1 h-full overflow-hidden mt-14 lg:mt-0">
+          <div className="lg:col-span-1 h-[300px] lg:h-full overflow-hidden flex-shrink-0 mt-6 lg:mt-0">
             <Card className="h-full flex flex-col">
               <CardHeader className="flex-shrink-0 pb-4">
                 <CardTitle className="flex items-center gap-2 text-lg">

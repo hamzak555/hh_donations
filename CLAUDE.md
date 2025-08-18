@@ -110,6 +110,15 @@ The app handles network failures gracefully:
 - Used in FindBin and RequestPickup pages
 - Route optimization in PickupRouteGenerator
 
+### Sensoneo API Integration
+- Demo API key available: `0c5d7f2757f740489dca16d6c5745a11` (provided by Sensoneo team)
+- Set in `.env` as `REACT_APP_SENSONEO_API_KEY`
+- Test page at `/admin/sensor-test`
+- Provides real-time sensor data for container fill levels
+- API endpoints:
+  - `/data/measurements` - Get sensor measurements
+  - `/data/collections` - Get collection events
+
 ## Common Issues and Solutions
 
 ### Port Conflicts

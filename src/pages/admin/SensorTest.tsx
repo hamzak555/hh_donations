@@ -9,7 +9,11 @@ import { Wifi, WifiOff, Battery, Thermometer, Package, AlertCircle, CheckCircle 
 import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 
 function SensorTest() {
-  const [apiKey, setApiKey] = useState('');
+  // Use demo API key from environment or localStorage
+  const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || '0c5d7f2757f740489dca16d6c5745a11';
+  const savedApiKey = localStorage.getItem('sensoneo_api_key') || demoApiKey;
+  
+  const [apiKey, setApiKey] = useState(savedApiKey);
   const [containerId, setContainerId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
@@ -38,6 +42,8 @@ function SensorTest() {
       const api = new SensoneoAPI({ apiKey });
 
       addLog('Testing API connection...');
+      addLog('Note: Check browser console (F12) for detailed logs');
+      
       const isConnected = await api.testConnection();
 
       if (isConnected) {
@@ -47,13 +53,23 @@ function SensorTest() {
         // Store API key in localStorage for future use
         localStorage.setItem('sensoneo_api_key', apiKey);
         addLog('API key saved to local storage');
+        addLog('You can now fetch sensor data using a Container ID');
       } else {
         throw new Error('Connection test failed');
       }
     } catch (err) {
-      addLog(`✗ Connection failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      setConnectionStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to connect to Sensoneo API');
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      addLog(`✗ Connection failed: ${errorMessage}`);
+      
+      if (errorMessage.includes('CORS')) {
+        addLog('⚠️ CORS Issue Detected');
+        addLog('The Sensoneo API cannot be called directly from the browser.');
+        addLog('Solution: A backend proxy server is needed to make API calls.');
+        setError('CORS Error: API calls must be made from a backend server, not directly from the browser.');
+      } else {
+        setConnectionStatus('error');
+        setError(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +155,7 @@ function SensorTest() {
                 className="mt-1"
               />
               <p className="text-sm text-gray-500 mt-1">
-                Get your API key from the Sensoneo developer portal
+                Using Sensoneo demo API key. Replace with your own key for production use.
               </p>
             </div>
 
