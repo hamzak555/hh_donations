@@ -56,7 +56,8 @@ const STORAGE_KEY = 'containers';
 
 // Check if Supabase is configured
 const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
-                    process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
+                    process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url' &&
+                    process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [containers, setContainers] = useState<Container[]>([]);
