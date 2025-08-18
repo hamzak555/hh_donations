@@ -429,5 +429,3 @@ export const useBins = () => {
   }
   return context;
 };
-
-export type { BinLocation };
