@@ -82,7 +82,7 @@ export class DataMigration {
           successCount++
         } catch (error) {
           console.error(`❌ Failed to migrate ${bin.binNumber}:`, error)
-          console.error('📋 Error details:', error.message, error.stack)
+          console.error('📋 Error details:', error instanceof Error ? error.message : 'Unknown error', error instanceof Error ? error.stack : '')
           errorCount++
         }
       }
@@ -246,7 +246,7 @@ export class DataMigration {
           successCount++
         } catch (error) {
           console.error(`✗ Failed to migrate pickup request for ${requesterName}:`, error)
-          console.error('📋 Error details:', error.message)
+          console.error('📋 Error details:', error instanceof Error ? error.message : 'Unknown error')
           errorCount++
         }
       }
@@ -574,16 +574,16 @@ export class DataMigration {
       ])
 
       console.log('📊 Existing data in Supabase:')
-      console.log('Bins:', results[0]?.length || results[0]?.error || 0)
-      console.log('Drivers:', results[1]?.length || results[1]?.error || 0) 
-      console.log('Pickup Requests:', results[2]?.length || results[2]?.error || 0)
-      console.log('Containers:', results[3]?.length || results[3]?.error || 0)
-      console.log('Bales:', results[4]?.length || results[4]?.error || 0)
-      console.log('Partner Applications:', results[5]?.length || results[5]?.error || 0)
-      console.log('Admin Users:', results[6]?.length || results[6]?.error || 0)
+      console.log('Bins:', Array.isArray(results[0]) ? results[0].length : 'Error')
+      console.log('Drivers:', Array.isArray(results[1]) ? results[1].length : 'Error')
+      console.log('Pickup Requests:', Array.isArray(results[2]) ? results[2].length : 'Error')
+      console.log('Containers:', Array.isArray(results[3]) ? results[3].length : 'Error')
+      console.log('Bales:', Array.isArray(results[4]) ? results[4].length : 'Error')
+      console.log('Partner Applications:', Array.isArray(results[5]) ? results[5].length : 'Error')
+      console.log('Admin Users:', Array.isArray(results[6]) ? results[6].length : 'Error')
       
       // Check if any queries failed
-      const hasErrors = results.some(result => result?.error)
+      const hasErrors = results.some(result => !Array.isArray(result))
       if (hasErrors) {
         console.error('❌ Some database queries failed - check table creation')
         return false
@@ -644,7 +644,7 @@ export class DataMigration {
           console.log(`${key}:`, {
             exists: true,
             raw: data,
-            parseError: e.message
+            parseError: e instanceof Error ? e.message : 'Unknown error'
           })
         }
       } else {
@@ -655,8 +655,10 @@ export class DataMigration {
     console.log('=== ALL LOCALSTORAGE KEYS ===')
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      const value = localStorage.getItem(key)
-      console.log(`${key}:`, value?.substring(0, 200) + (value && value.length > 200 ? '...' : ''))
+      if (key) {
+        const value = localStorage.getItem(key)
+        console.log(`${key}:`, value?.substring(0, 200) + (value && value.length > 200 ? '...' : ''))
+      }
     }
   }
 }
