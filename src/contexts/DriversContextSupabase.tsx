@@ -115,7 +115,7 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
           id: driver.id,
           name: driver.name,
           phone: driver.phone,
-          email: driver.email || null,
+          email: driver.email || undefined,
           license_number: driver.licenseNumber || `LIC-${driver.id}`,
           hire_date: driver.hireDate || new Date().toISOString().split('T')[0],
           status: driver.status,
