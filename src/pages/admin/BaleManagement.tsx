@@ -55,6 +55,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, MoreHorizontal, Edit, Trash, Printer, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Search, MessageSquare, Send, Camera, ChevronLeft, ChevronRight, X, Undo2 } from 'lucide-react';
 import { format } from 'date-fns';
 
+// Safe date formatter to handle invalid dates
+const safeFormatDate = (dateValue: string | null | undefined, formatStr: string = 'MMM dd, yyyy'): string => {
+  if (!dateValue) return '-';
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) return '-';
+    return format(date, formatStr);
+  } catch (error) {
+    console.error('Date formatting error:', error, 'for value:', dateValue);
+    return '-';
+  }
+};
+
 // Photo Lightbox Component
 interface LightboxProps {
   photos: {id: string, data: string}[];
@@ -361,7 +374,7 @@ const NotesHoverCard = ({ bale, noteValue, onNoteChange, onAddNote }: NotesHover
                   <div key={note.id} className="border-l-2 border-gray-200 pl-3 ml-1">
                     <p className="text-sm text-gray-700">{note.text}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {format(new Date(note.timestamp), 'MMM dd, yyyy h:mm a')}
+                      {safeFormatDate(note.timestamp, 'MMM dd, yyyy h:mm a')}
                     </p>
                   </div>
                 ))}
@@ -645,8 +658,9 @@ function BaleManagement() {
     
     const soldBalesInPeriod = bales.filter(bale => {
       if (bale.status !== 'Sold' || !bale.soldDate) return false;
+      if (!bale.soldDate) return false;
       const soldDate = new Date(bale.soldDate);
-      return soldDate >= cutoffDate;
+      return !isNaN(soldDate.getTime()) && soldDate >= cutoffDate;
     });
     
     const count = soldBalesInPeriod.length;
@@ -898,7 +912,7 @@ function BaleManagement() {
                       <TableCell>{bale.weight} Kg</TableCell>
                       <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
                       <TableCell>
-                        {format(new Date(bale.createdDate), 'MMM dd, yyyy')}
+                        {safeFormatDate(bale.createdDate)}
                       </TableCell>
                       <TableCell>
                         <NotesHoverCard 
@@ -1039,7 +1053,7 @@ function BaleManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {bale.soldDate ? format(new Date(bale.soldDate), 'MMM dd, yyyy') : '-'}
+                        {safeFormatDate(bale.soldDate)}
                       </TableCell>
                       <TableCell>
                         <NotesHoverCard 
@@ -1321,7 +1335,7 @@ function BaleManagement() {
                 
                 <div className="text-center">
                   <p className="font-semibold text-base">Created Date</p>
-                  <p className="text-lg mt-1">{selectedBale?.createdDate ? format(new Date(selectedBale.createdDate), 'MMM dd, yyyy') : ''}</p>
+                  <p className="text-lg mt-1">{safeFormatDate(selectedBale?.createdDate)}</p>
                 </div>
               </div>
             </div>
