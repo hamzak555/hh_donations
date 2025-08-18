@@ -2,6 +2,19 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { SupabaseService } from '@/services/supabaseService';
 import { SafeStorage } from '@/utils/safeStorage';
 
+export interface NoteEntry {
+  id: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface DocumentEntry {
+  id: string;
+  name: string;
+  data: string; // base64 data
+  uploadedAt: string;
+}
+
 export interface Container {
   id: string;
   containerNumber: string;
