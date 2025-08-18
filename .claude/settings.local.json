@@ -56,7 +56,8 @@
       "Bash(npm run dev:*)",
       "Bash(kill:*)",
       "WebFetch(domain:developer.sensoneo.com)",
-      "WebFetch(domain:unsplash.com)"
+      "WebFetch(domain:unsplash.com)",
+      "Bash(sed:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
-import { useDrivers } from '@/contexts/DriversContext';
+import { useDrivers } from '@/contexts/DriversContextSupabase';
 import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 import {
   Table,
