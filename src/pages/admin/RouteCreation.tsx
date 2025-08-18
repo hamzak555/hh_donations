@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useDrivers } from '@/contexts/DriversContextSupabase';
-import { useBins } from '@/contexts/BinsContextSupabase';
+import { useDrivers } from '@/contexts/DriversContext';
+import { useBins } from '@/contexts/BinsContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

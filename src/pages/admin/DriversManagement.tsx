@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useDrivers, Driver } from '@/contexts/DriversContextSupabase';
-import { useBins } from '@/contexts/BinsContextSupabase';
+import { useDrivers, Driver } from '@/contexts/DriversContext';
+import { useBins } from '@/contexts/BinsContext';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import {
   Table,
