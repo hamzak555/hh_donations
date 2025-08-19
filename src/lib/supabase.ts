@@ -1,9 +1,23 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'dummy-url'
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'dummy-key'
+// Check if Supabase is configured
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Only create client if both URL and key are provided
+// Otherwise create a dummy client that won't be used
+let supabase: SupabaseClient
+
+if (supabaseUrl && supabaseAnonKey && supabaseUrl !== 'your_supabase_project_url') {
+  console.log('Supabase configured, initializing client...')
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+} else {
+  console.warn('Supabase not configured. App will use localStorage only.')
+  // Create a dummy client with valid URL to prevent initialization errors
+  supabase = createClient('https://placeholder.supabase.co', 'placeholder-key')
+}
+
+export { supabase }
 
 // Database table names
 export const TABLES = {
