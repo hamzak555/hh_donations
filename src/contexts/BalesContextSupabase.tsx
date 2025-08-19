@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { safeSetItem, checkDataIntegrity, attemptDataRecovery } from '../utils/storageManager';
 import { dbManager } from '../utils/indexedDbManager';
 import { supabaseService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export type BaleQuality = 'A-Quality' | 'B-Quality' | 'C-Quality' | 'Creme' | 'Shoes';
 export type BaleStatus = 'Warehouse' | 'Container' | 'Shipped' | 'Sold';
@@ -51,8 +52,7 @@ interface BalesContextType {
 const BalesContext = createContext<BalesContextType | undefined>(undefined);
 
 // Check if Supabase is configured
-const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
-                     process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
+const USE_SUPABASE = isSupabaseConfigured;
 
 // Generate a proper UUID for Supabase
 const generateUUID = () => {

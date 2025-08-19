@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { SupabaseService } from '@/services/supabaseService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { SafeStorage } from '@/utils/safeStorage';
 
 export interface NoteEntry {
@@ -59,9 +60,7 @@ const ContainersContext = createContext<ContainersContextType | undefined>(undef
 const STORAGE_KEY = 'containers';
 
 // Check if Supabase is configured
-const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
-                    process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url' &&
-                    process.env.REACT_APP_SUPABASE_ANON_KEY;
+const USE_SUPABASE = isSupabaseConfigured;
 
 export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Don't initialize with stale localStorage data - start fresh

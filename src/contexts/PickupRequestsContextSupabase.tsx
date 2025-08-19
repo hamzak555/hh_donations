@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SupabaseService } from '@/services/supabaseService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export interface PickupRequest {
   id: string;
@@ -33,8 +34,7 @@ const PickupRequestsContext = createContext<PickupRequestsContextType | undefine
 const STORAGE_KEY = 'pickupRequests';
 
 // Check if Supabase is configured
-const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
-                     process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
+const USE_SUPABASE = isSupabaseConfigured;
 
 // Simplified helper functions - direct mapping after column rename
 const convertFromDatabase = (dbRequest: any): PickupRequest => {

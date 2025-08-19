@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SupabaseService } from '@/services/supabaseService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 export interface BinLocation {
   id: string;
@@ -40,8 +41,7 @@ interface BinsContextType {
 const BinsContext = createContext<BinsContextType | undefined>(undefined);
 
 // Use environment variable to determine if Supabase is enabled
-const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
-                    process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
+const USE_SUPABASE = isSupabaseConfigured;
 
 // Generate a proper UUID for Supabase
 const generateUUID = () => {

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SupabaseService } from '@/services/supabaseService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 import { SafeStorage } from '@/utils/safeStorage';
 
 export interface Driver {
@@ -33,8 +34,7 @@ const DriversContext = createContext<DriversContextType | undefined>(undefined);
 const STORAGE_KEY = 'driversData';
 
 // Check if Supabase is configured
-const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
-                    process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
+const USE_SUPABASE = isSupabaseConfigured;
 
 // Generate a proper UUID for Supabase
 const generateUUID = () => {
