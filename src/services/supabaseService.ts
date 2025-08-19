@@ -1,56 +1,92 @@
 import { supabase, TABLES, DatabaseBin, DatabaseDriver, DatabaseContainer, DatabaseBale, DatabasePickupRequest, DatabaseAdminUser, DatabasePartnerApplication } from '@/lib/supabase'
-import { BinLocation } from '@/contexts/BinsContext'
+import { BinLocation } from '@/contexts/BinsContextSupabase'
 
-// Utility functions to convert between database and app types
+// Simplified utility functions - direct mapping after column rename
 const convertDatabaseBinToApp = (dbBin: DatabaseBin): BinLocation => ({
-  id: dbBin.id,
-  binNumber: dbBin.bin_number,
-  locationName: dbBin.location_name,
-  address: dbBin.address,
-  lat: dbBin.lat,
-  lng: dbBin.lng,
-  status: dbBin.status,
-  pickupStatus: dbBin.pickup_status,
-  lastPickup: dbBin.last_pickup,
-  contractFile: dbBin.contract_file,
-  contractFileName: dbBin.contract_file_name,
-  contractUploadDate: dbBin.contract_upload_date,
-  assignedDriver: dbBin.assigned_driver,
-  createdDate: dbBin.created_date,
-  fullSince: dbBin.full_since,
-  sensorId: dbBin.sensor_id,
-  containerId: dbBin.container_id,
-  fillLevel: dbBin.fill_level,
-  lastSensorUpdate: dbBin.last_sensor_update,
-  batteryLevel: dbBin.battery_level,
-  temperature: dbBin.temperature,
-  sensorEnabled: dbBin.sensor_enabled
+  // Direct mapping - all fields match after column rename
+  ...dbBin
 })
 
 const convertAppBinToDatabase = (appBin: BinLocation): Omit<DatabaseBin, 'created_at' | 'updated_at'> => ({
-  id: appBin.id,
-  bin_number: appBin.binNumber,
-  location_name: appBin.locationName,
-  address: appBin.address,
-  lat: appBin.lat,
-  lng: appBin.lng,
-  status: appBin.status,
-  pickup_status: appBin.pickupStatus,
-  last_pickup: appBin.lastPickup,
-  contract_file: appBin.contractFile,
-  contract_file_name: appBin.contractFileName,
-  contract_upload_date: appBin.contractUploadDate,
-  assigned_driver: appBin.assignedDriver,
-  created_date: appBin.createdDate,
-  full_since: appBin.fullSince,
-  sensor_id: appBin.sensorId,
-  container_id: appBin.containerId,
-  fill_level: appBin.fillLevel,
-  last_sensor_update: appBin.lastSensorUpdate,
-  battery_level: appBin.batteryLevel,
-  temperature: appBin.temperature,
-  sensor_enabled: appBin.sensorEnabled
+  // Direct mapping - no field name conversion needed
+  ...appBin
 })
+
+// Admin Users field mapping
+const convertDatabaseUserToApp = (dbUser: any): DatabaseAdminUser => ({
+  id: dbUser.id,
+  email: dbUser.email,
+  passwordHash: dbUser.password_hash || dbUser.passwordHash,
+  fullName: dbUser.full_name || dbUser.fullName,
+  role: dbUser.role,
+  isActive: dbUser.is_active !== undefined ? dbUser.is_active : dbUser.isActive,
+  lastLogin: dbUser.last_login || dbUser.lastLogin,
+  created_at: dbUser.created_at,
+  updated_at: dbUser.updated_at
+})
+
+const convertAppUserToDatabase = (appUser: Partial<DatabaseAdminUser>): any => {
+  const dbUser: any = {}
+  
+  if (appUser.email !== undefined) dbUser.email = appUser.email
+  if (appUser.passwordHash !== undefined) dbUser.password_hash = appUser.passwordHash
+  if (appUser.fullName !== undefined) dbUser.full_name = appUser.fullName
+  if (appUser.role !== undefined) dbUser.role = appUser.role
+  if (appUser.isActive !== undefined) dbUser.is_active = appUser.isActive
+  if (appUser.lastLogin !== undefined) dbUser.last_login = appUser.lastLogin
+  
+  return dbUser
+}
+
+// Container field mapping
+const convertDatabaseContainerToApp = (dbContainer: any): DatabaseContainer => {
+  return {
+    id: dbContainer.id,
+    containerNumber: dbContainer.containerNumber || dbContainer.container_number || `CNT-${dbContainer.id?.substring(0, 8) || 'UNKNOWN'}`,
+    type: dbContainer.type || 'Steel',
+    capacity: dbContainer.capacity || 1000,
+    currentWeight: dbContainer.currentWeight || dbContainer.current_weight || 0,
+    destination: dbContainer.destination || dbContainer.location || 'Not specified',
+    status: dbContainer.status || 'Warehouse',
+    assignedBales: dbContainer.assignedBales || dbContainer.assigned_bales || [],
+    createdDate: dbContainer.createdDate || dbContainer.created_date,
+    shipmentDate: dbContainer.shipmentDate || dbContainer.shipment_date,
+    estimatedArrivalDate: dbContainer.estimatedArrivalDate || dbContainer.estimated_arrival_date,
+    actualArrivalDate: dbContainer.actualArrivalDate || dbContainer.actual_arrival_date,
+    sealNumber: dbContainer.sealNumber || dbContainer.seal_number,
+    shippingLine: dbContainer.shippingLine || dbContainer.shipping_line,
+    vesselName: dbContainer.vesselName || dbContainer.vessel_name,
+    bookingNumber: dbContainer.bookingNumber || dbContainer.booking_number,
+    notes: dbContainer.notes,
+    documents: dbContainer.documents || [],
+    created_at: dbContainer.created_at,
+    updated_at: dbContainer.updated_at
+  }
+}
+
+const convertAppContainerToDatabase = (appContainer: Partial<DatabaseContainer>): any => {
+  const dbContainer: any = {}
+  
+  if (appContainer.containerNumber !== undefined) dbContainer.containerNumber = appContainer.containerNumber
+  if (appContainer.type !== undefined) dbContainer.type = appContainer.type
+  if (appContainer.capacity !== undefined) dbContainer.capacity = appContainer.capacity
+  if (appContainer.currentWeight !== undefined) dbContainer.currentWeight = appContainer.currentWeight
+  if (appContainer.destination !== undefined) dbContainer.location = appContainer.destination // Note: database uses 'location'
+  if (appContainer.status !== undefined) dbContainer.status = appContainer.status
+  if (appContainer.assignedBales !== undefined) dbContainer.assignedBales = appContainer.assignedBales
+  if (appContainer.createdDate !== undefined) dbContainer.createdDate = appContainer.createdDate
+  if (appContainer.shipmentDate !== undefined) dbContainer.shipmentDate = appContainer.shipmentDate
+  if (appContainer.estimatedArrivalDate !== undefined) dbContainer.estimatedArrivalDate = appContainer.estimatedArrivalDate
+  if (appContainer.actualArrivalDate !== undefined) dbContainer.actualArrivalDate = appContainer.actualArrivalDate
+  if (appContainer.sealNumber !== undefined) dbContainer.sealNumber = appContainer.sealNumber
+  if (appContainer.shippingLine !== undefined) dbContainer.shippingLine = appContainer.shippingLine
+  if (appContainer.vesselName !== undefined) dbContainer.vesselName = appContainer.vesselName
+  if (appContainer.bookingNumber !== undefined) dbContainer.bookingNumber = appContainer.bookingNumber
+  if (appContainer.notes !== undefined) dbContainer.notes = appContainer.notes
+  if (appContainer.documents !== undefined) dbContainer.documents = appContainer.documents
+  
+  return dbContainer
+}
 
 // Bins Service
 export class BinsService {
@@ -86,30 +122,8 @@ export class BinsService {
   }
 
   static async updateBin(id: string, updates: Partial<BinLocation>): Promise<BinLocation> {
-    // Convert app updates to database format
-    const dbUpdates: Partial<DatabaseBin> = {}
-    
-    if (updates.binNumber) dbUpdates.bin_number = updates.binNumber
-    if (updates.locationName) dbUpdates.location_name = updates.locationName
-    if (updates.address) dbUpdates.address = updates.address
-    if (updates.lat !== undefined) dbUpdates.lat = updates.lat
-    if (updates.lng !== undefined) dbUpdates.lng = updates.lng
-    if (updates.status) dbUpdates.status = updates.status
-    if (updates.pickupStatus) dbUpdates.pickup_status = updates.pickupStatus
-    if (updates.lastPickup) dbUpdates.last_pickup = updates.lastPickup
-    if (updates.contractFile) dbUpdates.contract_file = updates.contractFile
-    if (updates.contractFileName) dbUpdates.contract_file_name = updates.contractFileName
-    if (updates.contractUploadDate) dbUpdates.contract_upload_date = updates.contractUploadDate
-    if (updates.assignedDriver !== undefined) dbUpdates.assigned_driver = updates.assignedDriver
-    if (updates.createdDate) dbUpdates.created_date = updates.createdDate
-    if (updates.fullSince !== undefined) dbUpdates.full_since = updates.fullSince
-    if (updates.sensorId !== undefined) dbUpdates.sensor_id = updates.sensorId
-    if (updates.containerId !== undefined) dbUpdates.container_id = updates.containerId
-    if (updates.fillLevel !== undefined) dbUpdates.fill_level = updates.fillLevel
-    if (updates.lastSensorUpdate !== undefined) dbUpdates.last_sensor_update = updates.lastSensorUpdate
-    if (updates.batteryLevel !== undefined) dbUpdates.battery_level = updates.batteryLevel
-    if (updates.temperature !== undefined) dbUpdates.temperature = updates.temperature
-    if (updates.sensorEnabled !== undefined) dbUpdates.sensor_enabled = updates.sensorEnabled
+    // Direct mapping - no field name conversion needed after column rename
+    const dbUpdates: Partial<DatabaseBin> = { ...updates }
 
     const { data, error } = await supabase
       .from(TABLES.BINS)
@@ -249,7 +263,7 @@ export class DriversService {
 
 // Containers Service  
 export class ContainersService {
-  static async getAllContainers() {
+  static async getAllContainers(): Promise<DatabaseContainer[]> {
     const { data, error } = await supabase
       .from(TABLES.CONTAINERS)
       .select('*')
@@ -260,13 +274,17 @@ export class ContainersService {
       throw error
     }
 
-    return data
+    // Convert database format to app format with field mapping
+    return (data || []).map(convertDatabaseContainerToApp)
   }
 
-  static async createContainer(container: Omit<DatabaseContainer, 'id' | 'created_at' | 'updated_at'>) {
+  static async createContainer(container: Omit<DatabaseContainer, 'id' | 'created_at' | 'updated_at'>): Promise<DatabaseContainer> {
+    // Convert app format to database format
+    const dbContainer = convertAppContainerToDatabase(container)
+    
     const { data, error } = await supabase
       .from(TABLES.CONTAINERS)
-      .insert([container])
+      .insert([dbContainer])
       .select()
       .single()
 
@@ -275,13 +293,16 @@ export class ContainersService {
       throw error
     }
 
-    return data
+    return convertDatabaseContainerToApp(data)
   }
 
-  static async updateContainer(id: string, updates: Partial<DatabaseContainer>) {
+  static async updateContainer(id: string, updates: Partial<DatabaseContainer>): Promise<DatabaseContainer> {
+    // Convert app format to database format
+    const dbUpdates = convertAppContainerToDatabase(updates)
+    
     const { data, error } = await supabase
       .from(TABLES.CONTAINERS)
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', id)
       .select()
       .single()
@@ -291,7 +312,7 @@ export class ContainersService {
       throw error
     }
 
-    return data
+    return convertDatabaseContainerToApp(data)
   }
 
   static async deleteContainer(id: string) {
@@ -429,7 +450,7 @@ export class PickupRequestsService {
 
 // Admin Users Service
 export class AdminUsersService {
-  static async getAllAdminUsers() {
+  static async getAllAdminUsers(): Promise<DatabaseAdminUser[]> {
     const { data, error } = await supabase
       .from(TABLES.ADMIN_USERS)
       .select('*')
@@ -440,13 +461,17 @@ export class AdminUsersService {
       throw error
     }
 
-    return data
+    // Convert snake_case database fields to camelCase
+    return (data || []).map(convertDatabaseUserToApp)
   }
 
   static async createAdminUser(user: Omit<DatabaseAdminUser, 'id' | 'created_at' | 'updated_at'>) {
+    // Convert camelCase to snake_case for database
+    const dbUser = convertAppUserToDatabase(user)
+    
     const { data, error } = await supabase
       .from(TABLES.ADMIN_USERS)
-      .insert([user])
+      .insert([dbUser])
       .select()
       .single()
 
@@ -455,13 +480,16 @@ export class AdminUsersService {
       throw error
     }
 
-    return data
+    return convertDatabaseUserToApp(data)
   }
 
   static async updateAdminUser(id: string, updates: Partial<DatabaseAdminUser>) {
+    // Convert camelCase to snake_case for database
+    const dbUpdates = convertAppUserToDatabase(updates)
+    
     const { data, error } = await supabase
       .from(TABLES.ADMIN_USERS)
-      .update(updates)
+      .update(dbUpdates)
       .eq('id', id)
       .select()
       .single()
@@ -471,7 +499,7 @@ export class AdminUsersService {
       throw error
     }
 
-    return data
+    return convertDatabaseUserToApp(data)
   }
 
   static async deleteAdminUser(id: string) {
@@ -486,7 +514,7 @@ export class AdminUsersService {
     }
   }
 
-  static async getUserByEmail(email: string) {
+  static async getUserByEmail(email: string): Promise<DatabaseAdminUser | null> {
     const { data, error } = await supabase
       .from(TABLES.ADMIN_USERS)
       .select('*')
@@ -499,7 +527,7 @@ export class AdminUsersService {
       throw error
     }
 
-    return data
+    return data ? convertDatabaseUserToApp(data) : null
   }
 }
 

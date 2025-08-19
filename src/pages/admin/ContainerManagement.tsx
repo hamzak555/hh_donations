@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { LoadScript, Autocomplete } from '@react-google-maps/api';
-import { useContainers } from '@/contexts/ContainersContext';
-import { useBales } from '@/contexts/BalesContext';
+import { useContainers } from '@/contexts/ContainersContextSupabase';
+import { useBales } from '@/contexts/BalesContextSupabase';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,8 +79,8 @@ import {
   FileCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Bale, BaleStatus } from '@/contexts/BalesContext';
-import { DocumentEntry } from '@/contexts/ContainersContext';
+import { Bale, BaleStatus } from '@/contexts/BalesContextSupabase';
+import { DocumentEntry } from '@/contexts/ContainersContextSupabase';
 import { Progress } from "@/components/ui/progress";
 
 // Photo Lightbox Component
@@ -296,6 +296,9 @@ const getBaleStatusBadge = (status: BaleStatus) => {
 function ContainerManagement() {
   const { 
     containers, 
+    isLoading: containersLoading,
+    isCreating,
+    error: containersError,
     addContainer, 
     updateContainer, 
     deleteContainer,
@@ -403,7 +406,7 @@ function ContainerManagement() {
     if (activeTab === 'warehouse') {
       filtered = filtered.filter(container => container.status === 'Warehouse');
     } else if (activeTab === 'shipped') {
-      filtered = filtered.filter(container => container.status === 'Shipped');
+      filtered = filtered.filter(container => container.status === 'Shipped' || container.status === 'In Transit' || container.status === 'Delivered');
     }
     
     // Filter by search
@@ -462,22 +465,49 @@ function ContainerManagement() {
     }
   }, [containers]);
 
-  const handleCreateContainer = () => {
-    const containerData = {
-      destination: formData.destination,
-      status: formData.status,
-      shipmentDate: formData.shipmentDate ? formData.shipmentDate.toISOString().split('T')[0] : undefined,
-      estimatedArrivalDate: formData.estimatedArrivalDate ? formData.estimatedArrivalDate.toISOString().split('T')[0] : undefined,
-      sealNumber: formData.sealNumber,
-      shippingLine: formData.shippingLine,
-      vesselName: formData.vesselName,
-      billOfLading: formData.billOfLading,
-      notes: formData.notes,
-      assignedBales: []
-    };
-    addContainer(containerData);
-    setIsCreateDialogOpen(false);
-    setFormData({ destination: '', status: 'Warehouse' });
+  const handleCreateContainer = async () => {
+    console.log('🚨 CREATE CONTAINER BUTTON CLICKED!');
+    console.log('[ContainerManagement] Starting container creation...');
+    console.log('[ContainerManagement] Form data:', formData);
+    
+    try {
+      const containerData = {
+        destination: formData.destination,
+        status: formData.status,
+        shipmentDate: formData.shipmentDate ? formData.shipmentDate.toISOString().split('T')[0] : undefined,
+        estimatedArrivalDate: formData.estimatedArrivalDate ? formData.estimatedArrivalDate.toISOString().split('T')[0] : undefined,
+        sealNumber: formData.sealNumber,
+        shippingLine: formData.shippingLine,
+        vesselName: formData.vesselName,
+        billOfLading: formData.billOfLading,
+        notes: formData.notes,
+        assignedBales: []
+      };
+      
+      console.log('[ContainerManagement] Container data to create:', containerData);
+      console.log('[ContainerManagement] About to call addContainer...');
+      
+      await addContainer(containerData);
+      
+      console.log('[ContainerManagement] Container created successfully! Closing dialog...');
+      setIsCreateDialogOpen(false);
+      setFormData({ destination: '', status: 'Warehouse' });
+    } catch (error) {
+      console.error('[ContainerManagement] Failed to create container:', error);
+      console.error('[ContainerManagement] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        fullError: error
+      });
+      
+      // Close dialog anyway to avoid getting stuck
+      console.log('[ContainerManagement] Closing dialog due to error...');
+      setIsCreateDialogOpen(false);
+      setFormData({ destination: '', status: 'Warehouse' });
+      
+      // You could show an error toast here
+      alert('Failed to create container. Please try again.');
+    }
   };
 
   const handleEditContainer = () => {
@@ -585,6 +615,7 @@ function ContainerManagement() {
 
   const handleAddNoteToTimeline = (containerId: string) => {
     const noteText = hoverCardNotes[containerId];
+    
     if (noteText && noteText.trim()) {
       addNoteToTimeline(containerId, noteText);
       setHoverCardNotes(prev => ({ ...prev, [containerId]: '' }));
@@ -701,10 +732,12 @@ function ContainerManagement() {
   const getStatusBadge = (status: string) => {
     const statusStyles = {
       'Warehouse': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Shipped': 'bg-green-100 text-green-800 border-green-200'
+      'Shipped': 'bg-green-100 text-green-800 border-green-200',
+      'In Transit': 'bg-green-100 text-green-800 border-green-200',
+      'Delivered': 'bg-green-100 text-green-800 border-green-200'
     };
     return (
-      <Badge variant="outline" className={statusStyles[status as keyof typeof statusStyles]}>
+      <Badge variant="outline" className={statusStyles[status as keyof typeof statusStyles] || 'bg-gray-100 text-gray-800 border-gray-200'}>
         {status}
       </Badge>
     );
@@ -889,7 +922,7 @@ function ContainerManagement() {
                 ? 'bg-gray-200 text-gray-900'
                 : 'bg-gray-100 text-gray-600'
             }`}>
-              {containers.filter(c => c.status === 'Shipped').length}
+              {containers.filter(c => c.status === 'Shipped' || c.status === 'In Transit' || c.status === 'Delivered').length}
             </span>
           </button>
         </div>
@@ -931,7 +964,23 @@ function ContainerManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredContainers.map((container) => (
+              {containersLoading ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="h-32 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      Loading containers...
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : filteredContainers.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={9} className="h-32 text-center text-gray-500">
+                    No containers found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredContainers.map((container) => (
                 <TableRow 
                   key={`${container.id}-${container.containerNumber}`}
                   className={container.status === 'Shipped' ? 'bg-green-50 hover:bg-green-100' : ''}
@@ -1023,7 +1072,7 @@ function ContainerManagement() {
                             Mark as Shipped
                           </DropdownMenuItem>
                         )}
-                        {container.status === 'Shipped' && (
+                        {(container.status === 'Shipped' || container.status === 'In Transit' || container.status === 'Delivered') && (
                           <DropdownMenuItem onClick={() => {
                             setSelectedContainer(container);
                             setIsUnmarkShippedDialogOpen(true);
@@ -1050,13 +1099,7 @@ function ContainerManagement() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
-              {filteredContainers.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                    No containers found
-                  </TableCell>
-                </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
@@ -1204,11 +1247,25 @@ function ContainerManagement() {
               />
             </div>
           </div>
+          {containersError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{containersError}</p>
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={isCreating}>
               Cancel
             </Button>
-            <Button onClick={handleCreateContainer}>Create Container</Button>
+            <Button onClick={handleCreateContainer} disabled={isCreating}>
+              {isCreating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Creating...
+                </>
+              ) : (
+                'Create Container'
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1513,13 +1570,13 @@ function ContainerManagement() {
               </TabsContent>
               
               <TabsContent value="documents" className="mt-4">
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[calc(80vh-200px)] overflow-y-auto">
                   {/* Upload Section */}
                   <div 
-                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 cursor-pointer ${
+                    className={`relative border-2 border-dashed rounded-lg text-center transition-all duration-200 cursor-pointer ${
                       isUploading 
-                        ? 'border-blue-400 bg-blue-50/50' 
-                        : 'border-gray-200 hover:border-blue-300 bg-gradient-to-b from-gray-50/50 to-white hover:from-blue-50/30 hover:to-white'
+                        ? 'border-blue-400 bg-blue-50/50 p-4' 
+                        : 'border-gray-200 hover:border-blue-300 bg-gradient-to-b from-gray-50/50 to-white hover:from-blue-50/30 hover:to-white p-6'
                     }`}
                     onDragOver={(e) => {
                       handleDragOver(e);
@@ -1547,57 +1604,58 @@ function ContainerManagement() {
                     
                     {/* Upload Icon */}
                     <div className="flex flex-col items-center">
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 transition-colors ${
-                        isUploading ? 'bg-blue-100' : 'bg-gray-100'
+                      <div className={`rounded-full flex items-center justify-center transition-colors ${
+                        isUploading 
+                          ? 'w-10 h-10 bg-blue-100 mb-2' 
+                          : 'w-14 h-14 bg-gray-100 mb-3'
                       }`}>
-                        <Upload className={`w-7 h-7 ${isUploading ? 'text-blue-500 animate-pulse' : 'text-gray-400'}`} />
+                        <Upload className={`${isUploading ? 'w-5 h-5 text-blue-500 animate-pulse' : 'w-7 h-7 text-gray-400'}`} />
                       </div>
                       
                       {/* Upload Text */}
-                      <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                      <h3 className={`font-semibold text-gray-900 ${isUploading ? 'text-xs mb-1' : 'text-sm mb-1'}`}>
                         {isUploading ? 'Uploading...' : 'Upload Documents'}
                       </h3>
-                      <p className="text-xs text-gray-500 mb-4">
-                        Drag and drop your files here, or click to browse
-                      </p>
+                      {!isUploading && (
+                        <p className="text-xs text-gray-500 mb-4">
+                          Drag and drop your files here, or click to browse
+                        </p>
+                      )}
                       
                       {/* Upload Button */}
-                      <Button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          fileInputRef.current?.click();
-                        }}
-                        disabled={isUploading}
-                        className="mb-3 h-8"
-                        size="sm"
-                      >
-                        {isUploading ? (
-                          <>
-                            <Upload className="w-3 h-3 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          <>
-                            <FileCheck className="w-3 h-3 mr-2" />
-                            Select Files
-                          </>
-                        )}
-                      </Button>
+                      {!isUploading && (
+                        <Button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                          }}
+                          disabled={isUploading}
+                          className="mb-3 h-8"
+                          size="sm"
+                        >
+                          <FileCheck className="w-3 h-3 mr-2" />
+                          Select Files
+                        </Button>
+                      )}
                       
                       {/* File Type Icons */}
-                      <div className="flex items-center gap-4 text-xs text-gray-400">
-                        <div className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          <span>PDF, DOC</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <ImageIcon className="w-3 h-3" />
-                          <span>JPG, PNG</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-2">
-                        Max 10MB per file
-                      </p>
+                      {!isUploading && (
+                        <>
+                          <div className="flex items-center gap-4 text-xs text-gray-400">
+                            <div className="flex items-center gap-1">
+                              <FileText className="w-3 h-3" />
+                              <span>PDF, DOC</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <ImageIcon className="w-3 h-3" />
+                              <span>JPG, PNG</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-2">
+                            Max 10MB per file
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
                   
@@ -1622,7 +1680,7 @@ function ContainerManagement() {
                         Uploaded Documents ({selectedContainer.documents?.length || 0})
                       </h4>
                     </div>
-                    <ScrollArea className="h-[200px]">
+                    <ScrollArea className={`${isUploading ? 'h-[160px]' : 'h-[200px]'} transition-all duration-200`}>
                       {selectedContainer.documents?.length > 0 ? (
                         <div className="p-2 space-y-1">
                           {selectedContainer.documents.map((doc: any, index: number) => {

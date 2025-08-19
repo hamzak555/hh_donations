@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import { useBins, BinLocation } from '@/contexts/BinsContext';
-import { useDrivers } from '@/contexts/DriversContext';
+import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
+import { useDrivers } from '@/contexts/DriversContextSupabase';
 import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 import {
   Table,
@@ -48,10 +48,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, MoreHorizontal, Edit, Trash, MapPin, CalendarDays, FileText, Upload, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users } from 'lucide-react';
-import { format } from 'date-fns';
+import { Plus, MoreHorizontal, Edit, Trash, MapPin, FileText, Upload, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 // Use the shared Bin type from context
@@ -65,7 +62,6 @@ function BinsManagement() {
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedBin, setSelectedBin] = useState<Bin | null>(null);
@@ -92,14 +88,6 @@ function BinsManagement() {
   const addAddressRef = useRef<HTMLInputElement>(null);
   const editAddressRef = useRef<HTMLInputElement>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [pickupFormData, setPickupFormData] = useState({
-    driverName: '',
-    pickupDate: '',
-    pickupTime: '',
-    loadType: 'B - Good' as 'A - Excellent' | 'B - Good' | 'C - Fair',
-    estimatedWeight: 0
-  });
-  const [pickupDate, setPickupDate] = useState<Date>();
   const [selectedBins, setSelectedBins] = useState<Set<string>>(new Set());
   const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
   const [bulkDriverName, setBulkDriverName] = useState('');
@@ -127,9 +115,16 @@ function BinsManagement() {
 
     setIsLoadingSensorData(true);
     try {
-      const api = new SensoneoAPI();
+      // Get API key from localStorage (same as SensorTest page)
+      const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || '0c5d7f2757f740489dca16d6c5745a11';
+      const savedApiKey = localStorage.getItem('sensoneo_api_key') || demoApiKey;
+      
+      console.log('[BinsManagement] Using Sensoneo API key from localStorage');
+      console.log('[BinsManagement] Bins with container IDs:', binsWithSensors.map(b => `${b.binNumber}: ${b.containerId}`));
+      const api = new SensoneoAPI({ apiKey: savedApiKey });
       const containerIds = binsWithSensors.map(bin => bin.containerId!);
       
+      console.log('[BinsManagement] Fetching sensor data for container IDs:', containerIds);
       const measurements = await api.fetchBulkMeasurements(containerIds);
       setSensorData(measurements);
       
@@ -452,7 +447,6 @@ function BinsManagement() {
         const bin = bins.find(b => b.id === binId);
         if (bin) {
           updateBin(binId, { 
-            pickupStatus: 'Scheduled',
             assignedDriver: bulkDriverName 
           });
           binsToAssign.push(bin.binNumber);
@@ -525,17 +519,25 @@ function BinsManagement() {
     return `BIN${String(maxBinNumber + 1).padStart(3, '0')}`;
   };
 
+  // Generate a proper UUID for Supabase
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const handleAddBin = () => {
     // Use selected location coordinates if available, otherwise use default Toronto coordinates
     const coordinates = selectedLocation || { lat: 43.6532, lng: -79.3832 };
     
     let newBin: Bin = {
-      id: String(bins.length + 1),
+      id: generateUUID(), // Generate proper UUID for Supabase
       binNumber: generateBinNumber(),
       locationName: formData.locationName,
       address: formData.address,
       status: formData.status,
-      pickupStatus: 'Not Scheduled',
       lat: coordinates.lat,
       lng: coordinates.lng,
       createdDate: new Date().toISOString().split('T')[0]
@@ -571,7 +573,7 @@ function BinsManagement() {
 
     addBin(newBin);
     setIsAddDialogOpen(false);
-    setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none' });
+    setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
     setUploadedFile(null);
     setSelectedLocation(null);
   };
@@ -624,7 +626,7 @@ function BinsManagement() {
       updateBin(selectedBin.id, updatedBin);
       setIsEditDialogOpen(false);
       setSelectedBin(null);
-      setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none' });
+      setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
       setUploadedFile(null);
     }
   };
@@ -651,35 +653,6 @@ function BinsManagement() {
     }
   };
 
-  const handleSchedulePickup = (bin: Bin) => {
-    setSelectedBin(bin);
-    setPickupFormData({
-      driverName: '',
-      pickupDate: '',
-      pickupTime: '',
-      loadType: 'B - Good',
-      estimatedWeight: 0
-    });
-    setPickupDate(undefined);
-    setIsScheduleDialogOpen(true);
-  };
-
-  const handleConfirmSchedulePickup = () => {
-    if (selectedBin && pickupDate) {
-      // Update bin status and assign driver
-      updateBin(selectedBin.id, { 
-        pickupStatus: 'Scheduled',
-        assignedDriver: pickupFormData.driverName 
-      });
-      
-      
-      setIsScheduleDialogOpen(false);
-      setSelectedBin(null);
-      setPickupDate(undefined);
-    } else if (!pickupDate) {
-      alert('Please select a pickup date.');
-    }
-  };
 
   const openEditDialog = (bin: Bin) => {
     setSelectedBin(bin);
@@ -971,10 +944,6 @@ function BinsManagement() {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSchedulePickup(bin)}>
-                            <CalendarDays className="mr-2 h-4 w-4" />
-                            Schedule Pickup
-                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleViewOnMap(bin)}>
                             <MapPin className="mr-2 h-4 w-4" />
                             View on Map
@@ -1130,6 +1099,19 @@ function BinsManagement() {
               </Select>
             </div>
             <div>
+              <Label htmlFor="add-container-id">Sensoneo Container ID (Optional)</Label>
+              <Input
+                id="add-container-id"
+                type="number"
+                value={formData.containerId || ''}
+                onChange={(e) => setFormData({...formData, containerId: e.target.value ? parseInt(e.target.value) : undefined})}
+                placeholder="Enter Sensoneo container ID"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Link this bin to a Sensoneo sensor for real-time fill level monitoring
+              </p>
+            </div>
+            <div>
               <Label htmlFor="contract-upload-add">Location Agreement Contract (PDF)</Label>
               <div className="space-y-2">
                 <div className="flex items-center gap-3">
@@ -1171,7 +1153,7 @@ function BinsManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddDialogOpen(false);
-              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none' });
+              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
               setUploadedFile(null);
               setSelectedLocation(null);
             }}>
@@ -1351,106 +1333,6 @@ function BinsManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Schedule Pickup Dialog */}
-      <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Schedule Pickup</DialogTitle>
-            <DialogDescription>
-              Schedule a pickup for {selectedBin?.binNumber} - {selectedBin?.locationName}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 px-1 py-1">
-            <div>
-              <Label htmlFor="pickup-driver">Assign Driver</Label>
-              <Select 
-                value={pickupFormData.driverName}
-                onValueChange={(value) => setPickupFormData({...pickupFormData, driverName: value})}
-              >
-                <SelectTrigger id="pickup-driver">
-                  <SelectValue placeholder="Select a driver" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activeDrivers.map(driver => (
-                    <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Pickup Date *</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-left font-normal"
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {pickupDate ? format(pickupDate, 'PPP') : 'Pick a date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={pickupDate}
-                      onSelect={setPickupDate}
-                      disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return date < today;
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label htmlFor="pickup-time">Pickup Time</Label>
-                <Input
-                  id="pickup-time"
-                  type="text"
-                  placeholder="e.g., 10:00 AM"
-                  value={pickupFormData.pickupTime}
-                  onChange={(e) => setPickupFormData({...pickupFormData, pickupTime: e.target.value})}
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="pickup-load">Load Type</Label>
-              <Select 
-                value={pickupFormData.loadType}
-                onValueChange={(value) => setPickupFormData({...pickupFormData, loadType: value as typeof pickupFormData.loadType})}
-              >
-                <SelectTrigger id="pickup-load">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A - Excellent">A - Excellent Quality</SelectItem>
-                  <SelectItem value="B - Good">B - Good Quality</SelectItem>
-                  <SelectItem value="C - Fair">C - Fair Quality</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="pickup-weight">Estimated Weight (kg)</Label>
-              <Input
-                id="pickup-weight"
-                type="number"
-                value={pickupFormData.estimatedWeight}
-                onChange={(e) => setPickupFormData({...pickupFormData, estimatedWeight: Number(e.target.value)})}
-                placeholder="Enter estimated weight"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsScheduleDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmSchedulePickup}>Schedule Pickup</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* View on Map Dialog */}
       <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
@@ -1570,8 +1452,8 @@ function BinsManagement() {
             </div>
             <div className="p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                This will schedule pickups for all selected bins with the assigned driver.
-                The pickup dates can be adjusted individually later.
+                This will assign the selected driver to all selected bins.
+                You can manage individual bin assignments later.
               </p>
             </div>
           </div>

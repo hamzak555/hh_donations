@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { supabaseService } from '../services/supabaseService';
+import { SupabaseService } from '@/services/supabaseService';
 
 export interface PickupRequest {
   id: string;
@@ -22,9 +22,9 @@ export interface PickupRequest {
 
 interface PickupRequestsContextType {
   pickupRequests: PickupRequest[];
-  addPickupRequest: (request: Omit<PickupRequest, 'id'>) => void;
-  updatePickupRequest: (id: string, updates: Partial<PickupRequest>) => void;
-  deletePickupRequest: (id: string) => void;
+  addPickupRequest: (request: Omit<PickupRequest, 'id'>) => Promise<void>;
+  updatePickupRequest: (id: string, updates: Partial<PickupRequest>) => Promise<void>;
+  deletePickupRequest: (id: string) => Promise<void>;
   getPickupRequestById: (id: string) => PickupRequest | undefined;
 }
 
@@ -36,7 +36,7 @@ const STORAGE_KEY = 'pickupRequests';
 const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
                      process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
 
-// Helper function to convert between database and app formats
+// Simplified helper functions - direct mapping after column rename
 const convertFromDatabase = (dbRequest: any): PickupRequest => {
   return {
     id: dbRequest.id,
@@ -46,17 +46,22 @@ const convertFromDatabase = (dbRequest: any): PickupRequest => {
     address: dbRequest.address,
     date: dbRequest.date,
     time: dbRequest.time,
-    additionalNotes: dbRequest.additional_notes || undefined,
-    location: dbRequest.location || undefined,
-    submittedAt: dbRequest.submitted_at,
+    // Map item_description back to additionalNotes
+    additionalNotes: dbRequest.item_description || dbRequest.additionalNotes || undefined,
+    // Use location JSONB if available, otherwise reconstruct from lat/lng
+    location: dbRequest.location || (dbRequest.lat && dbRequest.lng ? { lat: dbRequest.lat, lng: dbRequest.lng } : undefined),
+    submittedAt: dbRequest.submittedAt || dbRequest.created_at,
     status: dbRequest.status as 'Pending' | 'Picked Up' | 'Cancelled',
-    assignedDriver: dbRequest.assigned_driver || undefined,
-    adminNotes: dbRequest.admin_notes || undefined
+    assignedDriver: dbRequest.assignedDriver || undefined,
+    adminNotes: dbRequest.adminNotes || undefined
   };
 };
 
 const convertToDatabase = (request: Partial<PickupRequest>): any => {
+  // Map frontend fields to database column names
   const dbRequest: any = {};
+  
+  // Direct mappings
   if (request.id !== undefined) dbRequest.id = request.id;
   if (request.name !== undefined) dbRequest.name = request.name;
   if (request.email !== undefined) dbRequest.email = request.email;
@@ -64,12 +69,23 @@ const convertToDatabase = (request: Partial<PickupRequest>): any => {
   if (request.address !== undefined) dbRequest.address = request.address;
   if (request.date !== undefined) dbRequest.date = request.date;
   if (request.time !== undefined) dbRequest.time = request.time;
-  if (request.additionalNotes !== undefined) dbRequest.additional_notes = request.additionalNotes;
-  if (request.location !== undefined) dbRequest.location = request.location;
-  if (request.submittedAt !== undefined) dbRequest.submitted_at = request.submittedAt;
   if (request.status !== undefined) dbRequest.status = request.status;
-  if (request.assignedDriver !== undefined) dbRequest.assigned_driver = request.assignedDriver;
-  if (request.adminNotes !== undefined) dbRequest.admin_notes = request.adminNotes;
+  if (request.assignedDriver !== undefined) dbRequest.assignedDriver = request.assignedDriver;
+  if (request.adminNotes !== undefined) dbRequest.adminNotes = request.adminNotes;
+  if (request.submittedAt !== undefined) dbRequest.submittedAt = request.submittedAt;
+  
+  // Field mapping: additionalNotes -> item_description
+  if (request.additionalNotes !== undefined) {
+    dbRequest.item_description = request.additionalNotes;
+  }
+  
+  // Location handling: extract lat/lng AND store location JSONB
+  if (request.location && typeof request.location === 'object') {
+    dbRequest.lat = request.location.lat;
+    dbRequest.lng = request.location.lng;
+    dbRequest.location = request.location; // Also store as JSONB
+  }
+  
   return dbRequest;
 };
 
@@ -146,7 +162,7 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     const loadPickupRequests = async () => {
       if (USE_SUPABASE) {
         try {
-          const dbRequests = await supabaseService.getPickupRequests();
+          const dbRequests = await SupabaseService.pickupRequests.getAllPickupRequests();
           if (dbRequests && dbRequests.length > 0) {
             const convertedRequests = dbRequests.map(convertFromDatabase);
             setPickupRequests(convertedRequests);
@@ -171,13 +187,22 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     }
   }, [pickupRequests]);
 
+  // Generate a proper UUID for Supabase
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const addPickupRequest = async (request: Omit<PickupRequest, 'id'>) => {
     // Check for default driver if request doesn't have one assigned
     const defaultDriver = localStorage.getItem('defaultPickupDriver');
     
     const newRequest: PickupRequest = {
       ...request,
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: generateUUID(), // Generate proper UUID for Supabase
       // Auto-assign default driver if available and request is pending without a driver
       assignedDriver: (request.status === 'Pending' && !request.assignedDriver && defaultDriver) 
         ? defaultDriver 
@@ -187,13 +212,25 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     // Add to Supabase if configured
     if (USE_SUPABASE) {
       try {
+        console.log('[PickupRequestsContext] Adding pickup request to Supabase:', newRequest);
         const dbRequest = convertToDatabase(newRequest);
-        const addedRequest = await supabaseService.addPickupRequest(dbRequest);
+        console.log('[PickupRequestsContext] Converted request for database:', dbRequest);
+        
+        const addedRequest = await SupabaseService.pickupRequests.createPickupRequest(dbRequest);
+        console.log('[PickupRequestsContext] Supabase response:', addedRequest);
+        
         if (addedRequest) {
           newRequest.id = addedRequest.id; // Use the database-generated ID
         }
       } catch (error) {
         console.error('[PickupRequestsContext] Failed to add to Supabase:', error);
+        console.error('[PickupRequestsContext] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          fullError: error
+        });
+        // Re-throw the error so the form can handle it
+        throw error;
       }
     }
     
@@ -205,7 +242,7 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     if (USE_SUPABASE) {
       try {
         const dbUpdates = convertToDatabase(updates);
-        await supabaseService.updatePickupRequest(id, dbUpdates);
+        await SupabaseService.pickupRequests.updatePickupRequest(id, dbUpdates);
       } catch (error) {
         console.error('[PickupRequestsContext] Failed to update in Supabase:', error);
       }
@@ -222,7 +259,7 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     // Delete from Supabase if configured
     if (USE_SUPABASE) {
       try {
-        await supabaseService.deletePickupRequest(id);
+        await SupabaseService.pickupRequests.deletePickupRequest(id);
       } catch (error) {
         console.error('[PickupRequestsContext] Failed to delete from Supabase:', error);
       }

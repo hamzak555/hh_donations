@@ -11,7 +11,6 @@ import {
   Container,
   Wifi,
   Users,
-  Database,
   Shield,
   Settings,
   ChevronDown,
@@ -106,8 +105,7 @@ const AdminSidebar = () => {
       icon: Settings,
       subItems: [
         { path: '/admin/users', label: 'User Management', icon: Shield },
-        { path: '/admin/sensor-test', label: 'Sensor Test', icon: Wifi },
-        { path: '/admin/supabase-migration', label: 'Database Migration', icon: Database }
+        { path: '/admin/sensor-test', label: 'Sensor Test', icon: Wifi }
       ]
     },
   ];

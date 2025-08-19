@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CalendarDays, MapPin, Phone, Mail, User, Clock, CheckCircle, Search, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { usePickupRequests } from '@/contexts/PickupRequestsContext';
+import { usePickupRequests } from '@/contexts/PickupRequestsContextSupabase';
 
 const RequestPickup = () => {
   const { addPickupRequest } = usePickupRequests();
@@ -91,7 +91,7 @@ const RequestPickup = () => {
         status: 'Pending' as const
       };
 
-      addPickupRequest(pickupRequest);
+      await addPickupRequest(pickupRequest);
       console.log('Pickup request submitted:', pickupRequest);
       
       // Scroll to top of page

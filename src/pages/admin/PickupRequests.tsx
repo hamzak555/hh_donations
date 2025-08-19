@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContext';
-import { useDrivers } from '@/contexts/DriversContext';
+import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContextSupabase';
+import { useDrivers } from '@/contexts/DriversContextSupabase';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,

@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { MapPin, Navigation, Search, ExternalLink, AlertCircle } from 'lucide-react';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
-import { useBins, BinLocation } from '@/contexts/BinsContext';
+import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
 import SEO from '@/components/SEO';
 
 const FindBin = () => {

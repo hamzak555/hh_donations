@@ -29,7 +29,6 @@ import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
 import RecoverData from './pages/admin/RecoverData';
 import DiagnosticPage from './pages/admin/DiagnosticPage';
 import SensorTest from './pages/admin/SensorTest';
-import SupabaseMigration from './pages/admin/SupabaseMigration';
 import UserManagement from './pages/admin/UserManagement';
 import FAQ from './pages/FAQ';
 import WhatToDonate from './pages/WhatToDonate';
@@ -96,7 +95,6 @@ function App() {
                           <Route path="/admin/recover" element={<RecoverData />} />
                           <Route path="/admin/diagnostic" element={<DiagnosticPage />} />
                           <Route path="/admin/sensor-test" element={<SensorTest />} />
-                          <Route path="/admin/supabase-migration" element={<SupabaseMigration />} />
                           <Route path="/admin/users" element={<UserManagement />} />
                         </Route>
                         

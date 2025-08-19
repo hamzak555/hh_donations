@@ -80,10 +80,10 @@ function UserManagement() {
       
       const newUser = {
         email: formData.email,
-        password_hash,
-        full_name: formData.full_name,
-        role: formData.role,
-        is_active: true
+        passwordHash: password_hash,
+        fullName: formData.full_name,
+        role: formData.role as 'admin' | 'manager' | 'operator',
+        isActive: true
       };
 
       await SupabaseService.adminUsers.createAdminUser(newUser);
@@ -102,13 +102,13 @@ function UserManagement() {
     try {
       const updates: Partial<DatabaseAdminUser> = {
         email: formData.email,
-        full_name: formData.full_name,
-        role: formData.role
+        fullName: formData.full_name,
+        role: formData.role as 'admin' | 'manager' | 'operator'
       };
 
       // Only update password if provided
       if (formData.password) {
-        updates.password_hash = `hashed_${formData.password}`;
+        updates.passwordHash = `hashed_${formData.password}`;
       }
 
       await SupabaseService.adminUsers.updateAdminUser(selectedUser.id, updates);
@@ -144,7 +144,7 @@ function UserManagement() {
   const handleToggleActive = async (user: DatabaseAdminUser) => {
     try {
       await SupabaseService.adminUsers.updateAdminUser(user.id, {
-        is_active: !user.is_active
+        isActive: !user.isActive
       });
       await loadUsers();
     } catch (error) {
@@ -158,7 +158,7 @@ function UserManagement() {
     setFormData({
       email: user.email,
       password: '', // Don't pre-fill password
-      full_name: user.full_name,
+      full_name: user.fullName,
       role: user.role
     });
     setIsEditDialogOpen(true);
@@ -237,13 +237,13 @@ function UserManagement() {
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.full_name}</TableCell>
+                    <TableCell className="font-medium">{user.fullName}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>{getStatusBadge(user.is_active)}</TableCell>
+                    <TableCell>{getStatusBadge(user.isActive)}</TableCell>
                     <TableCell>
-                      {user.last_login 
-                        ? new Date(user.last_login).toLocaleDateString()
+                      {user.lastLogin 
+                        ? new Date(user.lastLogin).toLocaleDateString()
                         : 'Never'
                       }
                     </TableCell>
@@ -450,7 +450,7 @@ function UserManagement() {
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the user
               {userToDelete && (
-                <span className="font-semibold"> "{userToDelete.full_name}"</span>
+                <span className="font-semibold"> "{userToDelete.fullName}"</span>
               )}
               {' '}and remove their access to the admin system.
             </AlertDialogDescription>

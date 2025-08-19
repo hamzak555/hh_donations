@@ -36,6 +36,15 @@ const STORAGE_KEY = 'driversData';
 const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
                     process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
 
+// Generate a proper UUID for Supabase
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,18 +60,18 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
         console.log('[DriversProvider] Using Supabase for data persistence');
         const supabaseDrivers = await SupabaseService.drivers.getAllDrivers();
         
-        // Convert from database format to app format
+        // Direct mapping from database format after column rename
         const formattedDrivers: Driver[] = supabaseDrivers.map(d => ({
           id: d.id,
           name: d.name,
           email: d.email || '',
           phone: d.phone,
-          assignedBins: d.assigned_bins || [],
-          status: d.status as 'Active' | 'Inactive',
-          totalPickups: 0, // This would need to be calculated from pickup_requests
-          licenseNumber: d.license_number,
-          hireDate: d.hire_date,
-          vehicleType: d.vehicle_type,
+          assignedBins: d.assignedBins || [], // Direct mapping after column rename
+          status: (d.status === 'On Leave' ? 'Inactive' : d.status) as 'Active' | 'Inactive',
+          totalPickups: d.totalPickups || 0, // Now available in database
+          licenseNumber: d.licenseNumber, // Direct mapping after column rename
+          hireDate: d.hireDate, // Direct mapping after column rename
+          vehicleType: d.vehicleType, // Direct mapping after column rename
           notes: d.notes
         }));
         
@@ -110,17 +119,18 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
   const addDriver = async (driver: Driver) => {
     try {
       if (USE_SUPABASE) {
-        // Convert to database format
+        // Direct mapping to database format after column rename
         const dbDriver = {
           id: driver.id,
           name: driver.name,
           phone: driver.phone,
           email: driver.email || undefined,
-          license_number: driver.licenseNumber || `LIC-${driver.id}`,
-          hire_date: driver.hireDate || new Date().toISOString().split('T')[0],
+          licenseNumber: driver.licenseNumber || `LIC-${driver.id}`, // Direct mapping
+          hireDate: driver.hireDate || new Date().toISOString().split('T')[0], // Direct mapping
           status: driver.status,
-          assigned_bins: driver.assignedBins,
-          vehicle_type: driver.vehicleType,
+          assignedBins: driver.assignedBins, // Direct mapping
+          vehicleType: driver.vehicleType, // Direct mapping
+          totalPickups: driver.totalPickups || 0,
           notes: driver.notes
         };
         
@@ -140,16 +150,17 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
   const updateDriver = async (id: string, updates: Partial<Driver>) => {
     try {
       if (USE_SUPABASE) {
-        // Convert updates to database format
+        // Direct mapping for updates after column rename
         const dbUpdates: any = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
         if (updates.email !== undefined) dbUpdates.email = updates.email;
         if (updates.status !== undefined) dbUpdates.status = updates.status;
-        if (updates.assignedBins !== undefined) dbUpdates.assigned_bins = updates.assignedBins;
-        if (updates.licenseNumber !== undefined) dbUpdates.license_number = updates.licenseNumber;
-        if (updates.hireDate !== undefined) dbUpdates.hire_date = updates.hireDate;
-        if (updates.vehicleType !== undefined) dbUpdates.vehicle_type = updates.vehicleType;
+        if (updates.assignedBins !== undefined) dbUpdates.assignedBins = updates.assignedBins; // Direct mapping
+        if (updates.licenseNumber !== undefined) dbUpdates.licenseNumber = updates.licenseNumber; // Direct mapping
+        if (updates.hireDate !== undefined) dbUpdates.hireDate = updates.hireDate; // Direct mapping
+        if (updates.vehicleType !== undefined) dbUpdates.vehicleType = updates.vehicleType; // Direct mapping
+        if (updates.totalPickups !== undefined) dbUpdates.totalPickups = updates.totalPickups;
         if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
         
         await SupabaseService.drivers.updateDriver(id, dbUpdates);

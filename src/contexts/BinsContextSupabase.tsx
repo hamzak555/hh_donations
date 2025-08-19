@@ -9,8 +9,6 @@ export interface BinLocation {
   lat: number;
   lng: number;
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full';
-  pickupStatus: 'Scheduled' | 'Not Scheduled' | 'Completed';
-  lastPickup?: string;
   contractFile?: string;
   contractFileName?: string;
   contractUploadDate?: string;
@@ -45,6 +43,15 @@ const BinsContext = createContext<BinsContextType | undefined>(undefined);
 const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
                     process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
 
+// Generate a proper UUID for Supabase
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 const initialBins: BinLocation[] = [
   {
     id: '1',
@@ -52,11 +59,11 @@ const initialBins: BinLocation[] = [
     locationName: 'Community Center',
     address: '123 Main St, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-10',
     lat: 43.6532,
     lng: -79.3832,
-    createdDate: '2023-06-15'
+    createdDate: '2023-06-15',
+    containerId: 1001, // Test Sensoneo container ID
+    sensorEnabled: true
   },
   {
     id: '2',
@@ -64,11 +71,11 @@ const initialBins: BinLocation[] = [
     locationName: 'Shopping Mall',
     address: '456 Queen St W, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Scheduled',
-    lastPickup: '2024-01-12',
     lat: 43.6489,
     lng: -79.3963,
-    createdDate: '2023-07-22'
+    createdDate: '2023-07-22',
+    containerId: 1002, // Test Sensoneo container ID
+    sensorEnabled: true
   },
   {
     id: '3',
@@ -76,8 +83,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Public Library',
     address: '789 King St E, Toronto, ON',
     status: 'Unavailable',
-    pickupStatus: 'Scheduled',
-    lastPickup: '2024-01-05',
     lat: 43.6544,
     lng: -79.3607,
     createdDate: '2023-08-10'
@@ -88,8 +93,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Recreation Center',
     address: '321 Dundas St W, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Completed',
-    lastPickup: '2024-01-15',
     lat: 43.6551,
     lng: -79.3865,
     createdDate: '2023-09-05'
@@ -100,12 +103,12 @@ const initialBins: BinLocation[] = [
     locationName: 'School Campus',
     address: '654 College St, Toronto, ON',
     status: 'Full',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-08',
     lat: 43.6589,
     lng: -79.4057,
     createdDate: '2023-10-12',
-    fullSince: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
+    fullSince: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+    containerId: 1005, // Test Sensoneo container ID
+    sensorEnabled: true
   },
   {
     id: '6',
@@ -113,8 +116,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Hospital Main Entrance',
     address: '890 University Ave, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-14',
     lat: 43.6595,
     lng: -79.3889
   },
@@ -124,8 +125,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Transit Station',
     address: '250 Bloor St W, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Scheduled',
-    lastPickup: '2024-01-11',
     lat: 43.6673,
     lng: -79.3956
   },
@@ -135,8 +134,6 @@ const initialBins: BinLocation[] = [
     locationName: 'City Hall',
     address: '100 Queen St W, Toronto, ON',
     status: 'Unavailable',
-    pickupStatus: 'Scheduled',
-    lastPickup: '2024-01-09',
     lat: 43.6534,
     lng: -79.3841
   },
@@ -146,8 +143,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Sports Complex',
     address: '875 Morningside Ave, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-13',
     lat: 43.7853,
     lng: -79.1939
   },
@@ -157,8 +152,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Grocery Store Plaza',
     address: '1500 Royal York Rd, Toronto, ON',
     status: 'Full',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-07',
     lat: 43.6471,
     lng: -79.5157,
     fullSince: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() // 5 days ago
@@ -169,8 +162,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Park Entrance',
     address: '1873 Bloor St W, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Completed',
-    lastPickup: '2024-01-16',
     lat: 43.6515,
     lng: -79.4644
   },
@@ -180,8 +171,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Church Parking Lot',
     address: '620 Spadina Ave, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-12',
     lat: 43.6627,
     lng: -79.4036
   },
@@ -191,8 +180,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Fire Station 24',
     address: '745 Broadview Ave, Toronto, ON',
     status: 'Unavailable',
-    pickupStatus: 'Scheduled',
-    lastPickup: '2024-01-06',
     lat: 43.6778,
     lng: -79.3584
   },
@@ -202,8 +189,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Community Garden',
     address: '200 Winchester St, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-17',
     lat: 43.6674,
     lng: -79.3708
   },
@@ -213,8 +198,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Seniors Center',
     address: '1700 Keele St, Toronto, ON',
     status: 'Full',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-04',
     lat: 43.6889,
     lng: -79.4747,
     fullSince: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3 hours ago
@@ -225,8 +208,6 @@ const initialBins: BinLocation[] = [
     locationName: 'Bogza Plaza',
     address: '2500 Bogza Avenue, Toronto, ON',
     status: 'Available',
-    pickupStatus: 'Not Scheduled',
-    lastPickup: '2024-01-03',
     lat: 43.6532,
     lng: -79.3832
   }
@@ -336,12 +317,18 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addBin = async (newBin: BinLocation) => {
     if (USE_SUPABASE) {
       try {
+        console.log('[BinsProvider] Creating bin in Supabase:', newBin);
         const createdBin = await SupabaseService.bins.createBin(newBin);
         setBins(prevBins => [...prevBins, createdBin]);
         console.log(`[BinsProvider] Created bin ${createdBin.binNumber} in Supabase`);
       } catch (error) {
         console.error('[BinsProvider] Error creating bin:', error);
-        setError('Failed to create bin');
+        console.error('[BinsProvider] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          fullError: error
+        });
+        setError(`Failed to create bin: ${error instanceof Error ? error.message : 'Unknown error'}`);
         throw error;
       }
     } else {

@@ -54,6 +54,15 @@ const BalesContext = createContext<BalesContextType | undefined>(undefined);
 const USE_SUPABASE = process.env.REACT_APP_SUPABASE_URL && 
                      process.env.REACT_APP_SUPABASE_URL !== 'your_supabase_project_url';
 
+// Generate a proper UUID for Supabase
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export const useBales = () => {
   const context = useContext(BalesContext);
   if (!context) {
@@ -66,40 +75,34 @@ interface BalesProviderProps {
   children: ReactNode;
 }
 
-// Helper function to convert between database and app formats
+// Simplified helper functions - direct mapping after column rename
 const convertFromDatabase = (dbBale: any): Bale => {
   return {
     id: dbBale.id,
-    baleNumber: dbBale.bale_number,
-    contents: dbBale.contents as BaleQuality,
+    baleNumber: dbBale.baleNumber, // Direct mapping after column rename
+    contents: dbBale.contents as BaleQuality, // Direct mapping after column rename
     weight: dbBale.weight,
-    status: dbBale.status as BaleStatus,
-    createdDate: dbBale.created_date,
-    soldDate: dbBale.sold_date || undefined,
-    salePrice: dbBale.sale_price || undefined,
-    paymentMethod: dbBale.payment_method as PaymentMethod || undefined,
+    status: dbBale.status as BaleStatus, // Direct mapping after column rename
+    createdDate: dbBale.createdDate, // Direct mapping after column rename
+    soldDate: dbBale.soldDate || undefined,
+    salePrice: dbBale.salePrice || undefined,
+    paymentMethod: dbBale.paymentMethod as PaymentMethod || undefined,
     notes: dbBale.notes || undefined,
-    notesTimeline: dbBale.notes_timeline || undefined,
+    notesTimeline: dbBale.notesTimeline || undefined,
     photos: dbBale.photos || undefined,
-    containerNumber: dbBale.container_number || undefined
+    containerNumber: dbBale.containerNumber || undefined
   };
 };
 
 const convertToDatabase = (bale: Partial<Bale>): any => {
-  const dbBale: any = {};
-  if (bale.id !== undefined) dbBale.id = bale.id;
-  if (bale.baleNumber !== undefined) dbBale.bale_number = bale.baleNumber;
-  if (bale.contents !== undefined) dbBale.contents = bale.contents;
-  if (bale.weight !== undefined) dbBale.weight = bale.weight;
-  if (bale.status !== undefined) dbBale.status = bale.status;
-  if (bale.createdDate !== undefined) dbBale.created_date = bale.createdDate;
-  if (bale.soldDate !== undefined) dbBale.sold_date = bale.soldDate;
-  if (bale.salePrice !== undefined) dbBale.sale_price = bale.salePrice;
-  if (bale.paymentMethod !== undefined) dbBale.payment_method = bale.paymentMethod;
-  if (bale.notes !== undefined) dbBale.notes = bale.notes;
-  if (bale.notesTimeline !== undefined) dbBale.notes_timeline = bale.notesTimeline;
-  if (bale.photos !== undefined) dbBale.photos = bale.photos;
-  if (bale.containerNumber !== undefined) dbBale.container_number = bale.containerNumber;
+  // Direct mapping - no field name conversion needed after column rename
+  const dbBale: any = { ...bale };
+  
+  // Add default location if missing
+  if (dbBale.createdDate && !dbBale.location) {
+    dbBale.location = 'Warehouse';
+  }
+  
   return dbBale;
 };
 
@@ -132,7 +135,7 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
         // Migrate old notes to timeline format
         if (bale.notes && !bale.notesTimeline) {
           bale.notesTimeline = [{
-            id: String(Date.now()),
+            id: generateUUID(),
             text: bale.notes,
             timestamp: bale.createdDate || new Date().toISOString()
           }];
@@ -197,12 +200,12 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
     const createdDate = new Date().toISOString().split('T')[0];
     const newBale: Bale = {
       ...baleData,
-      id: String(Date.now()),
+      id: generateUUID(), // Generate proper UUID for Supabase
       baleNumber: generateBaleNumber(),
       createdDate,
       // Convert initial notes to timeline format
       notesTimeline: baleData.notes ? [{
-        id: String(Date.now()),
+        id: generateUUID(),
         text: baleData.notes,
         timestamp: new Date().toISOString()
       }] : undefined
@@ -284,27 +287,43 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
     });
   };
 
-  const addNoteToTimeline = (baleId: string, noteText: string) => {
+  const addNoteToTimeline = async (baleId: string, noteText: string) => {
     if (!noteText.trim()) return;
     
+    const newNote: NoteEntry = {
+      id: generateUUID(),
+      text: noteText,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Get current bale data before updating state
+    const currentBale = bales.find(b => b.id === baleId);
+    if (!currentBale) return;
+    
+    const currentTimeline = currentBale.notesTimeline || [];
+    const updatedTimeline = [...currentTimeline, newNote];
+    
+    // Update local state
     setBales(prev => 
       prev.map(bale => {
         if (bale.id === baleId) {
-          const newNote: NoteEntry = {
-            id: String(Date.now()),
-            text: noteText,
-            timestamp: new Date().toISOString()
-          };
-          
-          const currentTimeline = bale.notesTimeline || [];
           return {
             ...bale,
-            notesTimeline: [...currentTimeline, newNote]
+            notesTimeline: updatedTimeline
           };
         }
         return bale;
       })
     );
+    
+    // Sync to Supabase if configured
+    if (USE_SUPABASE) {
+      try {
+        await updateBale(baleId, { notesTimeline: updatedTimeline });
+      } catch (error) {
+        console.error('[BalesContext] Failed to sync note to Supabase:', error);
+      }
+    }
   };
 
   const addPhotos = async (baleId: string, photoFiles: File[]): Promise<void> => {
@@ -318,19 +337,36 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
         photoIds.push(photoId);
       }
       
-      // Update bale with photo IDs
+      // Get current bale data before updating state
+      const currentBale = bales.find(b => b.id === baleId);
+      if (!currentBale) {
+        throw new Error(`Bale with ID ${baleId} not found`);
+      }
+      
+      const currentPhotos = currentBale.photos || [];
+      const updatedPhotos = [...currentPhotos, ...photoIds];
+      
+      // Update local state
       setBales(prev => 
         prev.map(bale => {
           if (bale.id === baleId) {
-            const currentPhotos = bale.photos || [];
             return {
               ...bale,
-              photos: [...currentPhotos, ...photoIds]
+              photos: updatedPhotos
             };
           }
           return bale;
         })
       );
+      
+      // Sync to Supabase if configured
+      if (USE_SUPABASE) {
+        try {
+          await updateBale(baleId, { photos: updatedPhotos });
+        } catch (error) {
+          console.error('[BalesContext] Failed to sync photos to Supabase:', error);
+        }
+      }
     } catch (error) {
       console.error('Failed to add photos:', error);
       throw error;
