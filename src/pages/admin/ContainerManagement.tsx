@@ -406,7 +406,7 @@ function ContainerManagement() {
     if (activeTab === 'warehouse') {
       filtered = filtered.filter(container => container.status === 'Warehouse');
     } else if (activeTab === 'shipped') {
-      filtered = filtered.filter(container => container.status === 'Shipped' || container.status === 'In Transit' || container.status === 'Delivered');
+      filtered = filtered.filter(container => container.status === 'Shipped');
     }
     
     // Filter by search
@@ -922,7 +922,7 @@ function ContainerManagement() {
                 ? 'bg-gray-200 text-gray-900'
                 : 'bg-gray-100 text-gray-600'
             }`}>
-              {containers.filter(c => c.status === 'Shipped' || c.status === 'In Transit' || c.status === 'Delivered').length}
+              {containers.filter(c => c.status === 'Shipped').length}
             </span>
           </button>
         </div>
@@ -1072,7 +1072,7 @@ function ContainerManagement() {
                             Mark as Shipped
                           </DropdownMenuItem>
                         )}
-                        {(container.status === 'Shipped' || container.status === 'In Transit' || container.status === 'Delivered') && (
+                        {container.status === 'Shipped' && (
                           <DropdownMenuItem onClick={() => {
                             setSelectedContainer(container);
                             setIsUnmarkShippedDialogOpen(true);
