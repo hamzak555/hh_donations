@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, MoreHorizontal, Edit, Trash, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin, Key, Copy } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Pickup {
   id: string;
@@ -277,8 +278,12 @@ function DriversManagement() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = (text: string, label?: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`${label || 'Text'} copied to clipboard`);
+    }).catch(() => {
+      toast.error('Failed to copy to clipboard');
+    });
   };
 
   const handleChangePassword = (driver: Driver) => {
@@ -407,7 +412,7 @@ function DriversManagement() {
               style={{
                 tableLayout: 'fixed', 
                 width: '100%', 
-                minWidth: '800px'
+                minWidth: '1200px'
               }}
             >
             <TableHeader>
@@ -422,11 +427,14 @@ function DriversManagement() {
                     {getSortIcon('name')}
                   </div>
                 </TableHead>
-                <TableHead style={{width: '30%'}}>Contact Information</TableHead>
+                <TableHead style={{width: '20%'}}>Email</TableHead>
+                <TableHead style={{width: '15%'}}>Phone</TableHead>
+                <TableHead style={{width: '12%'}}>Login Status</TableHead>
+                <TableHead style={{width: '15%'}}>Password</TableHead>
                 <TableHead 
                   className="cursor-pointer select-none"
                   onClick={() => handleSort('assignedBins')}
-                  style={{width: '25%'}}
+                  style={{width: '18%'}}
                 >
                   <div className="flex items-center gap-1">
                     Assigned Bins
@@ -477,25 +485,68 @@ function DriversManagement() {
                         {driver.name}
                       </div>
                     </TableCell>
-                    <TableCell style={{width: '25%'}}>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="w-3 h-3 text-gray-400" />
+                    <TableCell style={{width: '20%'}}>
+                      <div className="flex items-center gap-2 text-sm">
+                        {driver.email && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copyToClipboard(driver.email, 'Email');
+                            }}
+                            title="Copy email"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        )}
+                        <div className="flex-1 min-w-0">
                           {driver.email || <span className="text-red-500 italic">No email</span>}
-                          {driver.hasCredentials && (
-                            <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
-                              <Key className="w-3 h-3 mr-1" />
-                              Login Active
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 text-sm">
-                          <Phone className="w-3 h-3 text-gray-400" />
-                          {driver.phone}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell style={{width: '25%'}}>
+                    <TableCell style={{width: '15%'}}>
+                      <div className="text-sm">
+                        {driver.phone}
+                      </div>
+                    </TableCell>
+                    <TableCell style={{width: '12%'}}>
+                      {driver.hasCredentials ? (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          <Key className="w-3 h-3 mr-1" />
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700 border-gray-200">
+                          No Login
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell style={{width: '15%'}}>
+                      {driver.hasCredentials ? (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6 flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // In a real app, you'd get the actual password from a secure source
+                              // For demo purposes, we'll copy a placeholder
+                              copyToClipboard('Password available - use Change Password to get new one', 'Password info');
+                            }}
+                            title="Copy current password info"
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                          <span className="text-xs text-gray-500 font-mono">••••••••••••</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">No password set</span>
+                      )}
+                    </TableCell>
+                    <TableCell style={{width: '18%'}}>
                       {driver.assignedBins.length > 0 ? (
                         <div className="flex flex-wrap gap-1 items-center">
                           {driver.assignedBins.slice(0, 2).map(bin => (
@@ -548,7 +599,7 @@ function DriversManagement() {
                   </TableRow>
                   {isExpanded && (
                     <TableRow key={`expanded-${driver.id}`} style={{width: '100%'}}>
-                      <TableCell colSpan={5} className="p-0" style={{width: '100%'}}>
+                      <TableCell colSpan={8} className="p-0" style={{width: '100%'}}>
                         <div className="bg-gray-50 p-4">
                           {driver.assignedBins.length > 0 ? (
                             <div>
@@ -805,7 +856,7 @@ function DriversManagement() {
                     <Button
                       size="icon"
                       variant="outline"
-                      onClick={() => copyToClipboard(generatedCredentials.email)}
+                      onClick={() => copyToClipboard(generatedCredentials.email, 'Email')}
                       title="Copy email"
                     >
                       <Copy className="h-4 w-4" />
@@ -825,7 +876,7 @@ function DriversManagement() {
                     <Button
                       size="icon"
                       variant="outline"
-                      onClick={() => copyToClipboard(generatedCredentials.password)}
+                      onClick={() => copyToClipboard(generatedCredentials.password, 'Password')}
                       title="Copy password"
                     >
                       <Copy className="h-4 w-4" />

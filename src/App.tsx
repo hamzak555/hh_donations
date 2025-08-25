@@ -40,6 +40,7 @@ import Footer from './components/Footer';
 import { NetworkStatus } from './components/NetworkStatus';
 import ScrollToTop from './components/ScrollToTop';
 import ScrollToTopButton from './components/ScrollToTopButton';
+import { Toaster } from './components/ui/sonner';
 import './utils/seedData';
 import './utils/dataExportImport';
 import './utils/fixContainerNumbers';
@@ -65,6 +66,7 @@ function App() {
                       <ScrollToTop />
                       <ScrollToTopButton />
                       <NetworkStatus />
+                      <Toaster />
                       <Routes>
                         {/* Public Routes */}
                         <Route element={<ResponsiveLayout />}>

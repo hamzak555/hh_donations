@@ -37,9 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit, Trash2, Users, Shield, Eye, EyeOff } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Edit, Trash2, Users, Shield, Eye, EyeOff, Copy, Key, MoreHorizontal } from 'lucide-react';
 import { SupabaseService } from '@/services/supabaseService';
 import { DatabaseAdminUser } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 function UserManagement() {
   const [users, setUsers] = useState<DatabaseAdminUser[]>([]);
@@ -50,12 +57,70 @@ function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<DatabaseAdminUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<DatabaseAdminUser | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [isCredentialsDialogOpen, setIsCredentialsDialogOpen] = useState(false);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     full_name: '',
     role: 'admin' as 'admin' | 'manager' | 'operator'
   });
+
+  const copyToClipboard = (text: string, label?: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(`${label || 'Text'} copied to clipboard`);
+    }).catch(() => {
+      toast.error('Failed to copy to clipboard');
+    });
+  };
+
+  const generateRandomPassword = () => {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+  };
+
+  const handleChangePassword = (user: DatabaseAdminUser) => {
+    if (!user.email || user.email.trim() === '') {
+      alert('This user does not have an email address.');
+      return;
+    }
+    
+    setSelectedUser(user);
+    setNewPassword('');
+    setIsChangePasswordDialogOpen(true);
+  };
+
+  const confirmChangePassword = async () => {
+    if (!selectedUser || !selectedUser.email) return;
+    
+    try {
+      // Generate new password or use the one provided
+      const password = newPassword || generateRandomPassword();
+      
+      // Update the user with new password hash
+      await SupabaseService.adminUsers.updateAdminUser(selectedUser.id, {
+        passwordHash: `hashed_${password}` // In production, use proper hashing
+      });
+      
+      // Show the new credentials
+      setGeneratedCredentials({ email: selectedUser.email, password });
+      setIsChangePasswordDialogOpen(false);
+      setIsCredentialsDialogOpen(true);
+      
+      // Reload users to show updated data
+      await loadUsers();
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      alert('Failed to change password. Please try again.');
+    }
+  };
 
   useEffect(() => {
     loadUsers();
@@ -189,8 +254,15 @@ function UserManagement() {
   };
 
   const getStatusBadge = (isActive: boolean) => {
+    const statusStyles = isActive 
+      ? 'bg-green-100 text-green-800 border-green-200'
+      : 'bg-gray-100 text-gray-800 border-gray-200';
+    
     return (
-      <Badge variant={isActive ? 'success' : 'secondary'}>
+      <Badge 
+        variant="outline" 
+        className={statusStyles}
+      >
         {isActive ? 'Active' : 'Inactive'}
       </Badge>
     );
@@ -227,6 +299,7 @@ function UserManagement() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Password</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Login</TableHead>
@@ -238,7 +311,40 @@ function UserManagement() {
                 {users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.fullName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(user.email, 'Email');
+                          }}
+                          title="Copy email"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <span className="text-sm">{user.email}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard('Password stored securely', 'Password info');
+                          }}
+                          title="Copy password info"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <span className="text-xs text-gray-500 font-mono">••••••••</span>
+                      </div>
+                    </TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>{getStatusBadge(user.isActive)}</TableCell>
                     <TableCell>
@@ -254,32 +360,34 @@ function UserManagement() {
                       }
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(user)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleActive(user)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Shield className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteUser(user)}
-                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(user)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleChangePassword(user)}>
+                            <Key className="mr-2 h-4 w-4" />
+                            Change Password
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                            <Shield className="mr-2 h-4 w-4" />
+                            {user.isActive ? 'Deactivate' : 'Activate'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteUser(user)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -471,6 +579,128 @@ function UserManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change User Password</DialogTitle>
+            <DialogDescription>
+              Generate a new password for {selectedUser?.fullName}. Leave blank to auto-generate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-1 py-1">
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Current Email:</strong> {selectedUser?.email}
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="new-password">New Password (Optional)</Label>
+              <Input
+                id="new-password"
+                type="text"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Leave blank to auto-generate"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                If left blank, a secure random password will be generated.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline"
+              onClick={() => setIsChangePasswordDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmChangePassword}>
+              {newPassword ? 'Set Password' : 'Generate New Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Credentials Dialog */}
+      <Dialog open={isCredentialsDialogOpen} onOpenChange={setIsCredentialsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>User Login Credentials Updated</DialogTitle>
+            <DialogDescription>
+              Save these credentials securely. The user can use them to log in to the admin dashboard.
+            </DialogDescription>
+          </DialogHeader>
+          {generatedCredentials && selectedUser && (
+            <div className="space-y-4 px-1 py-1">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800 mb-3">
+                  <strong>Important:</strong> Share these credentials securely with {selectedUser.fullName}. 
+                  The password should be changed after first login.
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-gray-500">Email (Username)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input 
+                      value={generatedCredentials.email} 
+                      readOnly 
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(generatedCredentials.email, 'Email')}
+                      title="Copy email"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-gray-500">Temporary Password</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input 
+                      value={generatedCredentials.password} 
+                      readOnly 
+                      className="font-mono text-sm"
+                      type="text"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(generatedCredentials.password, 'Password')}
+                      title="Copy password"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-xs text-gray-600">
+                  <strong>Login URL:</strong> {window.location.origin}/admin/login
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => {
+              setIsCredentialsDialogOpen(false);
+              setGeneratedCredentials(null);
+              setSelectedUser(null);
+            }}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

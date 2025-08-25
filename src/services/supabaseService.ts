@@ -16,11 +16,11 @@ const convertAppBinToDatabase = (appBin: BinLocation): Omit<DatabaseBin, 'create
 const convertDatabaseUserToApp = (dbUser: any): DatabaseAdminUser => ({
   id: dbUser.id,
   email: dbUser.email,
-  passwordHash: dbUser.password_hash || dbUser.passwordHash,
-  fullName: dbUser.full_name || dbUser.fullName,
+  passwordHash: dbUser.passwordHash,
+  fullName: dbUser.fullName,
   role: dbUser.role,
-  isActive: dbUser.is_active !== undefined ? dbUser.is_active : dbUser.isActive,
-  lastLogin: dbUser.last_login || dbUser.lastLogin,
+  isActive: dbUser.isActive !== undefined ? dbUser.isActive : true,
+  lastLogin: dbUser.lastLogin,
   created_at: dbUser.created_at,
   updated_at: dbUser.updated_at
 })
@@ -29,11 +29,11 @@ const convertAppUserToDatabase = (appUser: Partial<DatabaseAdminUser>): any => {
   const dbUser: any = {}
   
   if (appUser.email !== undefined) dbUser.email = appUser.email
-  if (appUser.passwordHash !== undefined) dbUser.password_hash = appUser.passwordHash
-  if (appUser.fullName !== undefined) dbUser.full_name = appUser.fullName
+  if (appUser.passwordHash !== undefined) dbUser.passwordHash = appUser.passwordHash
+  if (appUser.fullName !== undefined) dbUser.fullName = appUser.fullName
   if (appUser.role !== undefined) dbUser.role = appUser.role
-  if (appUser.isActive !== undefined) dbUser.is_active = appUser.isActive
-  if (appUser.lastLogin !== undefined) dbUser.last_login = appUser.lastLogin
+  if (appUser.isActive !== undefined) dbUser.isActive = appUser.isActive
+  if (appUser.lastLogin !== undefined) dbUser.lastLogin = appUser.lastLogin
   
   return dbUser
 }
@@ -42,21 +42,21 @@ const convertAppUserToDatabase = (appUser: Partial<DatabaseAdminUser>): any => {
 const convertDatabaseContainerToApp = (dbContainer: any): DatabaseContainer => {
   return {
     id: dbContainer.id,
-    containerNumber: dbContainer.containerNumber || dbContainer.container_number || `CNT-${dbContainer.id?.substring(0, 8) || 'UNKNOWN'}`,
+    containerNumber: dbContainer.containerNumber || `CNT-${dbContainer.id?.substring(0, 8) || 'UNKNOWN'}`,
     type: dbContainer.type || 'Steel',
     capacity: dbContainer.capacity || 1000,
-    currentWeight: dbContainer.currentWeight || dbContainer.current_weight || 0,
-    destination: dbContainer.destination || dbContainer.location || 'Not specified',
+    currentWeight: dbContainer.currentWeight || 0,
+    destination: dbContainer.location || 'Not specified',
     status: dbContainer.status || 'Warehouse',
-    assignedBales: dbContainer.assignedBales || dbContainer.assigned_bales || [],
-    createdDate: dbContainer.createdDate || dbContainer.created_date,
-    shipmentDate: dbContainer.shipmentDate || dbContainer.shipment_date,
-    estimatedArrivalDate: dbContainer.estimatedArrivalDate || dbContainer.estimated_arrival_date,
-    actualArrivalDate: dbContainer.actualArrivalDate || dbContainer.actual_arrival_date,
-    sealNumber: dbContainer.sealNumber || dbContainer.seal_number,
-    shippingLine: dbContainer.shippingLine || dbContainer.shipping_line,
-    vesselName: dbContainer.vesselName || dbContainer.vessel_name,
-    bookingNumber: dbContainer.bookingNumber || dbContainer.booking_number,
+    assignedBales: dbContainer.assignedBales || [],
+    createdDate: dbContainer.createdDate,
+    shipmentDate: dbContainer.shipmentDate,
+    estimatedArrivalDate: dbContainer.estimatedArrivalDate,
+    actualArrivalDate: dbContainer.actualArrivalDate,
+    sealNumber: dbContainer.sealNumber,
+    shippingLine: dbContainer.shippingLine,
+    vesselName: dbContainer.vesselName,
+    bookingNumber: dbContainer.bookingNumber,
     notes: dbContainer.notes,
     documents: dbContainer.documents || [],
     created_at: dbContainer.created_at,
@@ -297,7 +297,7 @@ export class ContainersService {
   static async getAllContainers(): Promise<DatabaseContainer[]> {
     const { data, error } = await supabase
       .from(TABLES.CONTAINERS)
-      .select('id, containerNumber, container_number, type, capacity, currentWeight, current_weight, destination, location, status, assignedBales, assigned_bales, createdDate, created_date, shipmentDate, shipment_date, estimatedArrivalDate, estimated_arrival_date, actualArrivalDate, actual_arrival_date, sealNumber, seal_number, shippingLine, shipping_line, vesselName, vessel_name, bookingNumber, booking_number, notes, documents, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -521,7 +521,7 @@ export class AdminUsersService {
   static async getAllAdminUsers(): Promise<DatabaseAdminUser[]> {
     const { data, error } = await supabase
       .from(TABLES.ADMIN_USERS)
-      .select('id, email, password_hash, passwordHash, full_name, fullName, role, is_active, isActive, last_login, lastLogin, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -587,7 +587,7 @@ export class AdminUsersService {
       .from(TABLES.ADMIN_USERS)
       .select('*')
       .eq('email', email)
-      .eq('is_active', true)
+      .eq('isActive', true)
       .single()
 
     if (error && error.code !== 'PGRST116') {
