@@ -107,7 +107,7 @@ export const PasswordChangeDialog: React.FC<PasswordChangeDialogProps> = ({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert className="border-red-200 bg-red-50 text-red-800">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
