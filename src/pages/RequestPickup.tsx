@@ -171,9 +171,9 @@ const RequestPickup = () => {
       </div>
       
       {/* Main Content Area - Full Height */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 px-8 pb-6 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 px-8 pb-6 lg:overflow-hidden">
         {/* Left Column - Info Section and Form */}
-        <div className="h-full flex flex-col gap-4 overflow-y-auto pr-2">
+        <div className="h-auto lg:h-full flex flex-col gap-4 lg:overflow-y-auto lg:pr-2">
           {/* Info Section - Redesigned */}
           <div>
             {/* Important Alert Banner */}
@@ -247,8 +247,8 @@ const RequestPickup = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-2 flex-1 overflow-y-auto">
-              <form onSubmit={handleSubmit} className="space-y-5 h-full flex flex-col">
+            <CardContent className="pt-2 flex-1 lg:overflow-y-auto">
+              <form onSubmit={handleSubmit} className="space-y-5 h-auto lg:h-full flex flex-col">
                 <div className="flex-1">
                   {/* Step 1: Contact Information */}
                   {currentStep === 1 && (
@@ -489,8 +489,8 @@ const RequestPickup = () => {
         </div>
 
         {/* Right Column - Map */}
-        <div className="h-full overflow-hidden">
-          <Card className="h-full flex flex-col">
+        <div className="h-auto lg:h-full lg:overflow-hidden">
+          <Card className="h-auto lg:h-full flex flex-col">
             <CardHeader className="flex-shrink-0">
               <CardTitle>Pickup Location Preview</CardTitle>
             </CardHeader>

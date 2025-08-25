@@ -33,10 +33,16 @@ function PickupRouteGenerator() {
   const { pickupRequests, updatePickupRequest } = usePickupRequests();
   const { drivers: contextDrivers } = useDrivers();
   
+  // Check if current user is a driver
+  const userRole = localStorage.getItem('userRole');
+  const isDriverRole = userRole === 'driver';
+  const driverId = localStorage.getItem('driverId');
+  const currentDriverName = isDriverRole ? contextDrivers.find(d => d.id === driverId)?.name : null;
+  
   // Use drivers from context
   const drivers = contextDrivers.filter(d => d.status === 'Active').map(d => d.name);
   
-  const [selectedDriver, setSelectedDriver] = useState<string>('');
+  const [selectedDriver, setSelectedDriver] = useState<string>(currentDriverName || '');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [startingAddress, setStartingAddress] = useState<string>('');
   const [collectedRequests, setCollectedRequests] = useState<Set<string>>(new Set());
@@ -313,10 +319,13 @@ function PickupRouteGenerator() {
           <div>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Navigation className="w-5 h-5" />
-              Create Optimized Pickup Route
+              {isDriverRole ? 'My Optimized Pickup Route' : 'Create Optimized Pickup Route'}
             </h2>
             <p className="text-sm text-gray-600 mb-6">
-              Select a driver and enter a starting address to create an optimized route for pending pickup requests.
+              {isDriverRole 
+                ? 'Enter a starting address to create an optimized route for your pending pickup requests.'
+                : 'Select a driver and enter a starting address to create an optimized route for pending pickup requests.'
+              }
             </p>
           </div>
 
@@ -325,17 +334,22 @@ function PickupRouteGenerator() {
             <div className="space-y-4 flex flex-col">
               <div>
                 <Label htmlFor="route-driver">Select Driver</Label>
-                <Select 
-                  value={selectedDriver}
-                  onValueChange={(value) => {
-                    setSelectedDriver(value);
-                    // Reset date selection when driver changes
-                    setSelectedDate(new Date());
-                  }}
-                >
-                  <SelectTrigger id="route-driver">
-                    <SelectValue placeholder="Choose a driver" />
-                  </SelectTrigger>
+                {isDriverRole ? (
+                  <div className="p-3 bg-gray-50 border rounded-md">
+                    <span className="text-sm font-medium">{currentDriverName}</span>
+                  </div>
+                ) : (
+                  <Select 
+                    value={selectedDriver}
+                    onValueChange={(value) => {
+                      setSelectedDriver(value);
+                      // Reset date selection when driver changes
+                      setSelectedDate(new Date());
+                    }}
+                  >
+                    <SelectTrigger id="route-driver">
+                      <SelectValue placeholder="Choose a driver" />
+                    </SelectTrigger>
                   <SelectContent>
                     {drivers.map(driverName => {
                       // Count total pending requests for this driver
@@ -350,8 +364,9 @@ function PickupRouteGenerator() {
                         </SelectItem>
                       );
                     })}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div>

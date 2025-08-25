@@ -13,23 +13,23 @@ function Dashboard() {
     {
       icon: <Building className="h-6 w-6" />,
       title: "Community Centers",
-      description: "Working with local community centers to serve families and individuals in need.",
+      description: "Working with community centers both locally and in underdeveloped countries to serve families and individuals in need.",
       image: "/images/Placeholder 4.jpg",
-      details: "We partner with over 20 community centers across the region, ensuring donations reach those who need them most through established local networks."
+      details: "We partner with various community centers across the globe, ensuring donations reach those who need them most through established local networks."
     },
     {
       icon: <Home className="h-6 w-6" />,
-      title: "Local Shelters",
-      description: "Partnering with shelters to provide essential items to those experiencing homelessness.",
+      title: "Shelters Across the Globe",
+      description: "Partnering with shelters across the globe to provide essential items to those experiencing homelessness.",
       image: "/images/Placeholder 5.jpg",
       details: "Our shelter partnerships provide immediate relief to individuals and families in crisis, delivering warm clothing, hygiene products, and household essentials."
     },
     {
       icon: <School className="h-6 w-6" />,
-      title: "Schools & Programs",
+      title: "Orphanages and Schools",
       description: "Supporting educational programs and helping students in need access essential supplies.",
       image: "/images/Placeholder 6.jpg",
-      details: "We work with schools to identify students in need, providing clothing, school supplies, and backpacks to ensure every child can focus on learning."
+      details: "We work with schools in underdeveloped countries to identify students in need, providing clothing, and other items to ensure every child can focus on learning."
     }
   ];
   return (
@@ -61,9 +61,9 @@ function Dashboard() {
                 Making Donations
                 <span className="text-primary block">Simple & Accessible</span>
               </h1>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="text-base sm:text-xl text-gray-600 mb-6 sm:mb-8">
                 Request a pickup or find donation bins in your community and make a lasting impact. Every donation 
-                helps families in need and strengthens our neighborhoods.
+                helps families in need both locally and underdevelopment countries.
               </p>
               
               {/* Quick Action Buttons */}
@@ -136,7 +136,7 @@ function Dashboard() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">How It Works</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-xl text-gray-600 max-w-2xl mx-auto">
               Making a difference has never been easier. Follow these three simple steps to help families in need.
             </p>
           </div>
@@ -159,7 +159,7 @@ function Dashboard() {
                 
                 {/* Content */}
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">Find a Bin</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">
+                <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">
                   Use our interactive map to locate the nearest donation bin. Available 24/7 for your convenience.
                 </p>
                 
@@ -193,7 +193,7 @@ function Dashboard() {
                 
                 {/* Content */}
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">Check Guidelines</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">
+                <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">
                   Review what we accept to ensure your donations help those who need them most.
                 </p>
                 
@@ -227,7 +227,7 @@ function Dashboard() {
                 
                 {/* Content */}
                 <h3 className="text-2xl font-bold text-gray-900 mb-3">Make Impact</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">
+                <p className="text-sm sm:text-base text-gray-600 mb-6 leading-relaxed">
                   Drop off your donations and help families locally and globally with essential items.
                 </p>
                 
@@ -257,11 +257,11 @@ function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
-              <p className="text-lg text-gray-600 mb-6">
-                At H&H Donations, we believe that everyone deserves access to essential items and clothing. Our mission is to bridge the gap between those who have items to give and families who need them most.
+              <p className="text-sm sm:text-lg text-gray-600 mb-6">
+                At H&H Donations, we believe that everyone deserves access to essential items and clothing. Our mission is to bridge the gap between those who have items to give and families who need them most in underdeveloped countries.
               </p>
-              <p className="text-lg text-gray-600 mb-8">
-                We work directly with local shelters, community centers, and families to ensure donations reach those who need them most, creating a stronger, more supportive community for everyone.
+              <p className="text-sm sm:text-lg text-gray-600 mb-6 sm:mb-8">
+                We work directly with shelters, community centers, orphanages abroad and families to ensure donations reach those who need them most, creating a stronger, more supportive community for everyone.
               </p>
               <Button variant="outline" asChild>
                 <a href="/our-story" className="flex items-center gap-0.5">
@@ -289,7 +289,7 @@ function Dashboard() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Who We Work With</h2>
-            <p className="text-xl text-gray-600">Partnering with trusted organizations to maximize impact</p>
+            <p className="text-sm sm:text-xl text-gray-600">Partnering with trusted organizations to maximize impact</p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
@@ -317,11 +317,11 @@ function Dashboard() {
                           <h3 className="font-semibold text-lg text-gray-900 mb-2">
                             {partner.title}
                           </h3>
-                          <p className="text-gray-600 text-sm">
+                          <p className="text-sm sm:text-base text-gray-600">
                             {partner.description}
                           </p>
                           {activePartner === index && (
-                            <p className="text-gray-700 text-sm mt-3">
+                            <p className="text-sm sm:text-base text-gray-700 mt-3">
                               {partner.details}
                             </p>
                           )}
@@ -372,7 +372,7 @@ function Dashboard() {
             
             <div className="flex flex-col justify-center">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">What Can You Donate?</h2>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="text-base sm:text-xl text-gray-600 mb-6 sm:mb-8">
                 We accept a wide variety of items to help families in need. Here are some examples:
               </p>
               
@@ -381,7 +381,7 @@ function Dashboard() {
                   <CheckCircle className="h-6 w-6 text-green-600 mr-3 mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Clothing & Accessories</h3>
-                    <p className="text-gray-600">Clean, gently used clothing for all ages and seasons, shoes, bags, and accessories.</p>
+                    <p className="text-sm sm:text-base text-gray-600">Clean, gently used clothing for all ages and seasons, shoes, bags, and accessories.</p>
                   </div>
                 </div>
                 
@@ -389,7 +389,7 @@ function Dashboard() {
                   <CheckCircle className="h-6 w-6 text-green-600 mr-3 mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Household Linens</h3>
-                    <p className="text-gray-600">Bed sheets, blankets, towels, and other essential household textiles.</p>
+                    <p className="text-sm sm:text-base text-gray-600">Bed sheets, blankets, towels, and other essential household textiles.</p>
                   </div>
                 </div>
                 
@@ -397,14 +397,14 @@ function Dashboard() {
                   <CheckCircle className="h-6 w-6 text-green-600 mr-3 mt-1 flex-shrink-0" />
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Children's Items</h3>
-                    <p className="text-gray-600">Kids' clothing, baby items, and clean, safe accessories for children of all ages.</p>
+                    <p className="text-sm sm:text-base text-gray-600">Kids' clothing, baby items, and clean, safe accessories for children of all ages.</p>
                   </div>
                 </div>
               </div>
               
               <div className="mt-8 bg-primary/10 rounded-lg p-6">
                 <h3 className="font-semibold text-lg mb-3 text-gray-900">Want to Know More?</h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-sm sm:text-base text-gray-600 mb-4">
                   Get the complete list of accepted items, quality guidelines, and learn what items we cannot accept to ensure your donations make the biggest impact.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -431,30 +431,26 @@ function Dashboard() {
       <section className="py-12 sm:py-16 lg:py-20 px-6 sm:px-8 bg-white">
         <div className="max-w-6xl mx-auto">
           <Card className="bg-gradient-to-r from-primary/5 to-green-50 border-primary/20">
-            <CardContent className="p-12 text-center">
-              <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Heart className="h-10 w-10 text-primary" />
+            <CardContent className="p-8 sm:p-12 text-center">
+              <div className="bg-primary/10 w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Heart className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 Ready to Make a Difference?
               </h2>
-              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              <p className="text-sm sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto">
                 Join thousands of community members who have already made an impact through H&H Donations. 
                 Your contributions help families locally and globally.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-6 sm:mb-8">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">24/7 donation bins available</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">24/7 donation bins available</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Free pickup for large donations</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Tax receipts available</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">Free pickup for large donations</span>
                 </div>
               </div>
               

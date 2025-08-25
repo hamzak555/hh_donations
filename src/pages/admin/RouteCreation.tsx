@@ -32,7 +32,13 @@ function RouteCreation() {
   const { drivers } = useDrivers();
   const { bins } = useBins();
   
-  const [selectedRouteDriver, setSelectedRouteDriver] = useState<string>('');
+  // Check if current user is a driver
+  const userRole = localStorage.getItem('userRole');
+  const isDriverRole = userRole === 'driver';
+  const driverId = localStorage.getItem('driverId');
+  const currentDriverName = isDriverRole ? drivers.find(d => d.id === driverId)?.name : null;
+  
+  const [selectedRouteDriver, setSelectedRouteDriver] = useState<string>(isDriverRole ? (driverId || '') : '');
   const [startingAddress, setStartingAddress] = useState<string>('');
   const [collectedBins, setCollectedBins] = useState<Set<string>>(new Set());
   const [startingCoordinates, setStartingCoordinates] = useState<{lat: number, lng: number} | null>(null);
@@ -206,10 +212,13 @@ function RouteCreation() {
           <div>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Navigation className="w-5 h-5" />
-              Create Optimized Bin Route
+              {isDriverRole ? 'My Optimized Bin Route' : 'Create Optimized Bin Route'}
             </h2>
             <p className="text-sm text-gray-600 mb-6">
-              Select a driver and enter a starting address to create an optimized route for picking up Almost Full and Full bins.
+              {isDriverRole 
+                ? 'Enter a starting address to create an optimized route for picking up your Almost Full and Full bins.'
+                : 'Select a driver and enter a starting address to create an optimized route for picking up Almost Full and Full bins.'
+              }
             </p>
           </div>
 
@@ -218,13 +227,18 @@ function RouteCreation() {
             <div className="space-y-4 flex flex-col">
               <div>
                 <Label htmlFor="route-driver">Select Driver</Label>
-                <Select 
-                  value={selectedRouteDriver}
-                  onValueChange={setSelectedRouteDriver}
-                >
-                  <SelectTrigger id="route-driver">
-                    <SelectValue placeholder="Choose a driver" />
-                  </SelectTrigger>
+                {isDriverRole ? (
+                  <div className="p-3 bg-gray-50 border rounded-md">
+                    <span className="text-sm font-medium">{currentDriverName}</span>
+                  </div>
+                ) : (
+                  <Select 
+                    value={selectedRouteDriver}
+                    onValueChange={setSelectedRouteDriver}
+                  >
+                    <SelectTrigger id="route-driver">
+                      <SelectValue placeholder="Choose a driver" />
+                    </SelectTrigger>
                   <SelectContent>
                     {drivers
                       .filter(driver => {
@@ -250,8 +264,9 @@ function RouteCreation() {
                           </SelectItem>
                         );
                       })}
-                  </SelectContent>
-                </Select>
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               
               <div>

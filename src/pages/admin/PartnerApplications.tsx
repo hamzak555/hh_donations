@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { usePartnerApplications } from '@/contexts/PartnerApplicationsContext';
+import { usePartnerApplications } from '@/contexts/PartnerApplicationsContextSupabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -29,9 +29,10 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Search, 
-  Eye, 
   CheckCircle, 
   XCircle, 
   Clock,
@@ -44,29 +45,98 @@ import {
   Truck,
   AlertCircle,
   FileText,
-  Globe
+  Globe,
+  MessageSquare,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const PartnerApplications = () => {
-  const { applications, updateApplicationStatus, deleteApplication } = usePartnerApplications();
+  const { applications, updateApplicationStatus, deleteApplication, addNoteToTimeline } = usePartnerApplications();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'reviewing' | 'approved' | 'rejected'>('all');
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
   const [newStatus, setNewStatus] = useState<'approved' | 'rejected' | 'reviewing'>('reviewing');
+  const [hoverCardNotes, setHoverCardNotes] = useState<Record<string, string>>({});
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  const filteredApplications = applications.filter(app => {
-    const matchesSearch = 
-      app.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchTerm.toLowerCase());
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-gray-700" /> : 
+      <ChevronDown className="w-4 h-4 text-gray-700" />;
+  };
+
+  const sortedAndFilteredApplications = React.useMemo(() => {
+    // First filter by tab
+    let filtered = applications.filter(app => {
+      if (activeTab === 'all') return true;
+      return app.status === activeTab;
+    });
     
-    const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+    // Then filter by search
+    filtered = filtered.filter(app => {
+      if (!searchTerm.trim()) return true;
+      
+      const matchesSearch = 
+        app.organizationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matchesSearch;
+    });
+
+    // Then sort
+    if (sortColumn) {
+      filtered.sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+
+        // Handle nested address fields
+        if (sortColumn === 'location') {
+          aValue = `${a.address.city}, ${a.address.state}`;
+          bValue = `${b.address.city}, ${b.address.state}`;
+        } else {
+          aValue = a[sortColumn as keyof typeof a];
+          bValue = b[sortColumn as keyof typeof b];
+        }
+
+        // Handle null/undefined values
+        if (aValue == null) return 1;
+        if (bValue == null) return -1;
+
+        // Compare values
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+          return sortDirection === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        }
+
+        // For dates and numbers
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [applications, searchTerm, activeTab, sortColumn, sortDirection]);
 
   const selectedApp = applications.find(app => app.id === selectedApplication);
 
@@ -75,6 +145,15 @@ const PartnerApplications = () => {
       updateApplicationStatus(selectedApplication, newStatus, reviewNotes);
       setReviewModalOpen(false);
       setReviewNotes('');
+    }
+  };
+
+  const handleAddNoteToTimeline = (applicationId: string) => {
+    const noteText = hoverCardNotes[applicationId];
+    
+    if (noteText && noteText.trim()) {
+      addNoteToTimeline(applicationId, noteText);
+      setHoverCardNotes(prev => ({ ...prev, [applicationId]: '' }));
     }
   };
 
@@ -96,77 +175,15 @@ const PartnerApplications = () => {
     );
   };
 
-  const stats = {
-    total: applications.length,
-    pending: applications.filter(a => a.status === 'pending').length,
-    reviewing: applications.filter(a => a.status === 'reviewing').length,
-    approved: applications.filter(a => a.status === 'approved').length,
-    rejected: applications.filter(a => a.status === 'rejected').length
-  };
-
   return (
     <div className="px-6 pt-10 pb-6 w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Partner Applications</h1>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Applications
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Pending Review
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Under Review
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.reviewing}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Approved
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Rejected
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
+      {/* Search and Tabs */}
       <div className="flex gap-4 mb-6">
-        <div className="flex-1 relative">
+        <div className="w-1/2 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
             placeholder="Search by organization, contact, or email..."
@@ -175,43 +192,174 @@ const PartnerApplications = () => {
             className="pl-10"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="reviewing">Under Review</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
+        
+        <div className="w-1/2 flex items-center gap-1 p-1 bg-muted rounded-lg">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'all'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            All
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'all'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {applications.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'pending'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            Pending
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'pending'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {applications.filter(a => a.status === 'pending').length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('reviewing')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'reviewing'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            Reviewing
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'reviewing'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {applications.filter(a => a.status === 'reviewing').length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('approved')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'approved'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            Approved
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'approved'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {applications.filter(a => a.status === 'approved').length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('rejected')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'rejected'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            Rejected
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'rejected'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {applications.filter(a => a.status === 'rejected').length}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Applications Table */}
-      <Card>
-        <CardContent className="p-0">
+      <Card className="overflow-hidden">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-gray-600">
+              {(() => {
+                const tabApplications = activeTab === 'all' 
+                  ? applications 
+                  : applications.filter(a => a.status === activeTab);
+                
+                if (searchTerm.trim()) {
+                  return <>Showing {sortedAndFilteredApplications.length} of {tabApplications.length} {activeTab === 'all' ? '' : activeTab} applications</>;
+                }
+                return <>Showing {sortedAndFilteredApplications.length} {activeTab === 'all' ? 'total' : activeTab} applications</>;
+              })()}
+            </div>
+          </div>
+          
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Organization</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow className="hover:!bg-transparent">
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('organizationName')}
+                >
+                  <div className="flex items-center gap-1">
+                    Organization
+                    {getSortIcon('organizationName')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('contactPerson')}
+                >
+                  <div className="flex items-center gap-1">
+                    Contact
+                    {getSortIcon('contactPerson')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('location')}
+                >
+                  <div className="flex items-center gap-1">
+                    Location
+                    {getSortIcon('location')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('submittedAt')}
+                >
+                  <div className="flex items-center gap-1">
+                    Submitted
+                    {getSortIcon('submittedAt')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    {getSortIcon('status')}
+                  </div>
+                </TableHead>
+                <TableHead>Notes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredApplications.length === 0 ? (
+              {sortedAndFilteredApplications.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No applications found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredApplications.map((app) => (
+                sortedAndFilteredApplications.map((app) => (
                   <TableRow key={app.id}>
                     <TableCell>
                       <div>
@@ -219,7 +367,14 @@ const PartnerApplications = () => {
                         {app.website && (
                           <div className="text-sm text-muted-foreground">
                             <Globe className="inline h-3 w-3 mr-1" />
-                            Website
+                            <a 
+                              href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-primary underline"
+                            >
+                              {app.website}
+                            </a>
                           </div>
                         )}
                       </div>
@@ -231,33 +386,51 @@ const PartnerApplications = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        <div>{app.address.city}, {app.address.state}</div>
-                        <div className="text-muted-foreground">{app.address.zipCode}</div>
-                      </div>
+                      <a 
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${app.address.street}, ${app.address.city}, ${app.address.state} ${app.address.zipCode}`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm hover:text-primary transition-colors"
+                      >
+                        <div>{app.address.street}</div>
+                        <div className="text-muted-foreground">{app.address.city}, {app.address.state} {app.address.zipCode}</div>
+                      </a>
                     </TableCell>
                     <TableCell>
                       {format(new Date(app.submittedAt), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(app.status)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedApplication(app.id)}
+                      <Select 
+                        value={app.status} 
+                        onValueChange={(value) => updateApplicationStatus(app.id, value as any)}
                       >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
+                        <SelectTrigger className="w-[140px] border-0 p-0 h-auto focus:ring-0">
+                          <SelectValue>
+                            {getStatusBadge(app.status)}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="reviewing">Reviewing</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <PartnerApplicationNotesHoverCard 
+                        application={app}
+                        noteValue={hoverCardNotes[app.id] || ''}
+                        onNoteChange={(value) => setHoverCardNotes(prev => ({ ...prev, [app.id]: value }))}
+                        onAddNote={() => handleAddNoteToTimeline(app.id)}
+                      />
                     </TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </CardContent>
+        </div>
       </Card>
 
       {/* Application Details Dialog */}
@@ -287,12 +460,6 @@ const PartnerApplications = () => {
                       <span className="text-muted-foreground">Organization Name:</span>
                       <span className="ml-2 font-medium">{selectedApp.organizationName}</span>
                     </div>
-                    {selectedApp.taxId && (
-                      <div>
-                        <span className="text-muted-foreground">Tax ID:</span>
-                        <span className="ml-2">{selectedApp.taxId}</span>
-                      </div>
-                    )}
                     {selectedApp.website && (
                       <div className="col-span-2">
                         <span className="text-muted-foreground">Website:</span>
@@ -398,7 +565,7 @@ const PartnerApplications = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="reviewing">Under Review</SelectItem>
+                  <SelectItem value="reviewing">Reviewing</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
@@ -428,6 +595,105 @@ const PartnerApplications = () => {
         </DialogContent>
       </Dialog>
     </div>
+  );
+};
+
+// PartnerApplicationNotesHoverCard component for displaying and adding notes
+interface PartnerApplicationNotesHoverCardProps {
+  application: any;
+  noteValue: string;
+  onNoteChange: (value: string) => void;
+  onAddNote: () => void;
+}
+
+const PartnerApplicationNotesHoverCard = ({ application, noteValue, onNoteChange, onAddNote }: PartnerApplicationNotesHoverCardProps) => {
+  const timelineNotes = application.notesTimeline?.length || 0;
+  const hasAdditionalInfo = application.additionalInfo ? 1 : 0;
+  const noteCount = timelineNotes + hasAdditionalInfo;
+  const hasNotes = noteCount > 0;
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="sm"
+          className="h-8 px-3 text-left justify-start"
+        >
+          <MessageSquare className="w-4 h-4 text-gray-400 mr-1.5" />
+          <span className="text-xs">{noteCount} notes</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96" align="center" side="left" sideOffset={5}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h4 className="font-semibold text-sm">Notes Timeline</h4>
+            <span className="text-xs text-gray-500">{application.organizationName}</span>
+          </div>
+          
+          {/* Notes Timeline */}
+          <ScrollArea className="h-48 pr-3">
+            {hasNotes || application.additionalInfo ? (
+              <div className="space-y-3">
+                {/* Show additional info as the first note if it exists */}
+                {application.additionalInfo && (
+                  <div className="border-l-2 border-blue-200 pl-3 ml-1">
+                    <p className="text-xs font-semibold text-blue-600 mb-1">Application Message</p>
+                    <p className="text-sm text-gray-700">{application.additionalInfo}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Submitted with application • {format(new Date(application.submittedAt), 'MMM dd, yyyy')}
+                    </p>
+                  </div>
+                )}
+                {application.notesTimeline?.map((note: any) => (
+                  <div key={note.id} className="border-l-2 border-gray-200 pl-3 ml-1">
+                    <p className="text-sm text-gray-700">{note.text}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {format(new Date(note.timestamp), 'MMM dd, yyyy h:mm a')}
+                      {note.user && <span className="ml-2">by {note.user}</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-gray-500">
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">No notes yet</p>
+                <p className="text-xs">Add the first note below</p>
+              </div>
+            )}
+          </ScrollArea>
+          
+          {/* Add New Note */}
+          <div className="space-y-2 pt-2 border-t">
+            <Textarea
+              placeholder="Add a note..."
+              value={noteValue}
+              onChange={(e) => onNoteChange(e.target.value)}
+              className="min-h-[60px] text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  onAddNote();
+                }
+              }}
+            />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500">Cmd/Ctrl + Enter to add</span>
+              <Button 
+                size="sm" 
+                onClick={onAddNote}
+                disabled={!noteValue.trim()}
+                className="h-7"
+              >
+                Add Note
+              </Button>
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 

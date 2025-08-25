@@ -29,27 +29,32 @@ const Partnerships = () => {
     {
       icon: <DollarSign className="h-6 w-6" />,
       title: "Guaranteed Revenue",
-      description: "$1,000/year/bin paid in advance"
+      description: "$1,000 per year for each bin, paid in advance. No hidden fees or revenue sharing."
     },
     {
       icon: <Settings className="h-6 w-6" />,
       title: "Zero Operational Burden",
-      description: "We handle everything"
+      description: "We handle installation, maintenance, collections, and cleaning. You just provide the space."
     },
     {
       icon: <Shield className="h-6 w-6" />,
       title: "Professional & Secure",
-      description: "Clean, safe donation bins"
+      description: "High-quality bins with anti-theft mechanisms that enhance your property's appearance."
+    },
+    {
+      icon: <Wifi className="h-6 w-6" />,
+      title: "Smart Sensors for Cleanliness",
+      description: "IoT sensors alert us before bins reach capacity, keeping your site clean and presentable."
     },
     {
       icon: <Globe className="h-6 w-6" />,
       title: "Enhanced CSR Profile",
-      description: "Positive public relations"
+      description: "Demonstrate social responsibility. Perfect for corporate reports and marketing materials."
     },
     {
       icon: <Users className="h-6 w-6" />,
       title: "Increased Foot Traffic",
-      description: "Potential for more community visits"
+      description: "Regular visitors to your bins can increase exposure and create new customer opportunities."
     }
   ];
 
@@ -121,7 +126,7 @@ const Partnerships = () => {
                 Partner With Us for
                 <span className="text-primary block">Community Impact</span>
               </h1>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="text-sm sm:text-xl text-gray-600 mb-6 sm:mb-8">
                 Empowering communities through convenient and responsible clothing donation drop-offs. 
                 Join our network of location partners and make a difference while earning guaranteed revenue.
               </p>
@@ -160,48 +165,27 @@ const Partnerships = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Key Partnership Benefits
             </h2>
-            <p className="text-lg text-gray-600">
+            <p className="text-sm sm:text-lg text-gray-600">
               Everything you need, nothing you don't
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {benefits.slice(0, 3).map((benefit, index) => (
-              <Card key={index} className="border border-gray-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
+            {benefits.map((benefit, index) => (
+              <Card key={index} className="border border-gray-200 h-full group hover:border-primary/50 transition-all duration-300 hover:shadow-lg cursor-pointer relative overflow-hidden">
+                <CardContent className="p-6 h-full relative">
+                  <div className="flex items-center gap-4 group-hover:opacity-0 transition-opacity duration-300">
                     <div className="bg-primary/10 p-3 rounded-lg text-primary">
                       {benefit.icon}
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                        {benefit.title}
-                      </h3>
-                      <p className="text-gray-600">
-                        {benefit.description}
-                      </p>
-                    </div>
+                    <h3 className="font-semibold text-lg text-gray-900">
+                      {benefit.title}
+                    </h3>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto mt-6">
-            {benefits.slice(3).map((benefit, index) => (
-              <Card key={index + 3} className="border border-gray-200">
-                <CardContent className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-primary/10 p-3 rounded-lg text-primary">
-                      {benefit.icon}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                        {benefit.title}
-                      </h3>
-                      <p className="text-gray-600">
-                        {benefit.description}
-                      </p>
-                    </div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-primary to-primary/90 flex items-center justify-center p-6 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <p className="text-white text-sm leading-relaxed text-center">
+                      {benefit.description}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -217,7 +201,7 @@ const Partnerships = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Smart, Professional Donation Bins
             </h2>
-            <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+            <p className="text-sm sm:text-lg text-gray-600 max-w-3xl mx-auto">
               Our bins feature advanced technology and professional design to ensure a seamless donation experience.
             </p>
           </div>
@@ -292,7 +276,7 @@ const Partnerships = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Simple Requirements
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-lg text-gray-600 max-w-2xl mx-auto">
               To ensure a successful and safe donation experience, we ask partners to provide a small, 
               accessible outdoor space with good visibility and easy donor access.
             </p>
@@ -310,7 +294,7 @@ const Partnerships = () => {
                   <h3 className="font-semibold text-xl text-gray-900 mb-2">
                     {req.title}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-sm sm:text-base text-gray-600">
                     {req.description}
                   </p>
                 </div>
@@ -324,30 +308,30 @@ const Partnerships = () => {
       <section className="py-20 px-8 bg-white">
         <div className="max-w-6xl mx-auto">
           <Card className="bg-gradient-to-r from-primary/5 to-green-50 border-primary/20">
-            <CardContent className="p-12 text-center">
-              <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Building className="h-10 w-10 text-primary" />
+            <CardContent className="p-8 sm:p-12 text-center">
+              <div className="bg-primary/10 w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Building className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 Benefits To Your Location
               </h2>
-              <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              <p className="text-sm sm:text-xl text-gray-600 mb-6 sm:mb-8 max-w-3xl mx-auto">
                 Transform your property into a community hub for positive change. We handle everything from 
                 installation to maintenance – your only job is to provide the space.
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-6 sm:mb-8">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">$1,000/year guaranteed</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">$1,000/year guaranteed</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Zero operational burden</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">Zero operational burden</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Professional maintenance</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">Professional maintenance</span>
                 </div>
               </div>
               

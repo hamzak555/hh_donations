@@ -82,8 +82,8 @@ const OurStory = () => {
                 Our Story of
                 <span className="text-primary block">Global Impact</span>
               </h1>
-              <p className="text-xl text-gray-600">
-                What started as a simple idea to help our neighbors has grown into a movement 
+              <p className="text-sm sm:text-xl text-gray-600">
+                What started as a simple idea to help people in need abroad has grown into a movement 
                 that connects communities across the globe. This is our journey of turning 
                 everyday donations into life-changing support.
               </p>
@@ -130,7 +130,7 @@ const OurStory = () => {
                   <Target className="h-8 w-8 text-primary" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Our Mission</h2>
-                <p className="text-gray-600 text-lg">
+                <p className="text-sm sm:text-lg text-gray-600">
                   To create a sustainable bridge between surplus and scarcity, collecting quality 
                   clothing donations from our community and delivering them to families in developing 
                   nations who need them most.
@@ -144,7 +144,7 @@ const OurStory = () => {
                   <Eye className="h-8 w-8 text-primary" />
                 </div>
                 <h2 className="text-3xl font-bold mb-4">Our Vision</h2>
-                <p className="text-gray-600 text-lg">
+                <p className="text-sm sm:text-lg text-gray-600">
                   A world where no family lacks basic clothing necessities, where communities 
                   support each other across borders, and where giving is as easy as walking to 
                   your nearest donation bin.
@@ -165,20 +165,27 @@ const OurStory = () => {
           </div>
           
           <div className="bg-white rounded-xl p-8 shadow-lg">
-            <p className="text-lg text-gray-600 mb-6">
+            <p className="text-sm sm:text-lg text-gray-600 mb-6">
               In 2018, our founder witnessed firsthand the contrast between overflowing closets 
               in our neighborhoods and families struggling without basic clothing in developing 
-              countries. This stark reality sparked a simple question: 
+              countries. In today's world of wars and economic hard ship, this stark reality sparked a simple question: 
               <span className="font-semibold text-gray-900"> "How can we connect those who have extra with those who have nothing?"</span>
             </p>
             
-            <p className="text-lg text-gray-600 mb-6">
+            <p className="text-sm sm:text-lg text-gray-600 mb-6">
               Starting with a single donation bin placed outside a local community center, 
               we began collecting gently used clothing. The response was overwhelming – 
               our community was eager to help, they just needed an easy way to do it.
             </p>
             
-            <p className="text-lg text-gray-600">
+            <p className="text-sm sm:text-lg text-gray-600 mb-6">
+              HH Donations is built on the personal contributions of its founders and the generosity 
+              of our community. To sustain our mission and reach more people in underdeveloped countries, 
+              we carefully resell a small portion of newer donated clothing, allowing us to fund 
+              operations and expand our impact.
+            </p>
+            
+            <p className="text-sm sm:text-lg text-gray-600">
               Today, H&H Donations operates over 50 bins across the city, partnering with 
               international aid organizations to ensure every donation reaches families who 
               need them most. What started as one person's vision has become a community 
@@ -195,7 +202,7 @@ const OurStory = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Our Journey
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-sm sm:text-xl text-gray-600">
               From humble beginnings to global impact
             </p>
           </div>
@@ -226,7 +233,7 @@ const OurStory = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Our Core Values
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-sm sm:text-xl text-gray-600">
               The principles that guide everything we do
             </p>
           </div>
@@ -254,7 +261,7 @@ const OurStory = () => {
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Our Impact in Numbers
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-sm sm:text-xl text-gray-600">
               The difference we've made together
             </p>
           </div>
@@ -272,7 +279,7 @@ const OurStory = () => {
 
           <div className="mt-16 bg-gradient-to-r from-primary/10 to-green-500/10 rounded-2xl p-8 text-center">
             <h3 className="text-2xl font-bold mb-4">Behind Every Number is a Story</h3>
-            <p className="text-gray-600 max-w-3xl mx-auto mb-6">
+            <p className="text-sm sm:text-base text-gray-600 max-w-3xl mx-auto mb-6">
               Each donation represents a child attending school in proper clothing, a parent 
               interviewing for a job with dignity, a family staying warm through winter. 
               Your contributions don't just fill bins – they change lives.

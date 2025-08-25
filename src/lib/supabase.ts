@@ -80,6 +80,11 @@ export interface DatabaseDriver {
   vehicleType?: string
   totalPickups?: number
   notes?: string
+  hasCredentials?: boolean
+  password_hash?: string
+  last_login?: string
+  password_changed_at?: string
+  assignedPickupRoutes?: string[]
   created_at?: string
   updated_at?: string
 }
@@ -160,21 +165,20 @@ export interface DatabaseAdminUser {
 
 export interface DatabasePartnerApplication {
   id: string
-  organizationName: string
-  contactPerson: string
+  organization_name: string
+  contact_person: string
   email: string
   phone: string
   website?: string
-  taxId?: string
   street: string
   city: string
   state: string
-  zipCode: string
-  additionalInfo?: string
+  zip_code: string
+  additional_info?: string
   status: 'pending' | 'reviewing' | 'approved' | 'rejected'
-  submittedAt: string
-  reviewedAt?: string
-  reviewNotes?: string
+  submitted_at: string
+  reviewed_at?: string
+  review_notes?: string
   created_at?: string
   updated_at?: string
 }

@@ -55,7 +55,7 @@ const Contact = () => {
           <div className="text-center mb-12">
             <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
             <h1 className="text-3xl font-bold text-gray-900 mb-4">Message Sent!</h1>
-            <p className="text-lg text-gray-600">
+            <p className="text-sm sm:text-lg text-gray-600">
               Thank you for contacting us. We'll get back to you within 24 hours.
             </p>
           </div>
@@ -101,8 +101,8 @@ const Contact = () => {
                   <Mail className="w-5 h-5 text-primary mt-1" />
                   <div>
                     <p className="font-semibold text-gray-900">Email</p>
-                    <p className="text-gray-600">info@hhdonations.org</p>
-                    <p className="text-gray-600">support@hhdonations.org</p>
+                    <p className="text-sm sm:text-base text-gray-600">info@hhdonations.org</p>
+                    <p className="text-sm sm:text-base text-gray-600">support@hhdonations.org</p>
                   </div>
                 </div>
                 
@@ -110,7 +110,7 @@ const Contact = () => {
                   <Phone className="w-5 h-5 text-primary mt-1" />
                   <div>
                     <p className="font-semibold text-gray-900">Phone</p>
-                    <p className="text-gray-600">(416) 555-0123</p>
+                    <p className="text-sm sm:text-base text-gray-600">(416) 555-0123</p>
                     <p className="text-sm text-gray-500">Mon-Fri, 9 AM - 5 PM</p>
                   </div>
                 </div>
@@ -119,7 +119,7 @@ const Contact = () => {
                   <MapPin className="w-5 h-5 text-primary mt-1" />
                   <div>
                     <p className="font-semibold text-gray-900">Address</p>
-                    <p className="text-gray-600">
+                    <p className="text-sm sm:text-base text-gray-600">
                       123 Community Drive<br />
                       Toronto, ON M5V 3A8<br />
                       Canada
@@ -131,7 +131,7 @@ const Contact = () => {
                   <Clock className="w-5 h-5 text-primary mt-1" />
                   <div>
                     <p className="font-semibold text-gray-900">Business Hours</p>
-                    <p className="text-gray-600">
+                    <p className="text-sm sm:text-base text-gray-600">
                       Monday - Friday: 9:00 AM - 5:00 PM<br />
                       Saturday: 10:00 AM - 2:00 PM<br />
                       Sunday: Closed
@@ -244,27 +244,27 @@ const Contact = () => {
         <div className="mt-12 space-y-8">
           {/* Partnership CTA */}
           <Card className="bg-gradient-to-r from-primary/5 to-green-50 border-primary/20">
-            <CardContent className="p-12 text-center">
-              <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Building className="h-10 w-10 text-primary" />
+            <CardContent className="p-8 sm:p-12 text-center">
+              <div className="bg-primary/10 w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Building className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Become a Location Partner</h2>
-              <p className="text-lg text-gray-600 mb-6 max-w-3xl mx-auto">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">Become a Location Partner</h2>
+              <p className="text-sm sm:text-lg text-gray-600 mb-6 max-w-3xl mx-auto">
                 Host a smart donation bin at your location and earn $1,000/year while supporting your community. 
                 Our sensor-equipped bins ensure cleanliness with automatic alerts when they need emptying.
               </p>
-              <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-6 sm:mb-8">
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Guaranteed annual revenue</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">Guaranteed annual revenue</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Zero operational burden</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">Zero operational burden</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
-                  <span className="text-gray-700">Smart sensor technology</span>
+                  <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm sm:text-base">Smart sensor technology</span>
                 </div>
               </div>
               <Button size="lg" className="text-lg px-8 py-6" asChild>
@@ -278,12 +278,12 @@ const Contact = () => {
 
           {/* Donation CTA */}
           <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="p-16 text-center">
-            <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Heart className="h-10 w-10 text-primary" />
+            <CardContent className="p-8 sm:p-16 text-center">
+            <div className="bg-primary/10 w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Heart className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Make a Donation?</h2>
-            <p className="text-xl text-gray-600 mb-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">Ready to Make a Donation?</h2>
+            <p className="text-sm sm:text-xl text-gray-600 mb-6 sm:mb-8">
               Don't wait to get started! You can find a donation bin near you or schedule a pickup right now.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

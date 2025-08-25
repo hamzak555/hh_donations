@@ -46,7 +46,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, MoreHorizontal, Edit, Trash, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin, Key, Copy } from 'lucide-react';
 
 interface Pickup {
   id: string;
@@ -62,7 +62,7 @@ interface Pickup {
 
 function DriversManagement() {
   const [isLoading] = useState(false);
-  const { drivers, setDrivers, addDriver: addDriverToContext, updateDriver: updateDriverInContext, deleteDriver: deleteDriverFromContext } = useDrivers();
+  const { drivers, setDrivers, addDriver: addDriverToContext, updateDriver: updateDriverInContext, deleteDriver: deleteDriverFromContext, generateCredentials, changePassword } = useDrivers();
   const { bins, updateBin } = useBins();
   
   // Remove the problematic sync - we'll handle consistency in the action handlers instead
@@ -144,8 +144,12 @@ function DriversManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCredentialsDialogOpen, setIsCredentialsDialogOpen] = useState(false);
+  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -253,6 +257,70 @@ function DriversManagement() {
   const handleDeleteDriver = (driver: Driver) => {
     setDriverToDelete(driver);
     setIsDeleteDialogOpen(true);
+  };
+
+  const handleGenerateCredentials = async (driver: Driver) => {
+    // Check if driver has an email address
+    if (!driver.email || driver.email.trim() === '') {
+      alert('This driver does not have an email address. Please edit the driver and add an email address first.');
+      return;
+    }
+    
+    try {
+      const credentials = await generateCredentials(driver.id);
+      setGeneratedCredentials(credentials);
+      setSelectedDriver(driver);
+      setIsCredentialsDialogOpen(true);
+    } catch (error) {
+      console.error('Failed to generate credentials:', error);
+      alert(error instanceof Error ? error.message : 'Failed to generate credentials');
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const handleChangePassword = (driver: Driver) => {
+    if (!driver.email || driver.email.trim() === '') {
+      alert('This driver does not have an email address.');
+      return;
+    }
+    
+    setSelectedDriver(driver);
+    setNewPassword('');
+    setIsChangePasswordDialogOpen(true);
+  };
+
+  const confirmChangePassword = async () => {
+    if (!selectedDriver || !selectedDriver.email) return;
+    
+    try {
+      // Generate new password or use the one provided
+      const password = newPassword || generateRandomPassword();
+      
+      // Use the context's changePassword function to update in Supabase
+      const credentials = await changePassword(selectedDriver.id, password);
+      
+      // Show the new credentials
+      setGeneratedCredentials(credentials);
+      setIsChangePasswordDialogOpen(false);
+      setIsCredentialsDialogOpen(true);
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      alert('Failed to change password. Please try again.');
+    }
+  };
+
+  // Helper function to generate random password
+  const generateRandomPassword = () => {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
   };
 
   const confirmDeleteDriver = () => {
@@ -413,7 +481,13 @@ function DriversManagement() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-1 text-sm">
                           <Mail className="w-3 h-3 text-gray-400" />
-                          {driver.email}
+                          {driver.email || <span className="text-red-500 italic">No email</span>}
+                          {driver.hasCredentials && (
+                            <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+                              <Key className="w-3 h-3 mr-1" />
+                              Login Active
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-1 text-sm">
                           <Phone className="w-3 h-3 text-gray-400" />
@@ -450,6 +524,17 @@ function DriversManagement() {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
+                          {!driver.hasCredentials ? (
+                            <DropdownMenuItem onClick={() => handleGenerateCredentials(driver)}>
+                              <Key className="mr-2 h-4 w-4" />
+                              Generate Credentials
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => handleChangePassword(driver)}>
+                              <Key className="mr-2 h-4 w-4" />
+                              Change Password
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem 
                             onClick={() => handleDeleteDriver(driver)}
                             className="text-red-600"
@@ -689,6 +774,133 @@ function DriversManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Credentials Dialog */}
+      <Dialog open={isCredentialsDialogOpen} onOpenChange={setIsCredentialsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Driver Login Credentials Generated</DialogTitle>
+            <DialogDescription>
+              Save these credentials securely. The driver can use them to log in and view their assigned routes.
+            </DialogDescription>
+          </DialogHeader>
+          {generatedCredentials && selectedDriver && (
+            <div className="space-y-4 px-1 py-1">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800 mb-3">
+                  <strong>Important:</strong> Share these credentials securely with {selectedDriver.name}. 
+                  The password can be changed after first login.
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-gray-500">Email (Username)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input 
+                      value={generatedCredentials.email} 
+                      readOnly 
+                      className="font-mono text-sm"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(generatedCredentials.email)}
+                      title="Copy email"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-xs text-gray-500">Temporary Password</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input 
+                      value={generatedCredentials.password} 
+                      readOnly 
+                      className="font-mono text-sm"
+                      type="text"
+                    />
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => copyToClipboard(generatedCredentials.password)}
+                      title="Copy password"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-600">
+                  <strong>Driver Dashboard Access:</strong>
+                  <br />• View assigned bin routes
+                  <br />• View assigned pickup routes
+                  <br />• Update route status
+                  <br />• View route details and navigation
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button 
+              onClick={() => {
+                setIsCredentialsDialogOpen(false);
+                setGeneratedCredentials(null);
+              }}
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Driver Password</DialogTitle>
+            <DialogDescription>
+              Generate a new password for {selectedDriver?.name}. Leave blank to auto-generate.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-1 py-1">
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-sm text-blue-800">
+                <strong>Current Email:</strong> {selectedDriver?.email}
+              </p>
+            </div>
+            
+            <div>
+              <Label htmlFor="new-password">New Password (Optional)</Label>
+              <Input
+                id="new-password"
+                type="text"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Leave blank to auto-generate"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                If left blank, a secure random password will be generated.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline"
+              onClick={() => setIsChangePasswordDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={confirmChangePassword}>
+              {newPassword ? 'Set Password' : 'Generate New Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

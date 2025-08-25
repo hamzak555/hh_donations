@@ -441,6 +441,12 @@ function BaleManagement() {
     paymentMethod: 'Cash' as PaymentMethod
   });
   
+  const [isEditSoldDialogOpen, setIsEditSoldDialogOpen] = useState(false);
+  const [editSoldFormData, setEditSoldFormData] = useState({
+    salePrice: 0,
+    paymentMethod: 'Cash' as PaymentMethod
+  });
+  
   const [sortColumn, setSortColumn] = useState<string | null>('createdDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [searchQuery, setSearchQuery] = useState('');
@@ -581,6 +587,27 @@ function BaleManagement() {
   const openPrintDialog = (bale: Bale) => {
     setSelectedBale(bale);
     setIsPrintDialogOpen(true);
+  };
+  
+  const openEditSoldDialog = (bale: Bale) => {
+    setSelectedBale(bale);
+    setEditSoldFormData({
+      salePrice: bale.salePrice || 0,
+      paymentMethod: bale.paymentMethod || 'Cash'
+    });
+    setIsEditSoldDialogOpen(true);
+  };
+  
+  const handleEditSoldBale = () => {
+    if (selectedBale) {
+      updateBale(selectedBale.id, {
+        salePrice: editSoldFormData.salePrice,
+        paymentMethod: editSoldFormData.paymentMethod
+      });
+      setIsEditSoldDialogOpen(false);
+      setSelectedBale(null);
+      setEditSoldFormData({ salePrice: 0, paymentMethod: 'Cash' });
+    }
   };
 
   const handlePrint = () => {
@@ -1017,6 +1044,9 @@ function BaleManagement() {
                         {getSortIcon('salePrice')}
                       </div>
                     </TableHead>
+                    <TableHead>
+                      Price/Kg
+                    </TableHead>
                     <TableHead 
                       className="cursor-pointer select-none"
                       onClick={() => handleSort('paymentMethod')}
@@ -1047,6 +1077,9 @@ function BaleManagement() {
                       <TableCell>{getQualityBadge(bale.contents)}</TableCell>
                       <TableCell>{bale.weight} Kg</TableCell>
                       <TableCell>${bale.salePrice ? formatNumber(bale.salePrice) : '0.00'}</TableCell>
+                      <TableCell>
+                        ${bale.salePrice && bale.weight ? formatNumber(bale.salePrice / bale.weight) : '0.00'}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
                           {bale.paymentMethod}
@@ -1086,6 +1119,10 @@ function BaleManagement() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditSoldDialog(bale)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Sale Details
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleRevertBale(bale)}>
                               <Undo2 className="mr-2 h-4 w-4" />
                               Revert to Active
@@ -1231,16 +1268,6 @@ function BaleManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="edit-notes">Notes (Optional)</Label>
-              <Textarea
-                id="edit-notes"
-                value={formData.notes}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({...formData, notes: e.target.value})}
-                placeholder="Enter any additional notes..."
-                rows={3}
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
@@ -1261,6 +1288,18 @@ function BaleManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 px-1 py-1">
+            {selectedBale && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Bale Weight:</span>
+                  <span className="font-medium">{selectedBale.weight} kg</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Quality:</span>
+                  <span className="font-medium">{selectedBale.contents}</span>
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="sale-price">Sale Price (USD)</Label>
               <Input
@@ -1272,6 +1311,13 @@ function BaleManagement() {
                 onChange={(e) => setSoldFormData({...soldFormData, salePrice: parseFloat(e.target.value) || 0})}
                 placeholder="Enter sale price in USD"
               />
+              {soldFormData.salePrice > 0 && selectedBale && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Price per kg: <span className="font-medium text-gray-900">
+                    ${formatNumber(soldFormData.salePrice / selectedBale.weight)}/kg
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="payment-method">Payment Method</Label>
@@ -1296,6 +1342,78 @@ function BaleManagement() {
               Cancel
             </Button>
             <Button onClick={handleMarkAsSold}>Mark as Sold</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Sale Details Dialog */}
+      <Dialog open={isEditSoldDialogOpen} onOpenChange={setIsEditSoldDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Sale Details</DialogTitle>
+            <DialogDescription>
+              Update the sale details for {selectedBale?.baleNumber}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 px-1 py-1">
+            {selectedBale && (
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Bale Weight:</span>
+                  <span className="font-medium">{selectedBale.weight} kg</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Quality:</span>
+                  <span className="font-medium">{selectedBale.contents}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Sold Date:</span>
+                  <span className="font-medium">{safeFormatDate(selectedBale.soldDate)}</span>
+                </div>
+              </div>
+            )}
+            <div>
+              <Label htmlFor="edit-sale-price">Sale Price (USD)</Label>
+              <Input
+                id="edit-sale-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={editSoldFormData.salePrice}
+                onChange={(e) => setEditSoldFormData({...editSoldFormData, salePrice: parseFloat(e.target.value) || 0})}
+                placeholder="Enter sale price in USD"
+              />
+              {editSoldFormData.salePrice > 0 && selectedBale && (
+                <div className="mt-2 text-sm text-gray-600">
+                  Price per kg: <span className="font-medium text-gray-900">
+                    ${formatNumber(editSoldFormData.salePrice / selectedBale.weight)}/kg
+                  </span>
+                </div>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="edit-payment-method">Payment Method</Label>
+              <Select 
+                value={editSoldFormData.paymentMethod}
+                onValueChange={(value) => setEditSoldFormData({...editSoldFormData, paymentMethod: value as PaymentMethod})}
+              >
+                <SelectTrigger id="edit-payment-method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Cheque">Cheque</SelectItem>
+                  <SelectItem value="Wire">Wire Transfer</SelectItem>
+                  <SelectItem value="Credit Card">Credit Card</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditSoldDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSoldBale}>Update Sale Details</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

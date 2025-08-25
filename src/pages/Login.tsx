@@ -1,16 +1,77 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from 'lucide-react';
+import { useDrivers } from '@/contexts/DriversContextSupabase';
+import { PasswordChangeDialog } from '@/components/PasswordChangeDialog';
 
 function Login() {
+  const navigate = useNavigate();
+  const { validateCredentials } = useDrivers();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [loggedInDriver, setLoggedInDriver] = useState<any>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login attempt with:', { email, password });
+    setError('');
+    setIsLoading(true);
+    
+    try {
+      // Check for admin credentials (hardcoded for demo)
+      if (email === 'admin@hhdonations.org' && password === 'admin123') {
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', 'admin');
+        localStorage.setItem('userEmail', email);
+        navigate('/admin/bins');
+        return;
+      }
+      
+      // Check for driver credentials using Supabase
+      const authResult = await validateCredentials(email, password);
+      
+      if (authResult) {
+        const { driver, isFirstTime } = authResult;
+        
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', 'driver');
+        localStorage.setItem('userEmail', email);
+        localStorage.setItem('driverId', driver.id);
+        
+        if (isFirstTime) {
+          // Show password change dialog for first-time login
+          setLoggedInDriver(driver);
+          setShowPasswordChange(true);
+          return;
+        }
+        
+        // Navigate to driver dashboard
+        navigate('/driver/bin-routes');
+        return;
+      }
+      
+      // Invalid credentials
+      setError('Invalid email or password. Please try again.');
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('An error occurred during login. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePasswordChangeComplete = () => {
+    setShowPasswordChange(false);
+    setLoggedInDriver(null);
+    // Navigate to driver dashboard after successful password change
+    navigate('/driver/bin-routes');
   };
 
   return (
@@ -24,6 +85,12 @@ function Login() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -48,8 +115,8 @@ function Login() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full">
-              Sign in
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
             <div className="text-sm text-center text-gray-600">
               Don't have an account?{' '}
@@ -60,6 +127,16 @@ function Login() {
           </CardFooter>
         </form>
       </Card>
+      
+      {/* Password Change Dialog for First-Time Login */}
+      {loggedInDriver && (
+        <PasswordChangeDialog
+          isOpen={showPasswordChange}
+          onClose={handlePasswordChangeComplete}
+          driverId={loggedInDriver.id}
+          isFirstTime={true}
+        />
+      )}
     </div>
   );
 }

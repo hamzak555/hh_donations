@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
-import { Heart, Users, Recycle, Mail, Phone, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Heart, Users, Recycle, Mail, Phone, Shield, LayoutDashboard } from 'lucide-react';
 
 const Footer = () => {
+  const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check if user is authenticated by looking for adminAuth in localStorage
+    const authToken = localStorage.getItem('adminAuth');
+    setIsLoggedIn(!!authToken);
+  }, [location.pathname]);
 
   const toggleSection = (section: string) => {
     setOpenSections(prev => 
@@ -99,14 +108,35 @@ const Footer = () => {
           </div>
           </div>
           
-          <div className="border-t border-gray-300 mt-8 sm:mt-12 pt-6 sm:pt-8 text-center sm:text-left text-gray-600">
-            <p className="flex flex-col sm:flex-row items-center justify-center sm:justify-start text-xs sm:text-sm">
-              <span>&copy; {new Date().getFullYear()} H&H Donations. All rights reserved.</span>
-              <span className="flex items-center mt-2 sm:mt-0 sm:ml-2">
-                Making a difference, one donation at a time. 
-                <Heart className="ml-1 h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
-              </span>
-            </p>
+          <div className="border-t border-gray-300 mt-8 sm:mt-12 pt-6 sm:pt-8">
+            <div className="flex flex-col sm:flex-row justify-between items-center text-gray-600">
+              <p className="flex flex-col sm:flex-row items-center text-xs sm:text-sm">
+                <span>&copy; {new Date().getFullYear()} H&H Donations. All rights reserved.</span>
+                <span className="flex items-center mt-2 sm:mt-0 sm:ml-2">
+                  Making a difference, one donation at a time. 
+                  <Heart className="ml-1 h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                </span>
+              </p>
+              <div className="mt-4 sm:mt-0">
+                {isLoggedIn ? (
+                  <Link
+                    to="/admin/bins"
+                    className="inline-flex items-center space-x-2 text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Admin Dashboard</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="inline-flex items-center space-x-2 text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>Admin Login</span>
+                  </Link>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

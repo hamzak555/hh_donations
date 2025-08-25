@@ -105,7 +105,7 @@ const WhatToDonate = () => {
                 What You Can
                 <span className="text-primary block">Donate Today</span>
               </h1>
-              <p className="text-xl text-gray-600">
+              <p className="text-sm sm:text-xl text-gray-600">
                 Your donations directly support families in need. Every item makes a difference 
                 in someone's life. Here's what we accept and how to prepare your donations.
               </p>
@@ -156,9 +156,6 @@ const WhatToDonate = () => {
 
           {/* Items We Accept */}
           <div className="mb-16">
-            <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">
-              ✅ Items We Accept
-            </h3>
             <div className="space-y-8">
               {acceptableCategories.map((category, index) => (
                 <div key={index} className="bg-gray-50 rounded-xl p-8">
@@ -187,7 +184,7 @@ const WhatToDonate = () => {
             <h3 className="text-2xl font-bold text-gray-900 mb-8 text-center">
               ❌ Items We Cannot Accept
             </h3>
-            <p className="text-lg text-gray-600 text-center mb-8">
+            <p className="text-sm sm:text-lg text-gray-600 text-center mb-6 sm:mb-8">
               For safety and quality reasons, we cannot accept these items
             </p>
             
@@ -247,7 +244,7 @@ const WhatToDonate = () => {
             <h3 className="text-xl font-semibold text-gray-900 mb-3">
               Quality Matters
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm sm:text-base text-gray-600">
               All items should be clean, gently used, and in good condition. This ensures 
               they can provide dignity and value to the families who receive them.
             </p>
@@ -258,11 +255,11 @@ const WhatToDonate = () => {
       {/* CTA Section */}
       <section className="py-20 px-8 bg-gradient-to-br from-primary/10 via-primary/5 to-white">
         <div className="max-w-4xl mx-auto text-center">
-          <Sparkles className="h-12 w-12 text-primary mx-auto mb-6" />
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
+          <Sparkles className="h-10 w-10 sm:h-12 sm:w-12 text-primary mx-auto mb-6" />
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
             Ready to Make a Difference?
           </h2>
-          <p className="text-xl text-gray-600 mb-8">
+          <p className="text-sm sm:text-xl text-gray-600 mb-6 sm:mb-8">
             Choose the most convenient way to donate your items
           </p>
 
@@ -271,7 +268,7 @@ const WhatToDonate = () => {
               <CardContent className="p-8">
                 <MapPin className="h-10 w-10 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-3">Drop Off at a Bin</h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-sm sm:text-base text-gray-600 mb-4">
                   Find the nearest bin and drop off your items 24/7
                 </p>
                 <Button className="w-full" asChild>
@@ -287,7 +284,7 @@ const WhatToDonate = () => {
               <CardContent className="p-8">
                 <Truck className="h-10 w-10 text-primary mx-auto mb-4" />
                 <h3 className="text-xl font-bold mb-3">Schedule a Pickup</h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-sm sm:text-base text-gray-600 mb-4">
                   We'll come to you for large donations
                 </p>
                 <Button className="w-full" asChild>
@@ -300,7 +297,7 @@ const WhatToDonate = () => {
             </Card>
           </div>
 
-          <p className="text-gray-600 mt-8">
+          <p className="text-sm sm:text-base text-gray-600 mt-6 sm:mt-8">
             Have questions? <Link to="/contact" className="text-primary hover:underline">Contact us</Link> or 
             check our <Link to="/faq" className="text-primary hover:underline">FAQ</Link>
           </p>

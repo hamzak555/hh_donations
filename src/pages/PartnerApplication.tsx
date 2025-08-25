@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { usePartnerApplications } from '@/contexts/PartnerApplicationsContext';
+import { usePartnerApplications } from '@/contexts/PartnerApplicationsContextSupabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +34,6 @@ const PartnerApplication = () => {
   const [formData, setFormData] = useState({
     // Step 1: Organization Information
     organizationName: '',
-    taxId: '',
     website: '',
 
     // Step 2: Contact Information
@@ -171,7 +170,6 @@ const PartnerApplication = () => {
         email: formData.email,
         phone: formData.phone,
         website: formData.website,
-        taxId: formData.taxId,
         address: formData.address,
         additionalInfo: formData.additionalInfo
       });
@@ -339,18 +337,6 @@ const PartnerApplication = () => {
                       )}
                     </div>
 
-                    <div>
-                      <Label htmlFor="taxId">Tax ID Number (Optional)</Label>
-                      <Input
-                        id="taxId"
-                        value={formData.taxId}
-                        onChange={(e) => handleInputChange('taxId', e.target.value)}
-                        placeholder="For tax-exempt organizations"
-                      />
-                      <p className="text-sm text-gray-500 mt-1">
-                        If you're a registered non-profit, providing your tax ID can help expedite the process
-                      </p>
-                    </div>
 
                     <div>
                       <Label htmlFor="website">Website (Optional)</Label>
@@ -358,7 +344,6 @@ const PartnerApplication = () => {
                         <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                         <Input
                           id="website"
-                          type="url"
                           value={formData.website}
                           onChange={(e) => handleInputChange('website', e.target.value)}
                           placeholder="https://www.example.org"
@@ -448,23 +433,6 @@ const PartnerApplication = () => {
                             )}
                           </div>
 
-                          {/* Show parsed address fields as read-only */}
-                          {formData.address.street && (
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                              <div>
-                                <Label className="text-sm text-gray-600">City</Label>
-                                <p className="font-medium">{formData.address.city || 'Not detected'}</p>
-                              </div>
-                              <div>
-                                <Label className="text-sm text-gray-600">State/Province</Label>
-                                <p className="font-medium">{formData.address.state || 'Not detected'}</p>
-                              </div>
-                              <div>
-                                <Label className="text-sm text-gray-600">ZIP/Postal Code</Label>
-                                <p className="font-medium">{formData.address.zipCode || 'Not detected'}</p>
-                              </div>
-                            </div>
-                          )}
                         </>
                       ) : (
                         // Fallback to manual entry if Google Maps isn't loaded
@@ -552,10 +520,12 @@ const PartnerApplication = () => {
 
                     {/* Summary Review */}
                     <Alert className="border-primary/20 bg-primary/5">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        Please review your application before submitting. You can go back to any previous step to make changes.
-                      </AlertDescription>
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="h-4 w-4 mt-0.5" />
+                        <AlertDescription>
+                          Please review your application before submitting. You can go back to any previous step to make changes.
+                        </AlertDescription>
+                      </div>
                     </Alert>
                   </div>
                 )}

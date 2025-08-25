@@ -59,6 +59,12 @@ function BinsManagement() {
   const { bins, addBin, updateBin, deleteBin } = useBins();
   const { drivers, updateDriver, getActiveDrivers } = useDrivers();
   
+  // Check if current user is a driver
+  const userRole = localStorage.getItem('userRole');
+  const isDriverRole = userRole === 'driver';
+  const driverId = localStorage.getItem('driverId');
+  const currentDriverName = isDriverRole ? drivers.find(d => d.id === driverId)?.name : null;
+  
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -469,12 +475,17 @@ function BinsManagement() {
   };
 
   const getFilteredAndSortedBins = () => {
-    // First filter by search query
+    // First filter by driver assignment if in driver role
     let filteredBins = bins;
     
+    if (isDriverRole && currentDriverName) {
+      filteredBins = bins.filter(bin => bin.assignedDriver === currentDriverName);
+    }
+    
+    // Then filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filteredBins = bins.filter(bin => 
+      filteredBins = filteredBins.filter(bin => 
         bin.binNumber.toLowerCase().includes(query) ||
         bin.locationName.toLowerCase().includes(query) ||
         bin.address.toLowerCase().includes(query) ||
@@ -703,9 +714,9 @@ function BinsManagement() {
   return (
     <div className="px-6 pt-10 pb-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">All Bins</h1>
+        <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Bins' : 'All Bins'}</h1>
         <div className="flex gap-2">
-          {selectedBins.size > 0 && (
+          {selectedBins.size > 0 && !isDriverRole && (
             <>
               <Button 
                 onClick={() => setIsBulkAssignDialogOpen(true)}
@@ -738,10 +749,12 @@ function BinsManagement() {
             )}
             Refresh Sensors
           </Button>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add New Bin
-          </Button>
+          {!isDriverRole && (
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add New Bin
+            </Button>
+          )}
         </div>
       </div>
 
@@ -773,16 +786,18 @@ function BinsManagement() {
           <Table>
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={(() => {
-                      const filteredBins = getFilteredAndSortedBins();
-                      const uniqueFilteredIds = Array.from(new Set(filteredBins.map(bin => bin.id)));
-                      return selectedBins.size === uniqueFilteredIds.length && uniqueFilteredIds.length > 0;
-                    })()}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
+                {!isDriverRole && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={(() => {
+                        const filteredBins = getFilteredAndSortedBins();
+                        const uniqueFilteredIds = Array.from(new Set(filteredBins.map(bin => bin.id)));
+                        return selectedBins.size === uniqueFilteredIds.length && uniqueFilteredIds.length > 0;
+                      })()}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
                 <TableHead 
                   className="cursor-pointer select-none"
                   onClick={() => handleSort('binNumber')}
@@ -855,59 +870,64 @@ function BinsManagement() {
                     {getSortIcon('lastSensorUpdate')}
                   </div>
                 </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {!isDriverRole && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {getFilteredAndSortedBins().map((bin, index) => {
                 return (
                   <TableRow key={`${bin.id}-${bin.binNumber}-${index}`} className="select-none">
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedBins.has(bin.id)}
-                        onCheckedChange={() => {
-                          // Use onClick for proper event handling with shift key
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSelectBin(bin.id, e);
-                        }}
-                      />
-                    </TableCell>
+                    {!isDriverRole && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedBins.has(bin.id)}
+                          onCheckedChange={() => {
+                            // Use onClick for proper event handling with shift key
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectBin(bin.id, e);
+                          }}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-medium">{bin.binNumber}</TableCell>
                     <TableCell>{bin.locationName}</TableCell>
                     <TableCell>{bin.address}</TableCell>
                     <TableCell>{getStatusBadge(bin.status, bin.fullSince)}</TableCell>
                     <TableCell>
-                      <Select
-                        value={bin.assignedDriver || 'unassigned'}
-                        onValueChange={(value) => {
-                          const oldDriverName = bin.assignedDriver;
-                          const newDriverName = value === 'unassigned' ? undefined : value;
-                          
-                          // Update the bin
-                          updateBin(bin.id, { assignedDriver: newDriverName });
-                          
-                          // Update driver assignments
-                          if (oldDriverName && oldDriverName !== newDriverName) {
-                            // Remove bin from old driver's assignedBins
-                            const oldDriver = drivers.find(d => d.name === oldDriverName);
-                            if (oldDriver) {
-                              const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
-                              updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                      {isDriverRole ? (
+                        <span className="text-sm font-medium">{bin.assignedDriver || 'Unassigned'}</span>
+                      ) : (
+                        <Select
+                          value={bin.assignedDriver || 'unassigned'}
+                          onValueChange={(value) => {
+                            const oldDriverName = bin.assignedDriver;
+                            const newDriverName = value === 'unassigned' ? undefined : value;
+                            
+                            // Update the bin
+                            updateBin(bin.id, { assignedDriver: newDriverName });
+                            
+                            // Update driver assignments
+                            if (oldDriverName && oldDriverName !== newDriverName) {
+                              // Remove bin from old driver's assignedBins
+                              const oldDriver = drivers.find(d => d.name === oldDriverName);
+                              if (oldDriver) {
+                                const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
+                                updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                              }
                             }
-                          }
-                          
-                          if (newDriverName && newDriverName !== 'unassigned') {
-                            // Add bin to new driver's assignedBins
-                            const newDriver = drivers.find(d => d.name === newDriverName);
-                            if (newDriver) {
-                              const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
-                              updateDriver(newDriver.id, { assignedBins: updatedBins });
+                            
+                            if (newDriverName && newDriverName !== 'unassigned') {
+                              // Add bin to new driver's assignedBins
+                              const newDriver = drivers.find(d => d.name === newDriverName);
+                              if (newDriver) {
+                                const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
+                                updateDriver(newDriver.id, { assignedBins: updatedBins });
+                              }
                             }
-                          }
-                        }}
-                      >
+                          }}
+                        >
                         <SelectTrigger className="h-8 w-full">
                           <SelectValue />
                         </SelectTrigger>
@@ -921,7 +941,8 @@ function BinsManagement() {
                             </SelectItem>
                           ))}
                         </SelectContent>
-                      </Select>
+                        </Select>
+                      )}
                     </TableCell>
                     <TableCell>
                       {renderFillLevel(bin)}
@@ -932,38 +953,40 @@ function BinsManagement() {
                     <TableCell>
                       {renderLastUpdate(bin)}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditDialog(bin)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleViewOnMap(bin)}>
-                            <MapPin className="mr-2 h-4 w-4" />
-                            View on Map
-                          </DropdownMenuItem>
-                          {bin.contractFile && (
-                            <DropdownMenuItem onClick={() => window.open(bin.contractFile, '_blank')}>
-                              <FileText className="mr-2 h-4 w-4" />
-                              View Contract
+                    {!isDriverRole && (
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditDialog(bin)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
                             </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteBin(bin)}
-                            className="text-red-600"
-                          >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                            <DropdownMenuItem onClick={() => handleViewOnMap(bin)}>
+                              <MapPin className="mr-2 h-4 w-4" />
+                              View on Map
+                            </DropdownMenuItem>
+                            {bin.contractFile && (
+                              <DropdownMenuItem onClick={() => window.open(bin.contractFile, '_blank')}>
+                                <FileText className="mr-2 h-4 w-4" />
+                                View Contract
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteBin(bin)}
+                              className="text-red-600"
+                            >
+                              <Trash className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })}

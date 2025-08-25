@@ -73,6 +73,12 @@ function PickupRequests() {
   const [isLoading] = useState(false);
   const { pickupRequests, updatePickupRequest, deletePickupRequest } = usePickupRequests();
   const { drivers: contextDrivers } = useDrivers();
+  
+  // Check if current user is a driver
+  const userRole = localStorage.getItem('userRole');
+  const isDriverRole = userRole === 'driver';
+  const driverId = localStorage.getItem('driverId');
+  const currentDriverName = isDriverRole ? contextDrivers.find(d => d.id === driverId)?.name : null;
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
@@ -259,6 +265,13 @@ function PickupRequests() {
   const getFilteredAndSortedRequests = () => {
     let filteredRequests = pickupRequests;
     
+    // First filter by driver assignment if in driver role
+    if (isDriverRole && currentDriverName) {
+      filteredRequests = filteredRequests.filter(request => 
+        request.assignedDriver === currentDriverName
+      );
+    }
+    
     // Filter by tab status
     if (activeTab !== 'all') {
       const statusMap: Record<string, string> = {
@@ -423,9 +436,9 @@ function PickupRequests() {
   return (
     <div className="px-6 pt-10 pb-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Pickup Requests</h1>
+        <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Pickup Requests' : 'Pickup Requests'}</h1>
         <div className="flex gap-2">
-          {activeTab === 'pending' && (
+          {!isDriverRole && activeTab === 'pending' && (
             <>
               <Button 
                 onClick={() => {
@@ -440,7 +453,7 @@ function PickupRequests() {
               </Button>
             </>
           )}
-          {selectedRequests.size > 0 && (
+          {selectedRequests.size > 0 && !isDriverRole && (
             <>
               <Button 
                 onClick={() => setIsBulkAssignDialogOpen(true)}
@@ -557,12 +570,14 @@ function PickupRequests() {
             <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-12">
-                  <Checkbox
-                    checked={selectedRequests.size === getFilteredAndSortedRequests().length && getFilteredAndSortedRequests().length > 0}
-                    onCheckedChange={handleSelectAll}
-                  />
-                </TableHead>
+                {!isDriverRole && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedRequests.size === getFilteredAndSortedRequests().length && getFilteredAndSortedRequests().length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </TableHead>
+                )}
                 <TableHead 
                   className="cursor-pointer select-none"
                   onClick={() => handleSort('name')}
@@ -626,7 +641,7 @@ function PickupRequests() {
                     {getSortIcon('submittedAt')}
                   </div>
                 </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {!isDriverRole && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -656,18 +671,20 @@ function PickupRequests() {
                     handleSelectRequest(request.id, e);
                   }}
                 >
-                  <TableCell>
-                    <Checkbox
-                      checked={selectedRequests.has(request.id)}
-                      onCheckedChange={() => {
-                        // Use onClick for proper event handling with shift key
-                      }}
+                  {!isDriverRole && (
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedRequests.has(request.id)}
+                        onCheckedChange={() => {
+                          // Use onClick for proper event handling with shift key
+                        }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSelectRequest(request.id, e);
                       }}
-                    />
-                  </TableCell>
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="font-medium">{request.name}</TableCell>
                   <TableCell>
                     <div className="space-y-1">
@@ -717,58 +734,64 @@ function PickupRequests() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Select 
-                      value={request.assignedDriver || "unassigned"}
-                      onValueChange={(value) => {
-                        updatePickupRequest(request.id, { 
-                          assignedDriver: value === "unassigned" ? "" : value 
-                        });
-                      }}
-                    >
-                      <SelectTrigger className="w-40 h-8">
-                        <SelectValue>
-                          {request.assignedDriver || <span className="text-gray-400">Unassigned</span>}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">
-                          <span className="text-gray-400">Unassigned</span>
-                        </SelectItem>
-                        {drivers.map(driver => (
-                          <SelectItem key={driver} value={driver}>{driver}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {isDriverRole ? (
+                      <span className="text-sm font-medium">{request.assignedDriver || 'Unassigned'}</span>
+                    ) : (
+                      <Select 
+                        value={request.assignedDriver || "unassigned"}
+                        onValueChange={(value) => {
+                          updatePickupRequest(request.id, { 
+                            assignedDriver: value === "unassigned" ? "" : value 
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-40 h-8">
+                          <SelectValue>
+                            {request.assignedDriver || <span className="text-gray-400">Unassigned</span>}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">
+                            <span className="text-gray-400">Unassigned</span>
+                          </SelectItem>
+                          {drivers.map(driver => (
+                            <SelectItem key={driver} value={driver}>{driver}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </TableCell>
                   <TableCell>{formatDate(request.submittedAt)}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openViewDialog(request)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        {request.location && (
-                          <DropdownMenuItem onClick={() => handleViewOnMap(request)}>
-                            <MapPin className="mr-2 h-4 w-4" />
-                            View on Map
+                  {!isDriverRole && (
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openViewDialog(request)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteRequest(request)}
-                          className="text-red-600"
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                          {request.location && (
+                            <DropdownMenuItem onClick={() => handleViewOnMap(request)}>
+                              <MapPin className="mr-2 h-4 w-4" />
+                              View on Map
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteRequest(request)}
+                            className="text-red-600"
+                          >
+                            <Trash className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               )))}
             </TableBody>

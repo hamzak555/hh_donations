@@ -93,23 +93,7 @@ export class BinsService {
   static async getAllBins(): Promise<BinLocation[]> {
     const { data, error } = await supabase
       .from(TABLES.BINS)
-      .select('id, binNumber, locationName, address, lat, lng, status, assignedDriver, createdDate, fullSince, sensorId, containerId, fillLevel, lastSensorUpdate, batteryLevel, temperature, sensorEnabled, created_at, updated_at')
-      .order('created_at', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching bins:', error)
-      throw error
-    }
-
-    return data.map(convertDatabaseBinToApp)
-  }
-
-  // Driver-specific optimized query - only fetches bins assigned to specific driver
-  static async getDriverBins(driverId: string): Promise<BinLocation[]> {
-    const { data, error } = await supabase
-      .from(TABLES.BINS)
-      .select('id, binNumber, locationName, address, lat, lng, status, assignedDriver, fillLevel, sensorEnabled, created_at')
-      .eq('assignedDriver', driverId)
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -222,7 +206,7 @@ export class DriversService {
   static async getAllDrivers() {
     const { data, error } = await supabase
       .from(TABLES.DRIVERS)
-      .select('id, name, phone, email, licenseNumber, hireDate, status, assignedBins, vehicleType, totalPickups, notes, hasCredentials, password_hash, last_login, password_changed_at, assignedPickupRoutes, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -264,21 +248,6 @@ export class DriversService {
     return data
   }
 
-  static async getDriver(id: string) {
-    const { data, error } = await supabase
-      .from(TABLES.DRIVERS)
-      .select('id, name, phone, email, licenseNumber, hireDate, status, assignedBins, vehicleType, totalPickups, notes, hasCredentials, password_hash, last_login, password_changed_at, assignedPickupRoutes, created_at, updated_at')
-      .eq('id', id)
-      .single()
-
-    if (error) {
-      console.error('Error fetching driver:', error)
-      throw error
-    }
-
-    return data
-  }
-
   static async deleteDriver(id: string) {
     const { error } = await supabase
       .from(TABLES.DRIVERS)
@@ -297,7 +266,7 @@ export class ContainersService {
   static async getAllContainers(): Promise<DatabaseContainer[]> {
     const { data, error } = await supabase
       .from(TABLES.CONTAINERS)
-      .select('id, containerNumber, container_number, type, capacity, currentWeight, current_weight, destination, location, status, assignedBales, assigned_bales, createdDate, created_date, shipmentDate, shipment_date, estimatedArrivalDate, estimated_arrival_date, actualArrivalDate, actual_arrival_date, sealNumber, seal_number, shippingLine, shipping_line, vesselName, vessel_name, bookingNumber, booking_number, notes, documents, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -364,7 +333,7 @@ export class BalesService {
   static async getAllBales() {
     const { data, error } = await supabase
       .from(TABLES.BALES)
-      .select('id, baleNumber, weight, contents, createdDate, location, status, pricePerKg, buyerInfo, soldDate, salePrice, paymentMethod, notes, notesTimeline, photos, containerNumber, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -424,44 +393,7 @@ export class PickupRequestsService {
   static async getAllPickupRequests() {
     const { data, error } = await supabase
       .from(TABLES.PICKUP_REQUESTS)
-      .select('id, name, phone, email, address, date, time, additionalNotes, location, status, assignedDriver, adminNotes, submittedAt, created_at, updated_at')
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching pickup requests:', error)
-      throw error
-    }
-
-    return data
-  }
-
-  // Paginated query for large datasets - reduces admin dashboard load
-  static async getPickupRequestsPaginated(page: number = 0, limit: number = 50) {
-    const { data, error, count } = await supabase
-      .from(TABLES.PICKUP_REQUESTS)
-      .select('id, name, phone, address, date, status, assignedDriver, created_at', { count: 'exact' })
-      .range(page * limit, (page + 1) * limit - 1)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching paginated pickup requests:', error)
-      throw error
-    }
-
-    return { 
-      data: data || [], 
-      hasMore: (count || 0) > (page + 1) * limit,
-      total: count || 0
-    }
-  }
-
-  // Driver-specific optimized query - only fetches requests assigned to specific driver
-  static async getDriverPickupRequests(driverId: string) {
-    const { data, error } = await supabase
-      .from(TABLES.PICKUP_REQUESTS)
-      .select('id, name, phone, address, date, time, location, status, assignedDriver, created_at')
-      .eq('assignedDriver', driverId)
-      .in('status', ['Pending', 'Picked Up'])
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -521,7 +453,7 @@ export class AdminUsersService {
   static async getAllAdminUsers(): Promise<DatabaseAdminUser[]> {
     const { data, error } = await supabase
       .from(TABLES.ADMIN_USERS)
-      .select('id, email, password_hash, passwordHash, full_name, fullName, role, is_active, isActive, last_login, lastLogin, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -604,7 +536,7 @@ export class PartnerApplicationsService {
   static async getAllPartnerApplications() {
     const { data, error } = await supabase
       .from(TABLES.PARTNER_APPLICATIONS)
-      .select('id, organization_name, contact_person, email, phone, website, street, city, state, zip_code, additional_info, status, submitted_at, reviewed_at, review_notes, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: false })
 
     if (error) {

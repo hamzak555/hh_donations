@@ -15,6 +15,9 @@ export interface Driver {
   hireDate?: string;
   vehicleType?: string;
   notes?: string;
+  hasCredentials?: boolean;
+  password?: string; // Only used when generating credentials, not stored
+  assignedPickupRoutes?: string[]; // IDs of assigned pickup routes
 }
 
 interface DriversContextType {
@@ -24,6 +27,9 @@ interface DriversContextType {
   updateDriver: (id: string, updates: Partial<Driver>) => Promise<void>;
   deleteDriver: (id: string) => Promise<void>;
   getActiveDrivers: () => Driver[];
+  generateCredentials: (driverId: string) => Promise<{ email: string; password: string }>;
+  changePassword: (driverId: string, newPassword: string) => Promise<{ email: string; password: string }>;
+  validateCredentials: (email: string, password: string) => Promise<{ driver: Driver; isFirstTime: boolean } | null>;
   refreshDrivers: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -72,7 +78,9 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
           licenseNumber: d.licenseNumber, // Direct mapping after column rename
           hireDate: d.hireDate, // Direct mapping after column rename
           vehicleType: d.vehicleType, // Direct mapping after column rename
-          notes: d.notes
+          notes: d.notes,
+          hasCredentials: d.hasCredentials || false,
+          assignedPickupRoutes: d.assignedPickupRoutes || []
         }));
         
         setDrivers(formattedDrivers);
@@ -198,6 +206,153 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
     return drivers.filter(d => d.status === 'Active');
   };
 
+  // Generate random password
+  const generateRandomPassword = () => {
+    const length = 12;
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+    let password = '';
+    for (let i = 0; i < length; i++) {
+      password += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return password;
+  };
+
+  const generateCredentials = async (driverId: string): Promise<{ email: string; password: string }> => {
+    const driver = drivers.find(d => d.id === driverId);
+    if (!driver) {
+      throw new Error('Driver not found');
+    }
+
+    if (!driver.email) {
+      throw new Error('Driver must have an email address');
+    }
+
+    const password = generateRandomPassword();
+    
+    // If using Supabase, save credentials there
+    if (USE_SUPABASE) {
+      try {
+        // In production, we should hash the password before storing
+        // For demo purposes, we're storing it as plain text (NOT recommended for production)
+        await SupabaseService.drivers.updateDriver(driverId, { 
+          hasCredentials: true,
+          password_hash: password, // In production, this should be hashed
+          password_changed_at: new Date().toISOString()
+        });
+        
+        // Reload drivers to get updated data
+        await loadDrivers();
+      } catch (err) {
+        console.error('[generateCredentials] Failed to update Supabase:', err);
+        throw new Error('Failed to save credentials to database');
+      }
+    } else {
+      // Fallback to localStorage for demo without Supabase
+      const driverCredentials = JSON.parse(localStorage.getItem('driverCredentials') || '{}');
+      driverCredentials[driver.email] = {
+        id: driver.id,
+        password: password,
+        hasChangedPassword: false
+      };
+      localStorage.setItem('driverCredentials', JSON.stringify(driverCredentials));
+      
+      // Update driver in state
+      const updatedDrivers = drivers.map(d => 
+        d.id === driverId ? { ...d, hasCredentials: true } : d
+      );
+      setDrivers(updatedDrivers);
+      SafeStorage.setItem(STORAGE_KEY, JSON.stringify(updatedDrivers));
+    }
+
+    return { email: driver.email, password };
+  };
+
+  const changePassword = async (driverId: string, newPassword: string): Promise<{ email: string; password: string }> => {
+    const driver = drivers.find(d => d.id === driverId);
+    if (!driver) {
+      throw new Error('Driver not found');
+    }
+
+    if (!driver.email) {
+      throw new Error('Driver must have an email address');
+    }
+
+    if (USE_SUPABASE) {
+      try {
+        // In production, we should hash the password before storing
+        // For demo purposes, we're storing it as plain text (NOT recommended for production)
+        await SupabaseService.drivers.updateDriver(driverId, { 
+          password_hash: newPassword, // In production, this should be hashed
+          password_changed_at: new Date().toISOString()
+        });
+        
+        // Reload drivers to get updated data
+        await loadDrivers();
+      } catch (err) {
+        console.error('[changePassword] Failed to update Supabase:', err);
+        throw new Error('Failed to update password in database');
+      }
+    } else {
+      // Fallback to localStorage for demo without Supabase
+      const driverCredentials = JSON.parse(localStorage.getItem('driverCredentials') || '{}');
+      if (driverCredentials[driver.email]) {
+        driverCredentials[driver.email].password = newPassword;
+        driverCredentials[driver.email].hasChangedPassword = true;
+        localStorage.setItem('driverCredentials', JSON.stringify(driverCredentials));
+      }
+    }
+
+    return { email: driver.email, password: newPassword };
+  };
+
+  const validateCredentials = async (email: string, password: string): Promise<{ driver: Driver; isFirstTime: boolean } | null> => {
+    try {
+      if (USE_SUPABASE) {
+        // Find driver by email
+        const driver = drivers.find(d => d.email === email);
+        if (!driver) {
+          return null;
+        }
+
+        // Get the driver's stored password from Supabase
+        const dbDriver = await SupabaseService.drivers.getDriver(driver.id);
+        
+        // In production, we should compare hashed passwords
+        // For demo purposes, we're comparing plain text (NOT recommended for production)
+        if (dbDriver && dbDriver.password_hash === password) {
+          // Check if this is first time login (no password_changed_at means it's still the generated password)
+          const isFirstTime = !dbDriver.password_changed_at;
+          
+          // Update last login time
+          await SupabaseService.drivers.updateDriver(driver.id, {
+            last_login: new Date().toISOString()
+          });
+          
+          return { driver, isFirstTime };
+        }
+        
+        return null;
+      } else {
+        // Fallback to localStorage for demo without Supabase
+        const driverCredentials = JSON.parse(localStorage.getItem('driverCredentials') || '{}');
+        const driverAuth = driverCredentials[email];
+        
+        if (driverAuth && driverAuth.password === password) {
+          const driver = drivers.find(d => d.id === driverAuth.id);
+          if (driver) {
+            const isFirstTime = !driverAuth.hasChangedPassword;
+            return { driver, isFirstTime };
+          }
+        }
+        
+        return null;
+      }
+    } catch (err) {
+      console.error('[validateCredentials] Error:', err);
+      return null;
+    }
+  };
+
   const refreshDrivers = async () => {
     await loadDrivers();
   };
@@ -209,6 +364,9 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
     updateDriver,
     deleteDriver,
     getActiveDrivers,
+    generateCredentials,
+    changePassword,
+    validateCredentials,
     refreshDrivers,
     isLoading,
     error

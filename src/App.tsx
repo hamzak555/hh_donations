@@ -7,10 +7,11 @@ import { PickupRequestsProvider } from './contexts/PickupRequestsContextSupabase
 import { BalesProvider } from './contexts/BalesContextSupabase';
 import { DriversProvider } from './contexts/DriversContextSupabase';
 import { ContainersProvider } from './contexts/ContainersContextSupabase';
-import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsContext';
+import { PartnerApplicationsProvider } from './contexts/PartnerApplicationsContextSupabase';
 import Layout from './components/Layout';
 import ResponsiveLayout from './components/ResponsiveLayout';
 import AdminLayout from './components/AdminLayout';
+import DriverLayout from './components/DriverLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import FindBin from './pages/FindBin';
@@ -18,7 +19,7 @@ import RequestPickup from './pages/RequestPickup';
 import Contact from './pages/Contact';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
-import AdminLogin from './pages/admin/AdminLogin';
+import Login from './pages/Login';
 import BinsManagement from './pages/admin/BinsManagement';
 import DriversManagement from './pages/admin/DriversManagement';
 import RouteCreation from './pages/admin/RouteCreation';
@@ -27,7 +28,6 @@ import ContainerManagement from './pages/admin/ContainerManagement';
 import PickupRequests from './pages/admin/PickupRequests';
 import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
 import RecoverData from './pages/admin/RecoverData';
-import DiagnosticPage from './pages/admin/DiagnosticPage';
 import SensorTest from './pages/admin/SensorTest';
 import UserManagement from './pages/admin/UserManagement';
 import FAQ from './pages/FAQ';
@@ -83,7 +83,7 @@ function App() {
                         
                         {/* Admin Routes */}
                         <Route element={<ResponsiveLayout />}>
-                          <Route path="/login" element={<AdminLogin />} />
+                          <Route path="/login" element={<Login />} />
                         </Route>
                         <Route element={<AdminLayout />}>
                           <Route path="/admin/bins" element={<BinsManagement />} />
@@ -95,9 +95,15 @@ function App() {
                           <Route path="/admin/containers" element={<ContainerManagement />} />
                           <Route path="/admin/partner-applications" element={<PartnerApplications />} />
                           <Route path="/admin/recover" element={<RecoverData />} />
-                          <Route path="/admin/diagnostic" element={<DiagnosticPage />} />
                           <Route path="/admin/sensor-test" element={<SensorTest />} />
                           <Route path="/admin/users" element={<UserManagement />} />
+                        </Route>
+                        
+                        {/* Driver Routes */}
+                        <Route element={<DriverLayout />}>
+                          <Route path="/driver/routes" element={<Navigate to="/driver/bin-routes" replace />} />
+                          <Route path="/driver/bin-routes" element={<RouteCreation />} />
+                          <Route path="/driver/pickup-routes" element={<PickupRouteGenerator />} />
                         </Route>
                         
                         <Route path="/" element={<Navigate to="/home" replace />} />
