@@ -61,6 +61,8 @@ function UserManagement() {
   const [newPassword, setNewPassword] = useState('');
   const [isCredentialsDialogOpen, setIsCredentialsDialogOpen] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
+  // Store passwords temporarily in memory for copy functionality (cleared on page refresh)
+  const [userPasswords, setUserPasswords] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -113,6 +115,8 @@ function UserManagement() {
       setGeneratedCredentials({ email: selectedUser.email, password });
       setIsChangePasswordDialogOpen(false);
       setIsCredentialsDialogOpen(true);
+      // Store the password temporarily for copy functionality
+      setUserPasswords(prev => ({ ...prev, [selectedUser.id]: password }));
       
       // Reload users to show updated data
       await loadUsers();
@@ -151,7 +155,11 @@ function UserManagement() {
         isActive: true
       };
 
-      await SupabaseService.adminUsers.createAdminUser(newUser);
+      const createdUser = await SupabaseService.adminUsers.createAdminUser(newUser);
+      // Store the password temporarily for copy functionality if user was created successfully
+      if (createdUser && createdUser.id) {
+        setUserPasswords(prev => ({ ...prev, [createdUser.id]: formData.password }));
+      }
       await loadUsers();
       setIsAddDialogOpen(false);
       resetForm();
@@ -336,7 +344,13 @@ function UserManagement() {
                           className="h-6 w-6 flex-shrink-0"
                           onClick={(e) => {
                             e.stopPropagation();
-                            copyToClipboard('Password stored securely', 'Password info');
+                            // Copy the password if we have it stored temporarily
+                            const password = userPasswords[user.id];
+                            if (password) {
+                              copyToClipboard(password, 'Password');
+                            } else {
+                              copyToClipboard('Password not available - use Change Password to generate a new one', 'Notice');
+                            }
                           }}
                           title="Copy password info"
                         >
@@ -450,7 +464,7 @@ function UserManagement() {
             <div>
               <Label htmlFor="add-role">Role</Label>
               <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                <SelectTrigger>
+                <SelectTrigger className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -526,7 +540,7 @@ function UserManagement() {
             <div>
               <Label htmlFor="edit-role">Role</Label>
               <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                <SelectTrigger>
+                <SelectTrigger className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

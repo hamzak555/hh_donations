@@ -928,7 +928,7 @@ function BinsManagement() {
                             }
                           }}
                         >
-                        <SelectTrigger className="h-8 w-full">
+                        <SelectTrigger className="h-8 w-full border border-gray-200 rounded-full px-2 py-1 focus:ring-1">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1093,7 +1093,7 @@ function BinsManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as Bin['status']})}
               >
-                <SelectTrigger id="add-status">
+                <SelectTrigger id="add-status" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent className="z-[99999]">
@@ -1236,7 +1236,7 @@ function BinsManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as Bin['status']})}
               >
-                <SelectTrigger>
+                <SelectTrigger className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[99999]">

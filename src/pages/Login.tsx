@@ -114,16 +114,10 @@ function Login() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+          <CardFooter>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Signing in...' : 'Sign in'}
             </Button>
-            <div className="text-sm text-center text-gray-600">
-              Don't have an account?{' '}
-              <a href="#" className="text-primary hover:underline">
-                Sign up
-              </a>
-            </div>
           </CardFooter>
         </form>
       </Card>

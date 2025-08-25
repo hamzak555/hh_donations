@@ -1166,7 +1166,7 @@ function BaleManagement() {
                 value={formData.contents}
                 onValueChange={(value) => setFormData({...formData, contents: value as BaleQuality})}
               >
-                <SelectTrigger id="add-contents">
+                <SelectTrigger id="add-contents" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue placeholder="Select contents" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1229,7 +1229,7 @@ function BaleManagement() {
                 value={formData.contents}
                 onValueChange={(value) => setFormData({...formData, contents: value as BaleQuality})}
               >
-                <SelectTrigger id="edit-contents">
+                <SelectTrigger id="edit-contents" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1258,7 +1258,7 @@ function BaleManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as BaleStatus})}
               >
-                <SelectTrigger id="edit-status">
+                <SelectTrigger id="edit-status" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1325,7 +1325,7 @@ function BaleManagement() {
                 value={soldFormData.paymentMethod}
                 onValueChange={(value) => setSoldFormData({...soldFormData, paymentMethod: value as PaymentMethod})}
               >
-                <SelectTrigger id="payment-method">
+                <SelectTrigger id="payment-method" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1397,7 +1397,7 @@ function BaleManagement() {
                 value={editSoldFormData.paymentMethod}
                 onValueChange={(value) => setEditSoldFormData({...editSoldFormData, paymentMethod: value as PaymentMethod})}
               >
-                <SelectTrigger id="edit-payment-method">
+                <SelectTrigger id="edit-payment-method" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -159,16 +159,28 @@ const PartnerApplications = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { variant: 'secondary' as const, icon: <Clock className="h-3 w-3" /> },
-      reviewing: { variant: 'default' as const, icon: <AlertCircle className="h-3 w-3" /> },
-      approved: { variant: 'success' as const, icon: <CheckCircle className="h-3 w-3" /> },
-      rejected: { variant: 'destructive' as const, icon: <XCircle className="h-3 w-3" /> }
+      pending: { 
+        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: <Clock className="h-3 w-3" /> 
+      },
+      reviewing: { 
+        className: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: <AlertCircle className="h-3 w-3" /> 
+      },
+      approved: { 
+        className: 'bg-green-100 text-green-800 border-green-200',
+        icon: <CheckCircle className="h-3 w-3" /> 
+      },
+      rejected: { 
+        className: 'bg-red-100 text-red-800 border-red-200',
+        icon: <XCircle className="h-3 w-3" /> 
+      }
     };
 
     const config = statusConfig[status as keyof typeof statusConfig];
     
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
+      <Badge variant="outline" className={`flex items-center gap-1 ${config.className}`}>
         {config.icon}
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Badge>
@@ -404,7 +416,7 @@ const PartnerApplications = () => {
                         value={app.status} 
                         onValueChange={(value) => updateApplicationStatus(app.id, value as any)}
                       >
-                        <SelectTrigger className="w-[140px] border-0 p-0 h-auto focus:ring-0">
+                        <SelectTrigger className="w-[140px] border border-gray-200 rounded-full px-2 py-1 h-auto focus:ring-1">
                           <SelectValue>
                             {getStatusBadge(app.status)}
                           </SelectValue>

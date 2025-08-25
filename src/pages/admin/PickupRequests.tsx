@@ -709,7 +709,7 @@ function PickupRequests() {
                         });
                       }}
                     >
-                      <SelectTrigger className="w-32 h-8 border-0 p-0 bg-transparent">
+                      <SelectTrigger className="w-32 h-8 border border-gray-200 rounded-full px-2 py-1 focus:ring-1">
                         <SelectValue>
                           {getStatusBadge(request.status)}
                         </SelectValue>
@@ -745,7 +745,7 @@ function PickupRequests() {
                           });
                         }}
                       >
-                        <SelectTrigger className="w-40 h-8">
+                        <SelectTrigger className="w-40 h-8 border border-gray-200 rounded-full px-2 py-1 focus:ring-1">
                           <SelectValue>
                             {request.assignedDriver || <span className="text-gray-400">Unassigned</span>}
                           </SelectValue>

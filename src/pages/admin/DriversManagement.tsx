@@ -151,6 +151,8 @@ function DriversManagement() {
   const [driverToDelete, setDriverToDelete] = useState<Driver | null>(null);
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  // Store passwords temporarily in memory for copy functionality (cleared on page refresh)
+  const [driverPasswords, setDriverPasswords] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -272,6 +274,8 @@ function DriversManagement() {
       setGeneratedCredentials(credentials);
       setSelectedDriver(driver);
       setIsCredentialsDialogOpen(true);
+      // Store the password temporarily for copy functionality
+      setDriverPasswords(prev => ({ ...prev, [driver.id]: credentials.password }));
     } catch (error) {
       console.error('Failed to generate credentials:', error);
       alert(error instanceof Error ? error.message : 'Failed to generate credentials');
@@ -311,6 +315,8 @@ function DriversManagement() {
       setGeneratedCredentials(credentials);
       setIsChangePasswordDialogOpen(false);
       setIsCredentialsDialogOpen(true);
+      // Store the password temporarily for copy functionality
+      setDriverPasswords(prev => ({ ...prev, [selectedDriver.id]: password }));
     } catch (error) {
       console.error('Failed to change password:', error);
       alert('Failed to change password. Please try again.');
@@ -532,9 +538,13 @@ function DriversManagement() {
                             className="h-6 w-6 flex-shrink-0"
                             onClick={(e) => {
                               e.stopPropagation();
-                              // In a real app, you'd get the actual password from a secure source
-                              // For demo purposes, we'll copy a placeholder
-                              copyToClipboard('Password available - use Change Password to get new one', 'Password info');
+                              // Copy the password if we have it stored temporarily
+                              const password = driverPasswords[driver.id];
+                              if (password) {
+                                copyToClipboard(password, 'Password');
+                              } else {
+                                copyToClipboard('Password not available - use Change Password to generate a new one', 'Notice');
+                              }
                             }}
                             title="Copy current password info"
                           >
@@ -758,7 +768,7 @@ function DriversManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as Driver['status']})}
               >
-                <SelectTrigger id="edit-status">
+                <SelectTrigger id="edit-status" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
