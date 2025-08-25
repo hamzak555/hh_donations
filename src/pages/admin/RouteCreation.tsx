@@ -339,18 +339,6 @@ function RouteCreation() {
                   <MapPin className="w-4 h-4 mr-2" />
                   Get Directions in Google Maps
                 </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedRouteDriver('');
-                    setStartingAddress('');
-                    setStartingCoordinates(null);
-                    setCollectedBins(new Set());
-                    setDirectionsResponse(null);
-                  }}
-                >
-                  Clear
-                </Button>
               </div>
 
               {/* Route Preview Map */}

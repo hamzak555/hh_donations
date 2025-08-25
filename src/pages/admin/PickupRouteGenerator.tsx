@@ -482,18 +482,6 @@ function PickupRouteGenerator() {
                   <MapPin className="w-4 h-4 mr-2" />
                   Get Directions in Google Maps
                 </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => {
-                    setSelectedDriver('');
-                    setStartingAddress('');
-                    setStartingCoordinates(null);
-                    setCollectedRequests(new Set());
-                    setDirectionsResponse(null);
-                  }}
-                >
-                  Clear
-                </Button>
               </div>
 
               {/* Route Preview Map */}
