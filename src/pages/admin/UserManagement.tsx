@@ -463,7 +463,7 @@ function UserManagement() {
             <div>
               <Label htmlFor="add-role">Role</Label>
               <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                <SelectTrigger className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -539,7 +539,7 @@ function UserManagement() {
             <div>
               <Label htmlFor="edit-role">Role</Label>
               <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                <SelectTrigger className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -30,6 +30,7 @@ import PickupRouteGenerator from './pages/admin/PickupRouteGenerator';
 import RecoverData from './pages/admin/RecoverData';
 import SensorTest from './pages/admin/SensorTest';
 import UserManagement from './pages/admin/UserManagement';
+import Reporting from './pages/admin/Reporting';
 import FAQ from './pages/FAQ';
 import WhatToDonate from './pages/WhatToDonate';
 import OurStory from './pages/OurStory';
@@ -99,6 +100,7 @@ function App() {
                           <Route path="/admin/recover" element={<RecoverData />} />
                           <Route path="/admin/sensor-test" element={<SensorTest />} />
                           <Route path="/admin/users" element={<UserManagement />} />
+                          <Route path="/admin/reporting" element={<Reporting />} />
                         </Route>
                         
                         {/* Driver Routes */}

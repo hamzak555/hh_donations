@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useBales, Bale, BaleQuality, BaleStatus, PaymentMethod } from '@/contexts/BalesContextSupabase';
+import { useContainers } from '@/contexts/ContainersContextSupabase';
 import {
   Table,
   TableBody,
@@ -418,6 +419,7 @@ const NotesHoverCard = ({ bale, noteValue, onNoteChange, onAddNote }: NotesHover
 
 function BaleManagement() {
   const { bales, addBale, updateBale, deleteBale, markAsSold, revertToActive, addNoteToTimeline, addPhotos } = useBales();
+  const { containers } = useContainers();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -495,8 +497,17 @@ function BaleManagement() {
     if (!sortColumn) return filteredBales;
     
     return [...filteredBales].sort((a, b) => {
-      let aValue = a[sortColumn as keyof Bale];
-      let bValue = b[sortColumn as keyof Bale];
+      let aValue: any;
+      let bValue: any;
+      
+      // Special handling for location column
+      if (sortColumn === 'location') {
+        aValue = getBaleLocation(a);
+        bValue = getBaleLocation(b);
+      } else {
+        aValue = a[sortColumn as keyof Bale];
+        bValue = b[sortColumn as keyof Bale];
+      }
       
       // Handle different data types
       if (sortColumn === 'weight' || sortColumn === 'salePrice') {
@@ -552,6 +563,33 @@ function BaleManagement() {
       setIsDeleteDialogOpen(false);
       setBaleToDelete(null);
     }
+  };
+
+  // Helper function to get location for a bale
+  const getBaleLocation = (bale: Bale) => {
+    // Check if bale has a container
+    if (bale.containerNumber) {
+      // Case-insensitive container matching with trim
+      const container = containers.find(c => 
+        c.containerNumber?.trim().toLowerCase() === bale.containerNumber?.trim().toLowerCase()
+      );
+      
+      // Debug logging for CONT002
+      if (bale.containerNumber.toLowerCase().includes('cont002')) {
+        console.log('Looking for container:', bale.containerNumber);
+        console.log('Available containers:', containers.map(c => ({ num: c.containerNumber, dest: c.destination })));
+        console.log('Found container:', container);
+      }
+      
+      if (container && container.destination) {
+        return container.destination;
+      }
+      // If no destination set, show container number
+      return bale.containerNumber;
+    }
+    
+    // For bales not in a container
+    return 'In Warehouse';
   };
 
   const handleRevertBale = (bale: Bale) => {
@@ -744,7 +782,7 @@ function BaleManagement() {
       </div>
 
       {/* Search Bar, Tabs and Statistics Layout */}
-      <div className="mb-6 flex items-start gap-4">
+      <div className="mb-6 flex items-start gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex-1 space-y-4">
           {/* Search Bar */}
           <div className="flex items-center gap-4">
@@ -757,20 +795,6 @@ function BaleManagement() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
-            </div>
-            <div className="text-sm text-gray-600 whitespace-nowrap">
-              {(() => {
-                const activeBales = bales.filter(b => b.status !== 'Sold');
-                const soldBales = bales.filter(b => b.status === 'Sold');
-                const currentTabBales = activeTab === 'sold' ? soldBales : activeBales;
-                const filteredBales = getFilteredAndSortedBales(activeTab as 'active' | 'sold');
-                
-                if (searchQuery.trim()) {
-                  return <>Showing {filteredBales.length} of {currentTabBales.length} {activeTab === 'sold' ? 'sold' : 'active'} bales</>;
-                } else {
-                  return <>{currentTabBales.length} {activeTab === 'sold' ? 'sold' : 'active'} bales total</>;
-                }
-              })()}
             </div>
           </div>
 
@@ -874,7 +898,7 @@ function BaleManagement() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
         <TabsContent value="active" className="flex-1 flex flex-col data-[state=inactive]:hidden">
           <Card className="overflow-hidden flex-1 flex flex-col">
             <div className="flex-1 overflow-auto p-6">
@@ -919,6 +943,17 @@ function BaleManagement() {
                     </TableHead>
                     <TableHead 
                       className="cursor-pointer select-none"
+                      onClick={() => handleSort('location')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Location
+                        {getSortIcon('location')}
+                      </div>
+                    </TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Photos</TableHead>
+                    <TableHead 
+                      className="cursor-pointer select-none"
                       onClick={() => handleSort('createdDate')}
                     >
                       <div className="flex items-center gap-1">
@@ -926,8 +961,6 @@ function BaleManagement() {
                         {getSortIcon('createdDate')}
                       </div>
                     </TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Photos</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -939,7 +972,9 @@ function BaleManagement() {
                       <TableCell>{bale.weight} Kg</TableCell>
                       <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
                       <TableCell>
-                        {safeFormatDate(bale.createdDate)}
+                        <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
+                          {getBaleLocation(bale)}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <NotesHoverCard 
@@ -963,6 +998,9 @@ function BaleManagement() {
                             }
                           }}
                         />
+                      </TableCell>
+                      <TableCell>
+                        {safeFormatDate(bale.createdDate)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -1037,6 +1075,15 @@ function BaleManagement() {
                     </TableHead>
                     <TableHead 
                       className="cursor-pointer select-none"
+                      onClick={() => handleSort('location')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Location
+                        {getSortIcon('location')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="cursor-pointer select-none"
                       onClick={() => handleSort('salePrice')}
                     >
                       <div className="flex items-center gap-1">
@@ -1056,6 +1103,8 @@ function BaleManagement() {
                         {getSortIcon('paymentMethod')}
                       </div>
                     </TableHead>
+                    <TableHead>Notes</TableHead>
+                    <TableHead>Photos</TableHead>
                     <TableHead 
                       className="cursor-pointer select-none"
                       onClick={() => handleSort('soldDate')}
@@ -1065,8 +1114,6 @@ function BaleManagement() {
                         {getSortIcon('soldDate')}
                       </div>
                     </TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Photos</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1076,6 +1123,11 @@ function BaleManagement() {
                       <TableCell className="font-medium">{bale.baleNumber}</TableCell>
                       <TableCell>{getQualityBadge(bale.contents)}</TableCell>
                       <TableCell>{bale.weight} Kg</TableCell>
+                      <TableCell>
+                        <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
+                          {getBaleLocation(bale)}
+                        </span>
+                      </TableCell>
                       <TableCell>${bale.salePrice ? formatNumber(bale.salePrice) : '0.00'}</TableCell>
                       <TableCell>
                         ${bale.salePrice && bale.weight ? formatNumber(bale.salePrice / bale.weight) : '0.00'}
@@ -1084,9 +1136,6 @@ function BaleManagement() {
                         <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
                           {bale.paymentMethod}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {safeFormatDate(bale.soldDate)}
                       </TableCell>
                       <TableCell>
                         <NotesHoverCard 
@@ -1110,6 +1159,9 @@ function BaleManagement() {
                             }
                           }}
                         />
+                      </TableCell>
+                      <TableCell>
+                        {safeFormatDate(bale.soldDate)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -1166,7 +1218,7 @@ function BaleManagement() {
                 value={formData.contents}
                 onValueChange={(value) => setFormData({...formData, contents: value as BaleQuality})}
               >
-                <SelectTrigger id="add-contents" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="add-contents">
                   <SelectValue placeholder="Select contents" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1229,7 +1281,7 @@ function BaleManagement() {
                 value={formData.contents}
                 onValueChange={(value) => setFormData({...formData, contents: value as BaleQuality})}
               >
-                <SelectTrigger id="edit-contents" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="edit-contents">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1258,7 +1310,7 @@ function BaleManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as BaleStatus})}
               >
-                <SelectTrigger id="edit-status" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="edit-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1325,7 +1377,7 @@ function BaleManagement() {
                 value={soldFormData.paymentMethod}
                 onValueChange={(value) => setSoldFormData({...soldFormData, paymentMethod: value as PaymentMethod})}
               >
-                <SelectTrigger id="payment-method" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="payment-method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1397,7 +1449,7 @@ function BaleManagement() {
                 value={editSoldFormData.paymentMethod}
                 onValueChange={(value) => setEditSoldFormData({...editSoldFormData, paymentMethod: value as PaymentMethod})}
               >
-                <SelectTrigger id="edit-payment-method" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="edit-payment-method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

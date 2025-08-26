@@ -48,6 +48,14 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { 
   MoreHorizontal, 
   Eye, 
@@ -55,7 +63,7 @@ import {
   MapPin, 
   Phone, 
   Mail, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Clock,
   User,
   Users,
@@ -63,7 +71,10 @@ import {
   ChevronDown, 
   ArrowUpDown, 
   Search,
-  Settings
+  Settings,
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 
 const libraries: ("places")[] = ['places'];
@@ -149,6 +160,7 @@ function PickupRequests() {
   const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<PickupRequest | null>(null);
+  const [openDatePicker, setOpenDatePicker] = useState<string | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
@@ -419,17 +431,36 @@ function PickupRequests() {
   };
 
   const getStatusBadge = (status: PickupRequest['status']) => {
-    const statusStyles: Record<string, string> = {
-      'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Overdue': 'bg-red-100 text-red-800 border-red-200',
-      'Picked Up': 'bg-green-100 text-green-800 border-green-200',
-      'Cancelled': 'bg-gray-100 text-gray-800 border-gray-200'
+    const statusConfig: Record<string, { className: string; icon: JSX.Element }> = {
+      'Pending': { 
+        className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: <Clock className="h-3 w-3" />
+      },
+      'Overdue': { 
+        className: 'bg-red-100 text-red-800 border-red-200',
+        icon: <AlertCircle className="h-3 w-3" />
+      },
+      'Picked Up': { 
+        className: 'bg-green-100 text-green-800 border-green-200',
+        icon: <CheckCircle className="h-3 w-3" />
+      },
+      'Cancelled': { 
+        className: 'bg-purple-100 text-purple-800 border-purple-200',
+        icon: <XCircle className="h-3 w-3" />
+      }
     };
+    
+    const config = statusConfig[status] || { 
+      className: 'bg-gray-100 text-gray-800 border-gray-200',
+      icon: <Clock className="h-3 w-3" />
+    };
+    
     return (
       <Badge 
         variant="outline" 
-        className={statusStyles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}
+        className={`flex items-center gap-1 ${config.className}`}
       >
+        {config.icon}
         {status}
       </Badge>
     );
@@ -447,6 +478,21 @@ function PickupRequests() {
       day: 'numeric',
       timeZone: 'America/New_York' // Eastern Time
     });
+  };
+
+  // Check if a date is Tuesday (2) or Thursday (4)
+  const isTuesdayOrThursday = (date: Date) => {
+    const day = date.getDay();
+    return day === 2 || day === 4;
+  };
+
+  // Handle date change from calendar
+  const handleDateChange = (requestId: string, newDate: Date | undefined) => {
+    if (newDate) {
+      const formattedDate = format(newDate, 'yyyy-MM-dd');
+      updatePickupRequest(requestId, { date: formattedDate });
+      setOpenDatePicker(null);
+    }
   };
 
   const getStatusCounts = () => {
@@ -629,10 +675,11 @@ function PickupRequests() {
       </div>
 
       {/* Pickup Requests Table */}
-      <div className="w-full bg-white">
-        <div className="overflow-x-auto">
-          <div className="px-4 sm:px-6 lg:px-8 py-6">
-            <Table>
+      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
+        <div className="p-6">
+          <div className="overflow-x-auto -mx-6">
+            <div className="inline-block min-w-full align-middle px-6">
+              <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {!isDriverRole && (
@@ -763,7 +810,36 @@ function PickupRequests() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm font-medium">{formatDate(request.date)}</div>
+                    <Popover 
+                      open={openDatePicker === request.id} 
+                      onOpenChange={(open) => setOpenDatePicker(open ? request.id : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "justify-start text-left font-normal h-auto p-2 hover:bg-primary/5",
+                            !request.date && "text-muted-foreground"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <span className="text-sm font-medium">{formatDate(request.date)}</span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={new Date(request.date + 'T00:00:00')}
+                          onSelect={(date) => handleDateChange(request.id, date)}
+                          initialFocus
+                          disabled={(date) => {
+                            // Disable all dates except Tuesday and Thursday
+                            return !isTuesdayOrThursday(date) || date < new Date(new Date().setHours(0, 0, 0, 0));
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   <TableCell>
                     <Select 
@@ -774,29 +850,33 @@ function PickupRequests() {
                         });
                       }}
                     >
-                      <SelectTrigger className="w-32 h-8 border border-gray-200 rounded-full px-2 py-1 focus:ring-1">
+                      <SelectTrigger className="w-32 h-8">
                         <SelectValue>
                           {getStatusBadge(request.status)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Pending">
-                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
                             Pending
                           </Badge>
                         </SelectItem>
                         <SelectItem value="Overdue">
-                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
                             Overdue
                           </Badge>
                         </SelectItem>
                         <SelectItem value="Picked Up">
-                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" />
                             Picked Up
                           </Badge>
                         </SelectItem>
                         <SelectItem value="Cancelled">
-                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                          <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200 flex items-center gap-1">
+                            <XCircle className="h-3 w-3" />
                             Cancelled
                           </Badge>
                         </SelectItem>
@@ -815,7 +895,7 @@ function PickupRequests() {
                           });
                         }}
                       >
-                        <SelectTrigger className="w-40 h-8 border border-gray-200 rounded-full px-2 py-1 focus:ring-1">
+                        <SelectTrigger className="w-40 h-8">
                           <SelectValue>
                             {request.assignedDriver || <span className="text-gray-400">Unassigned</span>}
                           </SelectValue>
@@ -866,9 +946,10 @@ function PickupRequests() {
               )))}
             </TableBody>
           </Table>
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>

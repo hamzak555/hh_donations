@@ -229,7 +229,16 @@ const PartnerApplications = () => {
   const handleAssignBins = async () => {
     if (selectedPartnerForBins && selectedBinsForAssignment.length > 0) {
       await assignMultipleBinsToPartner(selectedPartnerForBins.id, selectedBinsForAssignment);
-      setIsAssignBinsDialogOpen(false);
+      // Update the local state to include the newly assigned bins
+      const updatedPartner = {
+        ...selectedPartnerForBins,
+        assignedBins: [
+          ...(selectedPartnerForBins.assignedBins || []),
+          ...selectedBinsForAssignment
+        ]
+      };
+      setSelectedPartnerForBins(updatedPartner);
+      // Don't close the dialog, just clear the selection
       setSelectedBinsForAssignment([]);
     }
   };
@@ -241,12 +250,21 @@ const PartnerApplications = () => {
     return bins.filter(bin => assignedBinIds.includes(bin.id));
   }, [selectedPartnerForBins, bins]);
 
-  // Get available bins (not assigned to this partner)
+  // Get available bins (not assigned to ANY partner)
   const availableBins = React.useMemo(() => {
     if (!selectedPartnerForBins) return bins;
-    const assignedBinIds = selectedPartnerForBins.assignedBins || [];
-    return bins.filter(bin => !assignedBinIds.includes(bin.id));
-  }, [selectedPartnerForBins, bins]);
+    
+    // Collect all bin IDs that are assigned to any partner
+    const allAssignedBinIds = new Set<string>();
+    applications.forEach(app => {
+      if (app.assignedBins) {
+        app.assignedBins.forEach(binId => allAssignedBinIds.add(binId));
+      }
+    });
+    
+    // Filter out bins that are assigned to any partner
+    return bins.filter(bin => !allAssignedBinIds.has(bin.id));
+  }, [selectedPartnerForBins, bins, applications]);
 
   // Filter available bins based on search
   const filteredAvailableBins = React.useMemo(() => {
@@ -489,8 +507,8 @@ const PartnerApplications = () => {
       </div>
 
       {/* Applications Table */}
-      <div className="w-full bg-white">
-        <div className="px-4 sm:px-6 lg:px-8 py-6">
+      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
+        <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-600">
               {(() => {
@@ -506,8 +524,9 @@ const PartnerApplications = () => {
             </div>
           </div>
           
-          <div className="overflow-x-auto">
-          <Table>
+          <div className="overflow-x-auto -mx-6">
+            <div className="inline-block min-w-full align-middle px-6">
+              <Table>
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
                 <TableHead 
@@ -631,16 +650,36 @@ const PartnerApplications = () => {
                           });
                         }}
                       >
-                        <SelectTrigger className="w-[140px] border border-gray-200 rounded-full px-2 py-1 h-auto focus:ring-1">
+                        <SelectTrigger className="w-[140px] h-auto">
                           <SelectValue>
                             {getStatusBadge(app.status)}
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="approved">Approved</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="rejected">Rejected</SelectItem>
-                          <SelectItem value="archived">Archive</SelectItem>
+                          <SelectItem value="approved">
+                            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" />
+                              Approved
+                            </Badge>
+                          </SelectItem>
+                          <SelectItem value="pending">
+                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Pending
+                            </Badge>
+                          </SelectItem>
+                          <SelectItem value="rejected">
+                            <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 flex items-center gap-1">
+                              <XCircle className="h-3 w-3" />
+                              Rejected
+                            </Badge>
+                          </SelectItem>
+                          <SelectItem value="archived">
+                            <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200 flex items-center gap-1">
+                              <Package className="h-3 w-3" />
+                              Archive
+                            </Badge>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -683,12 +722,12 @@ const PartnerApplications = () => {
                             setSelectedBinsForAssignment([]);
                             setBinSearchTerm('');
                           }}
-                          className="flex items-center gap-1 w-full max-w-[130px]"
+                          className="flex items-center gap-1.5 w-full max-w-[130px]"
                         >
                           <Package className="h-3 w-3 flex-shrink-0" />
                           <span className="truncate">Bins</span>
                           {app.assignedBins && app.assignedBins.length > 0 && (
-                            <span className="ml-auto bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-xs flex-shrink-0">
+                            <span className="ml-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-xs flex-shrink-0">
                               {app.assignedBins.length}
                             </span>
                           )}
@@ -717,15 +756,6 @@ const PartnerApplications = () => {
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDetailsDialog(app.id);
-                            }}
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Manage Documents
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -734,9 +764,10 @@ const PartnerApplications = () => {
               )}
             </TableBody>
           </Table>
+            </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Review Modal */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
@@ -831,7 +862,15 @@ const PartnerApplications = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">{bin.binNumber}</span>
-                            <Badge variant={bin.status === 'Available' ? 'default' : bin.status === 'Full' ? 'destructive' : 'secondary'} className="text-xs">
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs ${
+                                bin.status === 'Available' ? 'bg-green-100 text-green-800 border-green-200' :
+                                bin.status === 'Almost Full' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                bin.status === 'Full' ? 'bg-red-100 text-red-800 border-red-200' :
+                                'bg-gray-100 text-gray-800 border-gray-200'
+                              }`}
+                            >
                               {bin.status}
                             </Badge>
                           </div>
@@ -843,8 +882,14 @@ const PartnerApplications = () => {
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-100"
-                          onClick={() => {
-                            removeBinFromPartner(selectedPartnerForBins.id, bin.id);
+                          onClick={async () => {
+                            await removeBinFromPartner(selectedPartnerForBins.id, bin.id);
+                            // Update the local state to reflect the removal
+                            const updatedPartner = {
+                              ...selectedPartnerForBins,
+                              assignedBins: selectedPartnerForBins.assignedBins?.filter((id: string) => id !== bin.id) || []
+                            };
+                            setSelectedPartnerForBins(updatedPartner);
                           }}
                           title="Remove from partner"
                         >
@@ -861,6 +906,9 @@ const PartnerApplications = () => {
                 <h4 className="text-sm font-semibold text-gray-700 mb-2">
                   Available to Assign ({filteredAvailableBins.length}
                   {binSearchTerm && ` of ${availableBins.length}`})
+                  <span className="text-xs font-normal text-gray-500 ml-2">
+                    (unassigned bins only)
+                  </span>
                 </h4>
                 {filteredAvailableBins.length > 0 ? (
                   <div className="space-y-2">
@@ -894,7 +942,15 @@ const PartnerApplications = () => {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{bin.binNumber}</span>
-                        <Badge variant={bin.status === 'Available' ? 'default' : bin.status === 'Full' ? 'destructive' : 'secondary'} className="text-xs">
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            bin.status === 'Available' ? 'bg-green-100 text-green-800 border-green-200' :
+                            bin.status === 'Almost Full' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                            bin.status === 'Full' ? 'bg-red-100 text-red-800 border-red-200' :
+                            'bg-gray-100 text-gray-800 border-gray-200'
+                          }`}
+                        >
                           {bin.status}
                         </Badge>
                       </div>
@@ -907,7 +963,7 @@ const PartnerApplications = () => {
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    {binSearchTerm ? 'No bins found matching your search' : 'No available bins to assign'}
+                    {binSearchTerm ? 'No bins found matching your search' : 'No available bins - all bins are already assigned to partners'}
                   </div>
                 )}
               </div>

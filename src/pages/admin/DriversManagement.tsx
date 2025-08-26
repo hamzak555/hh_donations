@@ -410,17 +410,18 @@ function DriversManagement() {
       </div>
 
       {/* Drivers Table */}
-      <Card className="w-full mb-6">
+      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
         <div className="p-6">
-          <div className="w-full overflow-x-auto">
-            <Table 
-              className="w-full table-fixed" 
-              style={{
-                tableLayout: 'fixed', 
-                width: '100%', 
-                minWidth: '1200px'
-              }}
-            >
+          <div className="overflow-x-auto -mx-6">
+            <div className="inline-block min-w-full align-middle px-6">
+              <Table 
+                className="w-full table-fixed" 
+                style={{
+                  tableLayout: 'fixed', 
+                  width: '100%', 
+                  minWidth: '1200px'
+                }}
+              >
             <TableHeader>
               <TableRow style={{width: '100%'}} className="hover:bg-transparent">
                 <TableHead 
@@ -671,6 +672,7 @@ function DriversManagement() {
             })}
             </TableBody>
             </Table>
+            </div>
           </div>
         </div>
       </Card>
@@ -768,7 +770,7 @@ function DriversManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as Driver['status']})}
               >
-                <SelectTrigger id="edit-status" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="edit-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

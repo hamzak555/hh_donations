@@ -769,11 +769,11 @@ function BinsManagement() {
         </div>
       </div>
 
-      <div className="w-full bg-white">
-        <div className="overflow-x-auto">
-          <div className="px-4 sm:px-6 lg:px-8 py-6">
-            <div className="inline-block min-w-full align-middle">
-          <Table className="min-w-[800px] bg-white">
+      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
+        <div className="p-6">
+          <div className="overflow-x-auto -mx-6">
+            <div className="inline-block min-w-full align-middle px-6">
+              <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
                 {!isDriverRole && (
@@ -867,7 +867,25 @@ function BinsManagement() {
             <TableBody>
               {getFilteredAndSortedBins().map((bin, index) => {
                 return (
-                  <TableRow key={`${bin.id}-${bin.binNumber}-${index}`} className="select-none">
+                  <TableRow 
+                    key={`${bin.id}-${bin.binNumber}-${index}`} 
+                    className={`cursor-pointer select-none ${
+                      selectedBins.has(bin.id) ? 'bg-primary/5' : ''
+                    }`}
+                    onClick={(e) => {
+                      // Don't select if clicking on action buttons or dropdowns
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest('button') || 
+                        target.closest('[role="combobox"]') ||
+                        target.closest('[role="listbox"]') ||
+                        isDriverRole
+                      ) {
+                        return;
+                      }
+                      handleSelectBin(bin.id, e);
+                    }}
+                  >
                     {!isDriverRole && (
                       <TableCell>
                         <Checkbox
@@ -919,7 +937,7 @@ function BinsManagement() {
                             }
                           }}
                         >
-                        <SelectTrigger className="h-8 w-full border border-gray-200 rounded-full px-2 py-1 focus:ring-1">
+                        <SelectTrigger className="h-8 w-full">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1046,7 +1064,7 @@ function BinsManagement() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Add Bin Dialog */}
       <LoadScript 
@@ -1146,7 +1164,7 @@ function BinsManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as Bin['status']})}
               >
-                <SelectTrigger id="add-status" className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger id="add-status">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent className="z-[99999]">
@@ -1183,9 +1201,25 @@ function BinsManagement() {
                 onChange={(e) => setFormData({...formData, containerId: e.target.value ? parseInt(e.target.value) : undefined})}
                 placeholder="Enter Sensoneo container ID"
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Link this bin to a Sensoneo sensor for real-time fill level monitoring
-              </p>
+              {(() => {
+                if (formData.containerId) {
+                  const duplicateBin = bins.find(
+                    bin => bin.containerId === formData.containerId
+                  );
+                  if (duplicateBin) {
+                    return (
+                      <p className="text-sm text-red-600 mt-1">
+                        ⚠️ This container ID is already being used by bin <strong>{duplicateBin.binNumber}</strong>
+                      </p>
+                    );
+                  }
+                }
+                return (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Link this bin to a Sensoneo sensor for real-time fill level monitoring
+                  </p>
+                );
+              })()}
             </div>
           </div>
           <DialogFooter>
@@ -1250,7 +1284,7 @@ function BinsManagement() {
                 value={formData.status}
                 onValueChange={(value) => setFormData({...formData, status: value as Bin['status']})}
               >
-                <SelectTrigger className="border border-gray-200 rounded-full px-3 py-1 focus:ring-1">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[99999]">
@@ -1270,9 +1304,25 @@ function BinsManagement() {
                 onChange={(e) => setFormData({...formData, containerId: e.target.value ? parseInt(e.target.value) : undefined})}
                 placeholder="Enter Sensoneo container ID (optional)"
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Link this bin to a Sensoneo sensor for real-time fill level monitoring
-              </p>
+              {(() => {
+                if (formData.containerId) {
+                  const duplicateBin = bins.find(
+                    bin => bin.containerId === formData.containerId && bin.id !== selectedBin?.id
+                  );
+                  if (duplicateBin) {
+                    return (
+                      <p className="text-sm text-red-600 mt-1">
+                        ⚠️ This container ID is already being used by bin <strong>{duplicateBin.binNumber}</strong>
+                      </p>
+                    );
+                  }
+                }
+                return (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Link this bin to a Sensoneo sensor for real-time fill level monitoring
+                  </p>
+                );
+              })()}
             </div>
             {selectedBin && (
               <div>

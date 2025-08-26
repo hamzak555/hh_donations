@@ -20,7 +20,8 @@ import {
   User,
   Mail,
   Lock,
-  AlertCircle
+  AlertCircle,
+  BarChart3
 } from 'lucide-react';
 import {
   Dialog,
@@ -168,6 +169,7 @@ const AdminSidebar = () => {
     { path: '/admin/bales', label: 'Bales', icon: Archive },
     { path: '/admin/containers', label: 'Containers', icon: Container },
     { path: '/admin/drivers', label: 'Drivers', icon: Truck },
+    { path: '/admin/reporting', label: 'Reporting', icon: BarChart3 },
     { 
       path: '/admin/administration', 
       label: 'Administration', 

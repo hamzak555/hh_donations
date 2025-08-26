@@ -76,7 +76,9 @@ import {
   MessageSquare,
   Undo2,
   Image as ImageIcon,
-  FileCheck
+  FileCheck,
+  ArrowUpDown,
+  ChevronUp
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Bale, BaleStatus } from '@/contexts/BalesContextSupabase';
@@ -321,6 +323,8 @@ function ContainerManagement() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'warehouse' | 'shipped'>('all');
+  const [sortColumn, setSortColumn] = useState<string | null>('createdDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -398,7 +402,26 @@ function ContainerManagement() {
     return containerBales.reduce((total, bale) => total + (bale.weight || 0), 0);
   };
 
-  // Filter containers based on search and status
+  // Handle sorting
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ChevronUp className="w-4 h-4 text-gray-700" /> : 
+      <ChevronDown className="w-4 h-4 text-gray-700" />;
+  };
+
+  // Filter and sort containers based on search, status, and sorting
   const getFilteredContainers = () => {
     let filtered = containers;
     
@@ -416,6 +439,51 @@ function ContainerManagement() {
         container.containerNumber.toLowerCase().includes(query) ||
         container.destination.toLowerCase().includes(query)
       );
+    }
+    
+    // Sort the filtered results
+    if (sortColumn) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue: any;
+        let bValue: any;
+        
+        // Handle special columns
+        if (sortColumn === 'bales') {
+          aValue = getActualBaleCount(a.containerNumber);
+          bValue = getActualBaleCount(b.containerNumber);
+        } else if (sortColumn === 'totalWeight') {
+          aValue = getContainerTotalWeight(a.containerNumber);
+          bValue = getContainerTotalWeight(b.containerNumber);
+        } else if (sortColumn === 'documents') {
+          aValue = a.documents?.length || 0;
+          bValue = b.documents?.length || 0;
+        } else if (sortColumn === 'notes') {
+          aValue = a.notesTimeline?.length || 0;
+          bValue = b.notesTimeline?.length || 0;
+        } else {
+          aValue = a[sortColumn as keyof typeof a];
+          bValue = b[sortColumn as keyof typeof b];
+        }
+        
+        // Handle null/undefined values
+        if (aValue == null) aValue = '';
+        if (bValue == null) bValue = '';
+        
+        // Numeric comparison for numbers
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        }
+        
+        // String comparison for everything else
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        
+        if (sortDirection === 'asc') {
+          return aStr.localeCompare(bStr);
+        } else {
+          return bStr.localeCompare(aStr);
+        }
+      });
     }
     
     return filtered;
@@ -861,8 +929,8 @@ function ContainerManagement() {
       </div>
 
       {/* Filters and Tabs */}
-      <div className="flex gap-4 mb-6">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex gap-4 mb-6 px-4 sm:px-6 lg:px-8">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             placeholder="Search containers..."
@@ -873,7 +941,7 @@ function ContainerManagement() {
         </div>
         
         {/* Tabs */}
-        <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full max-w-md">
+        <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground flex-1">
           <button
             onClick={() => setActiveTab('all')}
             className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
@@ -929,7 +997,7 @@ function ContainerManagement() {
       </div>
 
       {/* Containers Table */}
-      <Card>
+      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
         <div className="p-6">
           {/* Results Count */}
           <div className="flex justify-between items-center mb-4">
@@ -952,14 +1020,78 @@ function ContainerManagement() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Container Number</TableHead>
-                <TableHead>Destination</TableHead>
-                <TableHead>Bales</TableHead>
-                <TableHead>Total Weight</TableHead>
-                <TableHead>Shipment Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Documents</TableHead>
-                <TableHead>Notes</TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('containerNumber')}
+                >
+                  <div className="flex items-center gap-1">
+                    Container Number
+                    {getSortIcon('containerNumber')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('destination')}
+                >
+                  <div className="flex items-center gap-1">
+                    Destination
+                    {getSortIcon('destination')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('bales')}
+                >
+                  <div className="flex items-center gap-1">
+                    Bales
+                    {getSortIcon('bales')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('totalWeight')}
+                >
+                  <div className="flex items-center gap-1">
+                    Total Weight
+                    {getSortIcon('totalWeight')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('shipmentDate')}
+                >
+                  <div className="flex items-center gap-1">
+                    Shipment Date
+                    {getSortIcon('shipmentDate')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('status')}
+                >
+                  <div className="flex items-center gap-1">
+                    Status
+                    {getSortIcon('status')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('documents')}
+                >
+                  <div className="flex items-center gap-1">
+                    Documents
+                    {getSortIcon('documents')}
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('notes')}
+                >
+                  <div className="flex items-center gap-1">
+                    Notes
+                    {getSortIcon('notes')}
+                  </div>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
