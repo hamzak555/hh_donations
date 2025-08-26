@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { format, isToday, isTomorrow, addDays, startOfDay, getDay } from 'date-fns';
 import {
   Select,
@@ -99,7 +100,18 @@ function PickupRouteGenerator() {
 
   // Get pickup requests for the selected date
   const getRequestsForDate = useCallback(() => {
-    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    // Format date in Eastern Time to match stored dates
+    const easternDate = selectedDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'America/New_York'
+    });
+    
+    // Convert MM/DD/YYYY to YYYY-MM-DD format
+    const [month, day, year] = easternDate.split('/');
+    const selectedDateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    
     return pickupRequests.filter(request => 
       (request.status === 'Pending' || request.status === 'Picked Up') && 
       request.date === selectedDateStr
@@ -142,9 +154,28 @@ function PickupRouteGenerator() {
     
     const days = [];
     const today = startOfDay(new Date());
+    const todayStr = format(today, 'yyyy-MM-dd');
     
-    // Look ahead for the next 4 weeks (8 pickup days max)
-    for (let i = 0; i < 28; i++) {
+    // Only include today and future pickups (not past/overdue ones)
+    const todayPickups = pickupRequests.filter(request => {
+      return request.status === 'Pending' && 
+             request.date === todayStr &&
+             request.assignedDriver === selectedDriver;
+    });
+    
+    // Add today if there are pickups
+    if (todayPickups.length > 0) {
+      days.push({
+        date: today,
+        dateStr: todayStr,
+        displayName: getDateDisplayName(today),
+        fullDisplayName: format(today, 'EEEE, MMM d'),
+        pickupCount: todayPickups.length
+      });
+    }
+    
+    // Look ahead for future pickup days
+    for (let i = 1; i < 28; i++) {
       const checkDate = addDays(today, i);
       const dayOfWeek = getDay(checkDate);
       
@@ -168,8 +199,8 @@ function PickupRouteGenerator() {
           });
         }
         
-        // Stop after we have 8 days or 4 weeks
-        if (days.length >= 8) break;
+        // Stop after we have 8 future days
+        if (days.filter(d => d.date > today).length >= 8) break;
       }
     }
     
@@ -307,7 +338,8 @@ function PickupRouteGenerator() {
   const formatSelectedDate = (date: Date) => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/New_York' // Eastern Time
     });
   };
 
@@ -375,6 +407,7 @@ function PickupRouteGenerator() {
                   <div className="mt-2 space-y-2">
                     {getAvailablePickupDays().map((day) => {
                       const isSelected = format(selectedDate, 'yyyy-MM-dd') === day.dateStr;
+                      
                       return (
                         <Button
                           key={day.dateStr}
@@ -385,7 +418,9 @@ function PickupRouteGenerator() {
                           }}
                         >
                           <div className="flex flex-col items-start">
-                            <span className="font-medium">{day.fullDisplayName}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{day.fullDisplayName}</span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
                             <span className={`text-xs px-2 py-1 rounded-full ${
@@ -657,7 +692,15 @@ function PickupRouteGenerator() {
                                     {request.name}
                                   </span>
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                                    {formatSelectedDate(selectedDate)}
+                                    {(() => {
+                                      const [year, month, day] = request.date.split('-');
+                                      const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                      return localDate.toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        timeZone: 'America/New_York' // Eastern Time
+                                      });
+                                    })()}
                                   </span>
                                 </div>
                                 <div className={`text-xs text-gray-600 ${isCollected ? 'line-through' : ''}`}>

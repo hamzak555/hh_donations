@@ -700,8 +700,8 @@ function BinsManagement() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-10 pb-6 w-full">
-      <div className="flex justify-between items-center mb-6">
+    <div className="pt-10 pb-6 w-full">
+      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Bins' : 'All Bins'}</h1>
         <div className="flex gap-2">
           {selectedBins.size > 0 && !isDriverRole && (
@@ -747,7 +747,7 @@ function BinsManagement() {
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6">
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -769,11 +769,11 @@ function BinsManagement() {
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="p-6">
-          <div className="overflow-x-auto -mx-6">
-            <div className="inline-block min-w-full align-middle px-6">
-          <Table className="min-w-[800px]">
+      <div className="w-full bg-white">
+        <div className="overflow-x-auto">
+          <div className="px-4 sm:px-6 lg:px-8 py-6">
+            <div className="inline-block min-w-full align-middle">
+          <Table className="min-w-[800px] bg-white">
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
                 {!isDriverRole && (
@@ -1046,7 +1046,7 @@ function BinsManagement() {
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Add Bin Dialog */}
       <LoadScript 

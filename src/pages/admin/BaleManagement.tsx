@@ -734,8 +734,8 @@ function BaleManagement() {
   };
 
   return (
-    <div className="h-screen flex flex-col px-4 sm:px-6 lg:px-8 pt-10 pb-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="h-screen flex flex-col pt-10 pb-6">
+      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Bales</h1>
         <Button onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />

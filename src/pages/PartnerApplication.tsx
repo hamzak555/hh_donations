@@ -192,8 +192,9 @@ const PartnerApplication = () => {
           description="Thank you for your interest in partnering with H&H Donations"
           url="/partner-application"
         />
-        <div className="min-h-screen bg-gray-50 px-8">
-          <div className="max-w-4xl mx-auto pt-20 pb-24">
+        <div className="min-h-screen bg-gray-50">
+          <div className="px-8">
+            <div className="max-w-4xl mx-auto pt-20 pb-24">
             <div className="text-center mb-12">
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
               <h1 className="text-3xl font-bold text-gray-900 mb-4">Application Submitted!</h1>
@@ -232,6 +233,7 @@ const PartnerApplication = () => {
                 Return to Home
               </Button>
             </div>
+            </div>
           </div>
           <Footer />
         </div>
@@ -246,8 +248,9 @@ const PartnerApplication = () => {
         description="Apply to partner with H&H Donations and help us provide clothing to families in need around the world."
         url="/partner-application"
       />
-      <div className="min-h-screen bg-gray-50 px-8">
-        <div className="max-w-4xl mx-auto pt-10 pb-12">
+      <div className="min-h-screen bg-gray-50">
+        <div className="px-8">
+          <div className="max-w-4xl mx-auto pt-10 pb-12">
           {/* Back Link */}
           <Button
             variant="ghost"
@@ -570,6 +573,7 @@ const PartnerApplication = () => {
               </form>
             </CardContent>
           </Card>
+          </div>
         </div>
         <Footer />
       </div>

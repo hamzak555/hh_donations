@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { LoadScript, Autocomplete } from '@react-google-maps/api';
 import { usePartnerApplications, DocumentEntry } from '@/contexts/PartnerApplicationsContextSupabase';
 import { useBins } from '@/contexts/BinsContextSupabase';
 import { Button } from '@/components/ui/button';
@@ -80,12 +81,15 @@ import {
   Image,
   File,
   MoreHorizontal,
-  Edit
+  Edit,
+  Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 
+const libraries: ("places")[] = ['places'];
+
 const PartnerApplications = () => {
-  const { applications, updateApplicationStatus, updateApplication, deleteApplication, addNoteToTimeline, assignBinToPartner, assignMultipleBinsToPartner, removeBinFromPartner, addDocuments, deleteDocument } = usePartnerApplications();
+  const { applications, addApplication, updateApplicationStatus, updateApplication, deleteApplication, addNoteToTimeline, assignBinToPartner, assignMultipleBinsToPartner, removeBinFromPartner, addDocuments, deleteDocument } = usePartnerApplications();
   const { bins } = useBins();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
@@ -101,13 +105,29 @@ const PartnerApplications = () => {
   const [selectedBinsForAssignment, setSelectedBinsForAssignment] = useState<string[]>([]);
   const [binSearchTerm, setBinSearchTerm] = useState('');
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [detailsTabValue, setDetailsTabValue] = useState<string>('info');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<{id: string, name: string} | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingApplication, setEditingApplication] = useState<any>(null);
+  const [isAddPartnerDialogOpen, setIsAddPartnerDialogOpen] = useState(false);
+  const [newPartner, setNewPartner] = useState({
+    organizationName: '',
+    contactPerson: '',
+    email: '',
+    phone: '',
+    website: '',
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      zipCode: ''
+    }
+  });
+  const [partnerAutocomplete, setPartnerAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const partnerAddressRef = useRef<HTMLInputElement>(null);
+  const [partnerFullAddress, setPartnerFullAddress] = useState<string>('');
   const [statusChangeConfirm, setStatusChangeConfirm] = useState<{
     isOpen: boolean;
     applicationId: string;
@@ -318,12 +338,9 @@ const PartnerApplications = () => {
     setDocumentToDelete(null);
   };
 
-  const openDetailsDialog = (applicationId: string, tab?: string) => {
+  const openDetailsDialog = (applicationId: string) => {
     setSelectedApplication(applicationId);
     setIsDetailsDialogOpen(true);
-    if (tab) {
-      setDetailsTabValue(tab);
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -361,13 +378,17 @@ const PartnerApplications = () => {
   };
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-10 pb-6 w-full">
-      <div className="flex justify-between items-center mb-6">
+    <div className="pt-10 pb-6 w-full">
+      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Partners</h1>
+        <Button onClick={() => setIsAddPartnerDialogOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Partner
+        </Button>
       </div>
 
       {/* Search and Tabs */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 mb-6 px-4 sm:px-6 lg:px-8">
         <div className="w-1/3 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -468,8 +489,8 @@ const PartnerApplications = () => {
       </div>
 
       {/* Applications Table */}
-      <Card>
-        <div className="p-6">
+      <div className="w-full bg-white">
+        <div className="px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-600">
               {(() => {
@@ -630,7 +651,7 @@ const PartnerApplications = () => {
                         className="h-8 px-3 text-left justify-start"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openDetailsDialog(app.id, 'documents');
+                          openDetailsDialog(app.id);
                         }}
                       >
                         <FileText className="w-4 h-4 text-gray-400 mr-1.5" />
@@ -697,15 +718,9 @@ const PartnerApplications = () => {
                             Edit Details
                           </DropdownMenuItem>
                           <DropdownMenuItem 
-                            onClick={() => openDetailsDialog(app.id, 'info')}
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
                             onClick={(e) => {
                               e.stopPropagation();
-                              openDetailsDialog(app.id, 'documents');
+                              openDetailsDialog(app.id);
                             }}
                           >
                             <FileText className="mr-2 h-4 w-4" />
@@ -721,7 +736,7 @@ const PartnerApplications = () => {
           </Table>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Review Modal */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>
@@ -928,99 +943,16 @@ const PartnerApplications = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Details Dialog with Documents Tab */}
+      {/* Documents Dialog */}
       <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[80vh]">
           <DialogHeader>
             <DialogTitle>
-              {applications.find(app => app.id === selectedApplication)?.organizationName || 'Application Details'}
+              Manage Documents - {applications.find(app => app.id === selectedApplication)?.organizationName}
             </DialogTitle>
           </DialogHeader>
           
           {selectedApplication && (
-            <Tabs value={detailsTabValue} onValueChange={setDetailsTabValue}>
-              <TabsList className="grid grid-cols-3 w-full">
-                <TabsTrigger value="info">Information</TabsTrigger>
-                <TabsTrigger value="notes">Notes</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="info" className="space-y-4">
-                {(() => {
-                  const app = applications.find(a => a.id === selectedApplication);
-                  if (!app) return null;
-                  
-                  return (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Organization</h4>
-                        <p className="text-lg font-semibold">{app.organizationName}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Contact Person</h4>
-                        <p className="text-lg">{app.contactPerson}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Email</h4>
-                        <p className="text-lg">{app.email}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Phone</h4>
-                        <p className="text-lg">{app.phone}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Website</h4>
-                        <p className="text-lg">{app.website || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                        <div>{getStatusBadge(app.status)}</div>
-                      </div>
-                      <div className="col-span-2">
-                        <h4 className="text-sm font-medium text-gray-500">Address</h4>
-                        <p className="text-lg">
-                          {app.address.street}, {app.address.city}, {app.address.state} {app.address.zipCode}
-                        </p>
-                      </div>
-                      {app.additionalInfo && (
-                        <div className="col-span-2">
-                          <h4 className="text-sm font-medium text-gray-500">Additional Information</h4>
-                          <p className="text-sm">{app.additionalInfo}</p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </TabsContent>
-              
-              <TabsContent value="notes" className="space-y-4">
-                {(() => {
-                  const app = applications.find(a => a.id === selectedApplication);
-                  if (!app) return null;
-                  
-                  return (
-                    <ScrollArea className="h-[400px]">
-                      <div className="space-y-3">
-                        {app.notesTimeline && app.notesTimeline.length > 0 ? (
-                          app.notesTimeline.map((note) => (
-                            <div key={note.id} className="bg-gray-50 rounded-lg p-3">
-                              <p className="text-sm">{note.text}</p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {new Date(note.timestamp).toLocaleString()}
-                                {note.user && ` by ${note.user}`}
-                              </p>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-center text-gray-500">No notes available</p>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  );
-                })()}
-              </TabsContent>
-              
-              <TabsContent value="documents" className="mt-4">
                 <div className="space-y-4 max-h-[calc(80vh-200px)] overflow-y-auto">
                   {/* Upload Section */}
                   <div 
@@ -1139,16 +1071,54 @@ const PartnerApplications = () => {
                                           link.download = doc.name;
                                           link.click();
                                         }}
+                                        title="Download"
                                       >
                                         <Download className="w-3.5 h-3.5" />
                                       </Button>
                                       
-                                      {(doc.name.includes('.jpg') || doc.name.includes('.jpeg') || doc.name.includes('.png')) && (
+                                      {/* View button for images and PDFs */}
+                                      {(doc.name.toLowerCase().includes('.jpg') || 
+                                        doc.name.toLowerCase().includes('.jpeg') || 
+                                        doc.name.toLowerCase().includes('.png') ||
+                                        doc.name.toLowerCase().includes('.pdf')) && (
                                         <Button
                                           variant="ghost"
                                           size="sm"
                                           className="h-7 w-7 p-0"
-                                          onClick={() => window.open(doc.data, '_blank')}
+                                          onClick={() => {
+                                            // Create a blob from the base64 data
+                                            const base64Data = doc.data.split(',')[1] || doc.data;
+                                            const byteCharacters = atob(base64Data);
+                                            const byteNumbers = new Array(byteCharacters.length);
+                                            for (let i = 0; i < byteCharacters.length; i++) {
+                                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                            }
+                                            const byteArray = new Uint8Array(byteNumbers);
+                                            
+                                            // Determine MIME type
+                                            let mimeType = 'application/octet-stream';
+                                            if (doc.name.toLowerCase().includes('.pdf')) {
+                                              mimeType = 'application/pdf';
+                                            } else if (doc.name.toLowerCase().includes('.jpg') || doc.name.toLowerCase().includes('.jpeg')) {
+                                              mimeType = 'image/jpeg';
+                                            } else if (doc.name.toLowerCase().includes('.png')) {
+                                              mimeType = 'image/png';
+                                            }
+                                            
+                                            const blob = new Blob([byteArray], { type: mimeType });
+                                            const blobUrl = URL.createObjectURL(blob);
+                                            
+                                            // Open in new tab
+                                            const newWindow = window.open(blobUrl, '_blank');
+                                            
+                                            // Clean up the blob URL after a delay
+                                            if (newWindow) {
+                                              setTimeout(() => {
+                                                URL.revokeObjectURL(blobUrl);
+                                              }, 1000);
+                                            }
+                                          }}
+                                          title="View"
                                         >
                                           <Eye className="w-3.5 h-3.5" />
                                         </Button>
@@ -1159,6 +1129,7 @@ const PartnerApplications = () => {
                                         size="sm"
                                         className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
                                         onClick={() => setDocumentToDelete({id: doc.id, name: doc.name})}
+                                        title="Delete"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </Button>
@@ -1181,8 +1152,6 @@ const PartnerApplications = () => {
                     </ScrollArea>
                   </div>
                 </div>
-              </TabsContent>
-            </Tabs>
           )}
         </DialogContent>
       </Dialog>
@@ -1426,6 +1395,230 @@ const PartnerApplications = () => {
               }}
             >
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Partner Dialog */}
+      <Dialog open={isAddPartnerDialogOpen} onOpenChange={(open) => {
+        setIsAddPartnerDialogOpen(open);
+        if (!open) {
+          // Reset form when dialog closes
+          setNewPartner({
+            organizationName: '',
+            contactPerson: '',
+            email: '',
+            phone: '',
+            website: '',
+            address: {
+              street: '',
+              city: '',
+              state: '',
+              zipCode: ''
+            }
+          });
+          setPartnerFullAddress('');
+        }
+      }}>
+        <DialogContent 
+          className="max-w-2xl"
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on autocomplete dropdown
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // Prevent closing when interacting with autocomplete
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Add New Partner</DialogTitle>
+            <DialogDescription>
+              Create a new partner organization
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="new-org">Organization Name *</Label>
+                <Input
+                  id="new-org"
+                  value={newPartner.organizationName}
+                  onChange={(e) => setNewPartner({...newPartner, organizationName: e.target.value})}
+                  placeholder="Enter organization name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-contact">Contact Person *</Label>
+                <Input
+                  id="new-contact"
+                  value={newPartner.contactPerson}
+                  onChange={(e) => setNewPartner({...newPartner, contactPerson: e.target.value})}
+                  placeholder="Enter contact person name"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="new-email">Email *</Label>
+                <Input
+                  id="new-email"
+                  type="email"
+                  value={newPartner.email}
+                  onChange={(e) => setNewPartner({...newPartner, email: e.target.value})}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="new-phone">Phone</Label>
+                <Input
+                  id="new-phone"
+                  type="tel"
+                  value={newPartner.phone}
+                  onChange={(e) => setNewPartner({...newPartner, phone: e.target.value})}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="new-website">Website</Label>
+              <Input
+                id="new-website"
+                type="url"
+                value={newPartner.website}
+                onChange={(e) => setNewPartner({...newPartner, website: e.target.value})}
+                placeholder="https://example.com"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="new-address">Address</Label>
+              <LoadScript 
+                googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
+                libraries={libraries}
+                loadingElement={<div />}
+              >
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <Autocomplete
+                    onLoad={(autocomplete) => {
+                      setPartnerAutocomplete(autocomplete);
+                      autocomplete.addListener('place_changed', () => {
+                        const place = autocomplete.getPlace();
+                        if (place && place.formatted_address) {
+                          // Parse address components
+                          let street = '';
+                          let city = '';
+                          let state = '';
+                          let zipCode = '';
+                          
+                          // Extract street number and route for street address
+                          const streetNumber = place.address_components?.find(c => 
+                            c.types.includes('street_number')
+                          )?.long_name || '';
+                          const route = place.address_components?.find(c => 
+                            c.types.includes('route')
+                          )?.long_name || '';
+                          street = `${streetNumber} ${route}`.trim();
+                          
+                          // Extract city
+                          city = place.address_components?.find(c => 
+                            c.types.includes('locality')
+                          )?.long_name || '';
+                          
+                          // Extract state
+                          state = place.address_components?.find(c => 
+                            c.types.includes('administrative_area_level_1')
+                          )?.short_name || '';
+                          
+                          // Extract ZIP code
+                          zipCode = place.address_components?.find(c => 
+                            c.types.includes('postal_code')
+                          )?.long_name || '';
+                          
+                          setNewPartner(prev => ({
+                            ...prev,
+                            address: {
+                              street,
+                              city,
+                              state,
+                              zipCode
+                            }
+                          }));
+                          
+                          // Update the state for the full address to show in input
+                          setPartnerFullAddress(place.formatted_address);
+                        }
+                      });
+                    }}
+                    options={{
+                      componentRestrictions: { country: 'ca' },
+                      fields: ['formatted_address', 'address_components', 'geometry']
+                    }}
+                  >
+                    <Input
+                      ref={partnerAddressRef}
+                      id="new-address"
+                      type="text"
+                      value={partnerFullAddress}
+                      onChange={(e) => setPartnerFullAddress(e.target.value)}
+                      placeholder="Search and select address..."
+                      className="pl-10"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                        }
+                      }}
+                    />
+                  </Autocomplete>
+                </div>
+              </LoadScript>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddPartnerDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={async () => {
+                // Validate required fields
+                if (!newPartner.organizationName.trim() || !newPartner.contactPerson.trim() || !newPartner.email.trim()) {
+                  alert('Please fill in all required fields');
+                  return;
+                }
+                
+                // Submit the new partner
+                await addApplication(newPartner);
+                setIsAddPartnerDialogOpen(false);
+                
+                // Reset form
+                setNewPartner({
+                  organizationName: '',
+                  contactPerson: '',
+                  email: '',
+                  phone: '',
+                  website: '',
+                  address: {
+                    street: '',
+                    city: '',
+                    state: '',
+                    zipCode: ''
+                  }
+                });
+              }}
+            >
+              Add Partner
             </Button>
           </DialogFooter>
         </DialogContent>

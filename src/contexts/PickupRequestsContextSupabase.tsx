@@ -16,7 +16,7 @@ export interface PickupRequest {
     lng: number;
   };
   submittedAt: string;
-  status: 'Pending' | 'Picked Up' | 'Cancelled';
+  status: 'Pending' | 'Overdue' | 'Picked Up' | 'Cancelled';
   assignedDriver?: string;
   adminNotes?: string;
 }

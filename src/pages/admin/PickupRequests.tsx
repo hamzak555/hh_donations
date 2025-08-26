@@ -82,7 +82,7 @@ function PickupRequests() {
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
   const [bulkDriverName, setBulkDriverName] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'picked-up' | 'cancelled'>('pending');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'overdue' | 'picked-up' | 'cancelled'>('pending');
   
   // Route generation states
   const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
@@ -109,6 +109,28 @@ function PickupRequests() {
       setDefaultDriver(storedDefaultDriver);
     }
   }, []);
+
+  // Auto-update overdue pickup requests
+  useEffect(() => {
+    const checkAndUpdateOverdueRequests = () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Set to start of day
+      const todayStr = today.toISOString().split('T')[0];
+      
+      pickupRequests.forEach(request => {
+        if (request.status === 'Pending' && request.date < todayStr) {
+          updatePickupRequest(request.id, { status: 'Overdue' });
+        }
+      });
+    };
+
+    checkAndUpdateOverdueRequests();
+    
+    // Check for overdue requests every minute
+    const interval = setInterval(checkAndUpdateOverdueRequests, 60000);
+    
+    return () => clearInterval(interval);
+  }, [pickupRequests, updatePickupRequest]);
   
   // Auto-assign default driver to new pending requests without a driver
   useEffect(() => {
@@ -275,6 +297,7 @@ function PickupRequests() {
     if (activeTab !== 'all') {
       const statusMap: Record<string, string> = {
         'pending': 'Pending',
+        'overdue': 'Overdue',
         'picked-up': 'Picked Up',
         'cancelled': 'Cancelled'
       };
@@ -398,8 +421,9 @@ function PickupRequests() {
   const getStatusBadge = (status: PickupRequest['status']) => {
     const statusStyles: Record<string, string> = {
       'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'Overdue': 'bg-red-100 text-red-800 border-red-200',
       'Picked Up': 'bg-green-100 text-green-800 border-green-200',
-      'Cancelled': 'bg-red-100 text-red-800 border-red-200'
+      'Cancelled': 'bg-gray-100 text-gray-800 border-gray-200'
     };
     return (
       <Badge 
@@ -412,10 +436,16 @@ function PickupRequests() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse the date string as Eastern Time
+    // When date is in 'yyyy-MM-dd' format, create date in ET
+    const [year, month, day] = dateString.split('-');
+    const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    
+    return localDate.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'America/New_York' // Eastern Time
     });
   };
 
@@ -423,6 +453,7 @@ function PickupRequests() {
     return {
       all: pickupRequests.length,
       pending: pickupRequests.filter(r => r.status === 'Pending').length,
+      overdue: pickupRequests.filter(r => r.status === 'Overdue').length,
       pickedUp: pickupRequests.filter(r => r.status === 'Picked Up').length,
       cancelled: pickupRequests.filter(r => r.status === 'Cancelled').length
     };
@@ -433,8 +464,8 @@ function PickupRequests() {
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-10 pb-6 w-full">
-      <div className="flex justify-between items-center mb-6">
+    <div className="pt-10 pb-6 w-full">
+      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Pickup Requests' : 'Pickup Requests'}</h1>
         <div className="flex gap-2">
           {!isDriverRole && activeTab === 'pending' && (
@@ -477,7 +508,7 @@ function PickupRequests() {
       </div>
 
       {/* Search and Tabs */}
-      <div className="flex gap-4 mb-6">
+      <div className="flex gap-4 mb-6 px-4 sm:px-6 lg:px-8">
         <div className="w-1/3 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
@@ -508,6 +539,27 @@ function PickupRequests() {
                 : 'bg-gray-100 text-gray-600'
             }`}>
               {getStatusCounts().pending}
+            </span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('overdue');
+              setSelectedRequests(new Set());
+              setLastSelectedIndex(null);
+            }}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'overdue'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            Overdue
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'overdue'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {getStatusCounts().overdue}
             </span>
           </button>
           <button
@@ -577,8 +629,9 @@ function PickupRequests() {
       </div>
 
       {/* Pickup Requests Table */}
-      <Card className="overflow-hidden">
-        <div className="p-6">
+      <div className="w-full bg-white">
+        <div className="overflow-x-auto">
+          <div className="px-4 sm:px-6 lg:px-8 py-6">
             <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -732,6 +785,11 @@ function PickupRequests() {
                             Pending
                           </Badge>
                         </SelectItem>
+                        <SelectItem value="Overdue">
+                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
+                            Overdue
+                          </Badge>
+                        </SelectItem>
                         <SelectItem value="Picked Up">
                           <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
                             Picked Up
@@ -808,8 +866,9 @@ function PickupRequests() {
               )))}
             </TableBody>
           </Table>
+          </div>
         </div>
-      </Card>
+      </div>
 
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>

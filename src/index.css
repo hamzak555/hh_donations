@@ -65,7 +65,7 @@
 
 /* Google Places Autocomplete Dropdown Styling */
 .pac-container {
-  @apply !font-sans rounded-lg shadow-lg border border-border bg-popover;
+  @apply !font-sans rounded-lg shadow-sm border border-border bg-popover;
   font-family: inherit !important;
   z-index: 99999 !important;
   pointer-events: auto !important;

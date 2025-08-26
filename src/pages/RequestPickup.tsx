@@ -82,9 +82,21 @@ const RequestPickup = () => {
 
     try {
       // Use context to add the pickup request
+      // Format date in Eastern Time zone
+      const easternDate = selectedDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'America/New_York'
+      });
+      
+      // Convert MM/DD/YYYY to YYYY-MM-DD format
+      const [month, day, year] = easternDate.split('/');
+      const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      
       const pickupRequest = {
         ...formData,
-        date: format(selectedDate, 'yyyy-MM-dd'),
+        date: formattedDate,
         time: '9:00 AM - 4:00 PM', // Default time range for pickups
         location: location || undefined,
         submittedAt: new Date().toISOString(),
