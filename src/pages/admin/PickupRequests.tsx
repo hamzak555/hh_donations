@@ -431,7 +431,7 @@ function PickupRequests() {
   };
 
   const getStatusBadge = (status: PickupRequest['status']) => {
-    const statusConfig: Record<string, { className: string; icon: JSX.Element }> = {
+    const statusConfig: Record<string, { className: string; icon: React.ReactElement }> = {
       'Pending': { 
         className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
         icon: <Clock className="h-3 w-3" />
