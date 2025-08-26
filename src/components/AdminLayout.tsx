@@ -8,8 +8,9 @@ const AdminLayout = () => {
 
   useEffect(() => {
     // Check if admin is authenticated
-    const isAuth = localStorage.getItem('adminAuth');
-    if (!isAuth) {
+    const isAuth = localStorage.getItem('isAuthenticated');
+    const userRole = localStorage.getItem('userRole');
+    if (!isAuth || userRole !== 'admin') {
       navigate('/login');
     }
   }, [navigate]);

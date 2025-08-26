@@ -25,11 +25,16 @@ function Login() {
     setIsLoading(true);
     
     try {
+      console.log('Login attempt with email:', email);
+      
       // Check for admin credentials (hardcoded for demo)
-      if (email === 'admin@hhdonations.org' && password === 'admin123') {
+      if ((email === 'admin@hhdonations.org' && password === 'admin123') ||
+          (email === 'carmine@zayoungroup.com' && password === 'hh123!')) {
+        console.log('Admin credentials matched, setting localStorage...');
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userRole', 'admin');
         localStorage.setItem('userEmail', email);
+        console.log('Navigating to /admin/bins...');
         navigate('/admin/bins');
         return;
       }
