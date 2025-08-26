@@ -16,16 +16,23 @@ export interface ChartConfig {
   }
 }
 
-interface ChartContainerProps extends React.ComponentProps<typeof ResponsiveContainer> {
+interface ChartContainerProps {
   config: ChartConfig
-  children: React.ReactNode
+  children: React.ReactElement
   className?: string
+  width?: string | number
+  height?: string | number
+  aspect?: number
+  minWidth?: number
+  minHeight?: number
+  maxHeight?: number
+  debounce?: number
 }
 
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
   ChartContainerProps
->(({ config, children, className, ...props }, ref) => {
+>(({ config, children, className, width = "100%", height = "100%", ...props }, ref) => {
   const id = React.useId()
   const [chart] = React.useState(() => {
     // Generate CSS variables from config
@@ -54,14 +61,8 @@ const ChartContainer = React.forwardRef<
         } as React.CSSProperties
       }
     >
-      <ResponsiveContainer {...props}>
-        {React.Children.map(children, (child) =>
-          React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement<any>, {
-                ...(child.props ?? {}),
-              })
-            : child
-        )}
+      <ResponsiveContainer width={width} height={height} {...props}>
+        {children}
       </ResponsiveContainer>
     </div>
   )
