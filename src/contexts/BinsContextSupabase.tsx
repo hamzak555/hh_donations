@@ -10,9 +10,6 @@ export interface BinLocation {
   lat: number;
   lng: number;
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full';
-  contractFile?: string;
-  contractFileName?: string;
-  contractUploadDate?: string;
   distance?: number;
   assignedDriver?: string;
   createdDate?: string;

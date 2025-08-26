@@ -2,6 +2,13 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { SupabaseService } from '@/services/supabaseService';
 import { isSupabaseConfigured, DatabasePartnerApplication } from '@/lib/supabase';
 
+export interface DocumentEntry {
+  id: string;
+  name: string;
+  data: string; // base64 data
+  uploadedAt: string;
+}
+
 export interface PartnerApplication {
   id: string;
   organizationName: string;
@@ -16,12 +23,14 @@ export interface PartnerApplication {
     zipCode: string;
   };
   additionalInfo?: string;
-  status: 'pending' | 'reviewing' | 'approved' | 'rejected';
+  status: 'pending' | 'reviewing' | 'approved' | 'rejected' | 'archived';
   submittedAt: string;
   reviewNotes?: string;
   notesTimeline?: { id: string; text: string; timestamp: string; user?: string }[];
   reviewedBy?: string;
   reviewedAt?: string;
+  assignedBins?: string[]; // Array of bin IDs assigned to this partner
+  documents?: DocumentEntry[]; // Array of uploaded documents
 }
 
 // Convert between app format (nested address) and database format (flat fields with snake_case)
@@ -40,7 +49,9 @@ const convertAppToDatabase = (app: PartnerApplication): DatabasePartnerApplicati
   status: app.status,
   submitted_at: app.submittedAt,
   review_notes: app.reviewNotes,
-  reviewed_at: app.reviewedAt
+  reviewed_at: app.reviewedAt,
+  assigned_bins: app.assignedBins || [],
+  documents: app.documents || []
 });
 
 const convertDatabaseToApp = (db: DatabasePartnerApplication): PartnerApplication => {
@@ -76,7 +87,9 @@ const convertDatabaseToApp = (db: DatabasePartnerApplication): PartnerApplicatio
     submittedAt: db.submitted_at,
     reviewNotes: notesTimeline ? undefined : db.review_notes, // Only keep if not JSON
     notesTimeline: notesTimeline,
-    reviewedAt: db.reviewed_at
+    reviewedAt: db.reviewed_at,
+    assignedBins: db.assigned_bins || [],
+    documents: db.documents || []
   };
 };
 
@@ -85,8 +98,14 @@ interface PartnerApplicationsContextType {
   setApplications: React.Dispatch<React.SetStateAction<PartnerApplication[]>>;
   addApplication: (application: Omit<PartnerApplication, 'id' | 'status' | 'submittedAt'>) => Promise<void>;
   updateApplicationStatus: (id: string, status: PartnerApplication['status'], notes?: string) => Promise<void>;
+  updateApplication: (id: string, updates: Partial<PartnerApplication>) => Promise<void>;
   deleteApplication: (id: string) => Promise<void>;
   addNoteToTimeline: (id: string, note: string) => Promise<void>;
+  assignBinToPartner: (partnerId: string, binId: string) => Promise<void>;
+  assignMultipleBinsToPartner: (partnerId: string, binIds: string[]) => Promise<void>;
+  removeBinFromPartner: (partnerId: string, binId: string) => Promise<void>;
+  addDocuments: (partnerId: string, documents: DocumentEntry[]) => Promise<void>;
+  deleteDocument: (partnerId: string, documentId: string) => Promise<void>;
   refreshApplications: () => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -273,6 +292,42 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const updateApplication = async (id: string, updates: Partial<PartnerApplication>) => {
+    // Update local state
+    setApplications(prev =>
+      prev.map(app => app.id === id ? { ...app, ...updates } : app)
+    );
+
+    // Save to Supabase
+    if (USE_SUPABASE) {
+      try {
+        // Convert to database format
+        const dbUpdates: any = {};
+        
+        if (updates.organizationName !== undefined) dbUpdates.organization_name = updates.organizationName;
+        if (updates.contactPerson !== undefined) dbUpdates.contact_person = updates.contactPerson;
+        if (updates.email !== undefined) dbUpdates.email = updates.email;
+        if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+        if (updates.website !== undefined) dbUpdates.website = updates.website;
+        if (updates.additionalInfo !== undefined) dbUpdates.additional_info = updates.additionalInfo;
+        
+        if (updates.address) {
+          if (updates.address.street !== undefined) dbUpdates.street = updates.address.street;
+          if (updates.address.city !== undefined) dbUpdates.city = updates.address.city;
+          if (updates.address.state !== undefined) dbUpdates.state = updates.address.state;
+          if (updates.address.zipCode !== undefined) dbUpdates.zip_code = updates.address.zipCode;
+        }
+        
+        await SupabaseService.partnerApplications.updatePartnerApplication(id, dbUpdates);
+      } catch (err) {
+        console.error('Failed to update application details:', err);
+        // Refresh from database on error
+        await refreshApplications();
+        throw err;
+      }
+    }
+  };
+
   const deleteApplication = async (id: string) => {
     if (USE_SUPABASE) {
       try {
@@ -331,6 +386,234 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const assignBinToPartner = async (partnerId: string, binId: string) => {
+    const app = applications.find(a => a.id === partnerId);
+    if (!app) return;
+    
+    const currentBins = app.assignedBins || [];
+    if (currentBins.includes(binId)) return; // Already assigned
+    
+    const updatedBins = [...currentBins, binId];
+    
+    // Update local state
+    setApplications(prev =>
+      prev.map(app => {
+        if (app.id === partnerId) {
+          return {
+            ...app,
+            assignedBins: updatedBins
+          };
+        }
+        return app;
+      })
+    );
+
+    // Save to Supabase
+    if (USE_SUPABASE) {
+      try {
+        await SupabaseService.partnerApplications.updatePartnerApplication(partnerId, {
+          assigned_bins: updatedBins
+        });
+      } catch (err) {
+        console.error('Failed to save bin assignment to Supabase:', err);
+        // Revert local state on error
+        setApplications(prev =>
+          prev.map(app => {
+            if (app.id === partnerId) {
+              return {
+                ...app,
+                assignedBins: currentBins
+              };
+            }
+            return app;
+          })
+        );
+      }
+    }
+  };
+
+  const assignMultipleBinsToPartner = async (partnerId: string, binIds: string[]) => {
+    const app = applications.find(a => a.id === partnerId);
+    if (!app || binIds.length === 0) return;
+    
+    const currentBins = app.assignedBins || [];
+    // Filter out bins that are already assigned
+    const newBins = binIds.filter(binId => !currentBins.includes(binId));
+    if (newBins.length === 0) return; // All bins already assigned
+    
+    const updatedBins = [...currentBins, ...newBins];
+    
+    // Update local state
+    setApplications(prev =>
+      prev.map(app => {
+        if (app.id === partnerId) {
+          return {
+            ...app,
+            assignedBins: updatedBins
+          };
+        }
+        return app;
+      })
+    );
+
+    // Save to Supabase
+    if (USE_SUPABASE) {
+      try {
+        await SupabaseService.partnerApplications.updatePartnerApplication(partnerId, {
+          assigned_bins: updatedBins
+        });
+      } catch (err) {
+        console.error('Failed to save bin assignments to Supabase:', err);
+        // Revert local state on error
+        setApplications(prev =>
+          prev.map(app => {
+            if (app.id === partnerId) {
+              return {
+                ...app,
+                assignedBins: currentBins
+              };
+            }
+            return app;
+          })
+        );
+      }
+    }
+  };
+
+  const removeBinFromPartner = async (partnerId: string, binId: string) => {
+    const app = applications.find(a => a.id === partnerId);
+    if (!app) return;
+    
+    const currentBins = app.assignedBins || [];
+    const updatedBins = currentBins.filter(id => id !== binId);
+    
+    // Update local state
+    setApplications(prev =>
+      prev.map(app => {
+        if (app.id === partnerId) {
+          return {
+            ...app,
+            assignedBins: updatedBins
+          };
+        }
+        return app;
+      })
+    );
+
+    // Save to Supabase
+    if (USE_SUPABASE) {
+      try {
+        await SupabaseService.partnerApplications.updatePartnerApplication(partnerId, {
+          assigned_bins: updatedBins
+        });
+      } catch (err) {
+        console.error('Failed to save bin removal to Supabase:', err);
+        // Revert local state on error
+        setApplications(prev =>
+          prev.map(app => {
+            if (app.id === partnerId) {
+              return {
+                ...app,
+                assignedBins: currentBins
+              };
+            }
+            return app;
+          })
+        );
+      }
+    }
+  };
+
+  const addDocuments = async (partnerId: string, documents: DocumentEntry[]) => {
+    if (!documents || documents.length === 0) return;
+    
+    const app = applications.find(a => a.id === partnerId);
+    if (!app) return;
+    
+    const currentDocuments = app.documents || [];
+    const updatedDocuments = [...currentDocuments, ...documents];
+    
+    // Update local state
+    setApplications(prev =>
+      prev.map(app => {
+        if (app.id === partnerId) {
+          return {
+            ...app,
+            documents: updatedDocuments
+          };
+        }
+        return app;
+      })
+    );
+
+    // Save to Supabase
+    if (USE_SUPABASE) {
+      try {
+        await SupabaseService.partnerApplications.updatePartnerApplication(partnerId, {
+          documents: updatedDocuments
+        });
+      } catch (err) {
+        console.error('Failed to save documents to Supabase:', err);
+        // Revert local state on error
+        setApplications(prev =>
+          prev.map(app => {
+            if (app.id === partnerId) {
+              return {
+                ...app,
+                documents: currentDocuments
+              };
+            }
+            return app;
+          })
+        );
+      }
+    }
+  };
+
+  const deleteDocument = async (partnerId: string, documentId: string) => {
+    const app = applications.find(a => a.id === partnerId);
+    if (!app) return;
+    
+    const currentDocuments = app.documents || [];
+    const updatedDocuments = currentDocuments.filter(doc => doc.id !== documentId);
+    
+    // Update local state
+    setApplications(prev =>
+      prev.map(app => {
+        if (app.id === partnerId) {
+          return {
+            ...app,
+            documents: updatedDocuments
+          };
+        }
+        return app;
+      })
+    );
+
+    // Save to Supabase
+    if (USE_SUPABASE) {
+      try {
+        await SupabaseService.partnerApplications.updatePartnerApplication(partnerId, {
+          documents: updatedDocuments
+        });
+      } catch (err) {
+        console.error('Failed to delete document from Supabase:', err);
+        // Revert local state on error
+        setApplications(prev =>
+          prev.map(app => {
+            if (app.id === partnerId) {
+              return {
+                ...app,
+                documents: currentDocuments
+              };
+            }
+            return app;
+          })
+        );
+      }
+    }
+  };
+
   return (
     <PartnerApplicationsContext.Provider
       value={{
@@ -338,8 +621,14 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
         setApplications,
         addApplication,
         updateApplicationStatus,
+        updateApplication,
         deleteApplication,
         addNoteToTimeline,
+        assignBinToPartner,
+        assignMultipleBinsToPartner,
+        removeBinFromPartner,
+        addDocuments,
+        deleteDocument,
         refreshApplications,
         isLoading,
         error

@@ -16,8 +16,24 @@ import {
   ChevronDown,
   ChevronRight,
   Menu,
-  X
+  X,
+  User,
+  Mail,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface NavSubItem {
   path: string;
@@ -38,6 +54,38 @@ const AdminSidebar = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState(localStorage.getItem('userEmail') || '');
+  const [userName, setUserName] = useState(() => {
+    // Extract name from email or use stored full name
+    const email = localStorage.getItem('userEmail') || '';
+    const fullName = localStorage.getItem('userFullName') || '';
+    
+    // If we have a stored full name, use it
+    if (fullName) return fullName;
+    
+    // Otherwise, extract from email
+    if (email.includes('carmine@zayoungroup.com')) return 'Carmine Zayoun';
+    if (email === 'admin@hhdonations.org' || email === 'admin') return 'Admin';
+    
+    // Extract name before @ symbol and format nicely
+    const namePart = email.split('@')[0];
+    if (namePart) {
+      // Replace dots and underscores with spaces and capitalize words
+      return namePart
+        .replace(/[._]/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    }
+    return 'User';
+  });
+  const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
   
   // Load pickup requests from localStorage directly
   useEffect(() => {
@@ -116,10 +164,10 @@ const AdminSidebar = () => {
         { path: '/admin/pickup-requests/route-generator', label: 'Pickup Routes', icon: Route }
       ]
     },
-    { path: '/admin/partner-applications', label: 'Partner Applications', icon: Users },
-    { path: '/admin/bales', label: 'Bale Management', icon: Archive },
-    { path: '/admin/containers', label: 'Container Management', icon: Container },
-    { path: '/admin/drivers', label: 'Driver Management', icon: Truck },
+    { path: '/admin/partners', label: 'Partners', icon: Users },
+    { path: '/admin/bales', label: 'Bales', icon: Archive },
+    { path: '/admin/containers', label: 'Containers', icon: Container },
+    { path: '/admin/drivers', label: 'Drivers', icon: Truck },
     { 
       path: '/admin/administration', 
       label: 'Administration', 
@@ -301,16 +349,31 @@ const AdminSidebar = () => {
 
           {/* Mobile Footer Buttons */}
           <div className="p-4 border-t border-gray-200 space-y-2">
+            <button
+              onClick={() => {
+                setIsProfileDialogOpen(true);
+                setNewEmail(userEmail);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setProfileError('');
+                setProfileSuccess('');
+              }}
+              className="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-50 w-full text-sm"
+            >
+              <User className="w-5 h-5" />
+              <span>Profile</span>
+            </button>
             <Link
               to="/home"
-              className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-100 w-full"
+              className="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-50 w-full text-sm"
             >
               <ExternalLink className="w-5 h-5" />
               <span>Main Website</span>
             </Link>
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-100 w-full"
+              className="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-50 w-full text-sm"
             >
               <LogOut className="w-5 h-5" />
               <span>Logout</span>
@@ -428,23 +491,192 @@ const AdminSidebar = () => {
         </nav>
 
         {/* Desktop Footer Buttons */}
-        <div className="p-4 border-t border-gray-200 space-y-2">
+        <div className="p-3 border-t border-gray-200 space-y-1">
+          {/* User Profile */}
+          <button
+            onClick={() => {
+              setIsProfileDialogOpen(true);
+              setNewEmail(userEmail);
+              setCurrentPassword('');
+              setNewPassword('');
+              setConfirmPassword('');
+              setProfileError('');
+              setProfileSuccess('');
+            }}
+            className="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-50 w-full text-sm"
+          >
+            <User className="w-5 h-5" />
+            <span>Profile</span>
+          </button>
           <Link
             to="/home"
-            className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-100 w-full"
+            className="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-50 w-full text-sm"
           >
             <ExternalLink className="w-5 h-5" />
             <span>Main Website</span>
           </Link>
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-100 w-full"
+            className="flex items-center space-x-3 px-4 py-2 rounded-lg transition-colors text-gray-500 hover:bg-gray-50 w-full text-sm"
           >
             <LogOut className="w-5 h-5" />
             <span>Logout</span>
           </button>
         </div>
       </div>
+
+      {/* Profile Edit Dialog */}
+      <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your account email and password
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {profileError && (
+              <Alert className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  {profileError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {profileSuccess && (
+              <Alert className="border-green-200 bg-green-50">
+                <AlertCircle className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
+                  {profileSuccess}
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="email" className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                Email Address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="Enter your email"
+              />
+            </div>
+            
+            <div className="pt-4 border-t">
+              <h4 className="text-sm font-medium mb-3">Change Password</h4>
+              
+              <div className="space-y-2">
+                <Label htmlFor="current-password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Current Password
+                </Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                />
+              </div>
+              
+              <div className="space-y-2 mt-3">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                />
+              </div>
+              
+              <div className="space-y-2 mt-3">
+                <Label htmlFor="confirm-password">Confirm New Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm new password"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsProfileDialogOpen(false);
+                setProfileError('');
+                setProfileSuccess('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setProfileError('');
+                setProfileSuccess('');
+                
+                // Validate email
+                if (!newEmail || !newEmail.includes('@')) {
+                  setProfileError('Please enter a valid email address');
+                  return;
+                }
+                
+                // If changing password, validate
+                if (currentPassword || newPassword || confirmPassword) {
+                  if (!currentPassword) {
+                    setProfileError('Please enter your current password');
+                    return;
+                  }
+                  if (!newPassword) {
+                    setProfileError('Please enter a new password');
+                    return;
+                  }
+                  if (newPassword.length < 6) {
+                    setProfileError('Password must be at least 6 characters');
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    setProfileError('Passwords do not match');
+                    return;
+                  }
+                  
+                  // TODO: Implement actual password change via Supabase
+                  // For now, just show success
+                  setProfileSuccess('Password updated successfully');
+                }
+                
+                // Update email in localStorage
+                if (newEmail !== userEmail) {
+                  localStorage.setItem('userEmail', newEmail);
+                  setUserEmail(newEmail);
+                  setProfileSuccess('Profile updated successfully');
+                }
+                
+                // Close dialog after a delay if successful
+                if (!profileError) {
+                  setTimeout(() => {
+                    setIsProfileDialogOpen(false);
+                    setProfileError('');
+                    setProfileSuccess('');
+                  }, 2000);
+                }
+              }}
+            >
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

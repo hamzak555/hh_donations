@@ -95,7 +95,7 @@ function App() {
                           <Route path="/admin/pickup-requests/route-generator" element={<PickupRouteGenerator />} />
                           <Route path="/admin/bales" element={<BaleManagement />} />
                           <Route path="/admin/containers" element={<ContainerManagement />} />
-                          <Route path="/admin/partner-applications" element={<PartnerApplications />} />
+                          <Route path="/admin/partners" element={<PartnerApplications />} />
                           <Route path="/admin/recover" element={<RecoverData />} />
                           <Route path="/admin/sensor-test" element={<SensorTest />} />
                           <Route path="/admin/users" element={<UserManagement />} />

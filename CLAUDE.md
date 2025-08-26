@@ -140,3 +140,4 @@ The app handles network failures gracefully:
 - Run individual test: `npm test -- --testNamePattern="test name"`
 - Test files alongside components (`.test.tsx`)
 - backend node.js server is always run on 5000. if you see something running kill it and restart on this same port
+- When adding new functionality or features, be sure to make considerations for our supabase database, we dont have to hard code any database items anymore. We should properly be storying everything in supabase.

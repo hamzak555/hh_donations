@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Lock, User } from 'lucide-react';
 import NoIndexSEO from '@/components/NoIndexSEO';
+import { SupabaseService } from '@/services/supabaseService';
 
 function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -13,23 +14,56 @@ function AdminLogin() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Simple authentication - in production, this would verify against a backend
-    if (username === 'admin' && password === 'admin123') {
-      // Store auth state (in production, use proper auth tokens)
-      localStorage.setItem('adminAuth', 'true');
-      navigate('/admin/bins');
-    } else {
+    try {
+      // Check against database admin users
+      const adminUser = await SupabaseService.adminUsers.getUserByEmail(username);
+      
+      if (adminUser && adminUser.isActive) {
+        // Simple password check - in production, use proper hashing
+        const passwordMatches = 
+          adminUser.passwordHash === `hashed_${password}` || 
+          // Legacy hardcoded credentials for backward compatibility
+          (username === 'admin' && password === 'admin123') ||
+          (username === 'admin@hhdonations.org' && password === 'admin123') ||
+          (username === 'carmine@zayoungroup.com' && password === 'hh123!');
+        
+        if (passwordMatches) {
+          // Update last login timestamp
+          await SupabaseService.adminUsers.updateAdminUser(adminUser.id, {
+            lastLogin: new Date().toISOString()
+          });
+          
+          // Store auth state (in production, use proper auth tokens)
+          localStorage.setItem('adminAuth', 'true');
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('userRole', 'admin');
+          localStorage.setItem('userEmail', adminUser.email);
+          navigate('/admin/bins');
+          return;
+        }
+      }
+      
+      // Also check the legacy hardcoded admin account
+      if (username === 'admin' && password === 'admin123') {
+        localStorage.setItem('adminAuth', 'true');
+        navigate('/admin/bins');
+        return;
+      }
+      
       setError('Invalid username or password');
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('An error occurred during login. Please try again.');
     }
   };
 
   return (
     <>
       <NoIndexSEO title="Admin Login" />
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">

@@ -599,12 +599,12 @@ export class AdminUsersService {
   }
 }
 
-// Partner Applications Service
+// Partners Service
 export class PartnerApplicationsService {
   static async getAllPartnerApplications() {
     const { data, error } = await supabase
       .from(TABLES.PARTNER_APPLICATIONS)
-      .select('id, organization_name, contact_person, email, phone, website, street, city, state, zip_code, additional_info, status, submitted_at, reviewed_at, review_notes, created_at, updated_at')
+      .select('id, organization_name, contact_person, email, phone, website, street, city, state, zip_code, additional_info, status, submitted_at, reviewed_at, review_notes, assigned_bins, documents, created_at, updated_at')
       .order('created_at', { ascending: false })
 
     if (error) {

@@ -3,6 +3,7 @@ import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
 import { useDrivers } from '@/contexts/DriversContextSupabase';
+import { usePartnerApplications } from '@/contexts/PartnerApplicationsContextSupabase';
 import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 import {
   Table,
@@ -48,7 +49,13 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, MoreHorizontal, Edit, Trash, MapPin, FileText, Upload, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Plus, MoreHorizontal, Edit, Trash, MapPin, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users, Info } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 // Use the shared Bin type from context
@@ -58,12 +65,21 @@ function BinsManagement() {
   const [isLoading] = useState(false);
   const { bins, addBin, updateBin, deleteBin } = useBins();
   const { drivers, updateDriver, getActiveDrivers } = useDrivers();
+  const { applications } = usePartnerApplications();
   
   // Check if current user is a driver
   const userRole = localStorage.getItem('userRole');
   const isDriverRole = userRole === 'driver';
   const driverId = localStorage.getItem('driverId');
   const currentDriverName = isDriverRole ? drivers.find(d => d.id === driverId)?.name : null;
+  
+  // Helper function to get partner for a bin
+  const getPartnerForBin = (binId: string) => {
+    const approvedPartners = applications.filter(app => app.status === 'approved');
+    return approvedPartners.find(partner => 
+      partner.assignedBins && partner.assignedBins.includes(binId)
+    );
+  };
   
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -85,7 +101,6 @@ function BinsManagement() {
     assignedDriver: 'none',
     containerId: undefined
   });
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchQuery, setSearchQuery] = useState('');
@@ -554,18 +569,6 @@ function BinsManagement() {
       createdDate: new Date().toISOString().split('T')[0]
     };
 
-    // Handle file upload if a file was selected
-    if (uploadedFile) {
-      // In production, you would upload the file to your server/cloud storage
-      // For now, we'll simulate storing the file information
-      const fileUrl = URL.createObjectURL(uploadedFile);
-      newBin = {
-        ...newBin,
-        contractFile: fileUrl,
-        contractFileName: uploadedFile.name,
-        contractUploadDate: new Date().toISOString().split('T')[0]
-      };
-    }
 
     // Add assigned driver if selected
     if (formData.assignedDriver && formData.assignedDriver !== 'none') {
@@ -585,7 +588,6 @@ function BinsManagement() {
     addBin(newBin);
     setIsAddDialogOpen(false);
     setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
-    setUploadedFile(null);
     setSelectedLocation(null);
   };
 
@@ -621,24 +623,11 @@ function BinsManagement() {
         }
       }
       
-      // Handle file upload if a new file was selected
-      if (uploadedFile) {
-        // In production, you would upload the file to your server/cloud storage
-        // For now, we'll simulate storing the file information
-        const fileUrl = URL.createObjectURL(uploadedFile);
-        updatedBin = {
-          ...updatedBin,
-          contractFile: fileUrl,
-          contractFileName: uploadedFile.name,
-          contractUploadDate: new Date().toISOString().split('T')[0]
-        };
-      }
       
       updateBin(selectedBin.id, updatedBin);
       setIsEditDialogOpen(false);
       setSelectedBin(null);
       setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
-      setUploadedFile(null);
     }
   };
 
@@ -674,7 +663,6 @@ function BinsManagement() {
       assignedDriver: bin.assignedDriver || 'none',
       containerId: bin.containerId
     });
-    setUploadedFile(null);
     setIsEditDialogOpen(true);
   };
 
@@ -870,6 +858,7 @@ function BinsManagement() {
                     {getSortIcon('lastSensorUpdate')}
                   </div>
                 </TableHead>
+                {!isDriverRole && <TableHead className="text-center w-12">Partner</TableHead>}
                 {!isDriverRole && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
@@ -954,13 +943,63 @@ function BinsManagement() {
                       {renderLastUpdate(bin)}
                     </TableCell>
                     {!isDriverRole && (
+                      <TableCell className="text-center">
+                        {(() => {
+                          const partner = getPartnerForBin(bin.id);
+                          return partner ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0 mx-auto">
+                                    <Info className="h-4 w-4 text-green-600" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="p-0" side="left" align="center">
+                                  <div className="bg-white rounded-lg shadow-lg p-3 min-w-[240px]">
+                                    <div className="flex items-start gap-2">
+                                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                        <Users className="w-4 h-4 text-green-700" />
+                                      </div>
+                                      <div className="flex-1">
+                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Partner Organization</p>
+                                        <p className="font-semibold text-gray-900 text-sm">{partner.organizationName}</p>
+                                        {partner.contactPerson && (
+                                          <div className="mt-2 pt-2 border-t border-gray-100">
+                                            <p className="text-xs text-gray-600">
+                                              <span className="font-medium">Contact:</span> {partner.contactPerson}
+                                            </p>
+                                            {partner.email && (
+                                              <p className="text-xs text-gray-600 mt-0.5">
+                                                <span className="font-medium">Email:</span> {partner.email}
+                                              </p>
+                                            )}
+                                            {partner.phone && (
+                                              <p className="text-xs text-gray-600 mt-0.5">
+                                                <span className="font-medium">Phone:</span> {partner.phone}
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          );
+                        })()}
+                      </TableCell>
+                    )}
+                    {!isDriverRole && (
                       <TableCell className="text-right">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditDialog(bin)}>
                               <Edit className="mr-2 h-4 w-4" />
@@ -970,12 +1009,6 @@ function BinsManagement() {
                               <MapPin className="mr-2 h-4 w-4" />
                               View on Map
                             </DropdownMenuItem>
-                            {bin.contractFile && (
-                              <DropdownMenuItem onClick={() => window.open(bin.contractFile, '_blank')}>
-                                <FileText className="mr-2 h-4 w-4" />
-                                View Contract
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuItem 
                               onClick={() => handleDeleteBin(bin)}
                               className="text-red-600"
@@ -1134,50 +1167,11 @@ function BinsManagement() {
                 Link this bin to a Sensoneo sensor for real-time fill level monitoring
               </p>
             </div>
-            <div>
-              <Label htmlFor="contract-upload-add">Location Agreement Contract (PDF)</Label>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <input
-                    id="contract-upload-add"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && file.type === 'application/pdf') {
-                        setUploadedFile(file);
-                      } else {
-                        alert('Please select a PDF file only');
-                        e.target.value = '';
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById('contract-upload-add')?.click()}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Choose File
-                  </Button>
-                  <span className="text-sm text-gray-600">
-                    {uploadedFile ? uploadedFile.name : 'No file selected'}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Upload the signed location agreement contract (PDF format only)
-                </p>
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddDialogOpen(false);
               setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
-              setUploadedFile(null);
               setSelectedLocation(null);
             }}>
               Cancel
@@ -1292,60 +1286,26 @@ function BinsManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label htmlFor="contract-upload">Location Agreement Contract (PDF)</Label>
-              <div className="space-y-2">
-                {selectedBin?.contractFile && (
-                  <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
-                    <FileText className="w-4 h-4 text-green-600" />
-                    <span className="text-sm text-gray-700">
-                      Current: {selectedBin.contractFileName}
-                    </span>
-                    <a 
-                      href={selectedBin.contractFile} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm ml-auto"
-                    >
-                      View
-                    </a>
+            {/* Show assigned partner if any */}
+            {selectedBin && (() => {
+              const partner = getPartnerForBin(selectedBin.id);
+              return partner ? (
+                <div>
+                  <Label>Assigned Partner</Label>
+                  <div className="px-3 py-2 border rounded-md bg-green-50 border-green-200">
+                    <div className="flex items-center gap-2">
+                      <Info className="w-4 h-4 text-green-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-900">{partner.organizationName}</p>
+                        {partner.contactPerson && (
+                          <p className="text-xs text-green-700 mt-0.5">Contact: {partner.contactPerson}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-                <div className="flex items-center gap-3">
-                  <input
-                    id="contract-upload"
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file && file.type === 'application/pdf') {
-                        setUploadedFile(file);
-                      } else {
-                        alert('Please select a PDF file only');
-                        e.target.value = '';
-                      }
-                    }}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById('contract-upload')?.click()}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Choose File
-                  </Button>
-                  <span className="text-sm text-gray-600">
-                    {uploadedFile ? uploadedFile.name : 'No file selected'}
-                  </span>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Upload the signed location agreement contract (PDF format only)
-                </p>
-              </div>
-            </div>
+              ) : null;
+            })()}
           </div>
           <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>

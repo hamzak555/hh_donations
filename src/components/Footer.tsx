@@ -132,7 +132,7 @@ const Footer = () => {
                     className="inline-flex items-center space-x-2 text-xs sm:text-sm text-gray-500 hover:text-gray-700 transition-colors"
                   >
                     <Shield className="w-4 h-4" />
-                    <span>Admin Login</span>
+                    <span>Login</span>
                   </Link>
                 )}
               </div>

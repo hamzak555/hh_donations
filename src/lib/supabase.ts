@@ -50,9 +50,6 @@ export interface DatabaseBin {
   lat: number
   lng: number
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full'
-  contractFile?: string
-  contractFileName?: string
-  contractUploadDate?: string
   assignedDriver?: string
   createdDate?: string
   fullSince?: string
@@ -175,10 +172,12 @@ export interface DatabasePartnerApplication {
   state: string
   zip_code: string
   additional_info?: string
-  status: 'pending' | 'reviewing' | 'approved' | 'rejected'
+  status: 'pending' | 'reviewing' | 'approved' | 'rejected' | 'archived'
   submitted_at: string
   reviewed_at?: string
   review_notes?: string
+  assigned_bins?: string[] // JSON array of bin IDs
+  documents?: any // JSON array of document objects
   created_at?: string
   updated_at?: string
 }

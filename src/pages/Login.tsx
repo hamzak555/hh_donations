@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, KeyRound } from 'lucide-react';
 import { useDrivers } from '@/contexts/DriversContextSupabase';
 import { PasswordChangeDialog } from '@/components/PasswordChangeDialog';
+import { SupabaseService } from '@/services/supabaseService';
 
 function Login() {
   const navigate = useNavigate();
@@ -27,16 +28,37 @@ function Login() {
     try {
       console.log('Login attempt with email:', email);
       
-      // Check for admin credentials (hardcoded for demo)
-      if ((email === 'admin@hhdonations.org' && password === 'admin123') ||
-          (email === 'carmine@zayoungroup.com' && password === 'hh123!')) {
-        console.log('Admin credentials matched, setting localStorage...');
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('userEmail', email);
-        console.log('Navigating to /admin/bins...');
-        navigate('/admin/bins');
-        return;
+      // First, check against database admin users
+      try {
+        const adminUser = await SupabaseService.adminUsers.getUserByEmail(email);
+        if (adminUser && adminUser.isActive) {
+          // Simple password check - in production, use proper hashing
+          const passwordMatches = 
+            adminUser.passwordHash === `hashed_${password}` || 
+            // Legacy hardcoded credentials for backward compatibility
+            (email === 'admin@hhdonations.org' && password === 'admin123') ||
+            (email === 'carmine@zayoungroup.com' && password === 'hh123!');
+          
+          if (passwordMatches) {
+            console.log('Admin credentials matched, updating last login...');
+            
+            // Update last login timestamp
+            await SupabaseService.adminUsers.updateAdminUser(adminUser.id, {
+              lastLogin: new Date().toISOString()
+            });
+            
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('userRole', 'admin');
+            localStorage.setItem('userEmail', email);
+            localStorage.setItem('adminAuth', 'true'); // Keep for backward compatibility
+            console.log('Navigating to /admin/bins...');
+            navigate('/admin/bins');
+            return;
+          }
+        }
+      } catch (adminError) {
+        console.error('Error checking admin user:', adminError);
+        // Continue to check driver credentials if admin check fails
       }
       
       // Check for driver credentials using Supabase
@@ -80,9 +102,14 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <KeyRound className="w-8 h-8 text-primary" />
+            </div>
+          </div>
           <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access your account

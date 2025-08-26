@@ -281,7 +281,6 @@ function UserManagement() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
-          <p className="text-gray-600 mt-2">Manage admin dashboard login profiles</p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
