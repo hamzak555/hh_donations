@@ -89,10 +89,10 @@ const PartnerApplications = () => {
   const { bins } = useBins();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'reviewing' | 'approved' | 'rejected' | 'archived'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'archived'>('approved');
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewNotes, setReviewNotes] = useState('');
-  const [newStatus, setNewStatus] = useState<'approved' | 'rejected' | 'reviewing' | 'archived'>('reviewing');
+  const [newStatus, setNewStatus] = useState<'pending' | 'approved' | 'rejected' | 'archived'>('approved');
   const [hoverCardNotes, setHoverCardNotes] = useState<Record<string, string>>({});
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -380,20 +380,20 @@ const PartnerApplications = () => {
         
         <div className="w-2/3 flex items-center gap-1 p-1 bg-muted rounded-lg">
           <button
-            onClick={() => setActiveTab('all')}
+            onClick={() => setActiveTab('approved')}
             className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-              activeTab === 'all'
+              activeTab === 'approved'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            All
+            Approved
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
-              activeTab === 'all'
+              activeTab === 'approved'
                 ? 'bg-gray-200 text-gray-900'
                 : 'bg-gray-100 text-gray-600'
             }`}>
-              {applications.length}
+              {applications.filter(a => a.status === 'approved').length}
             </span>
           </button>
           <button
@@ -411,40 +411,6 @@ const PartnerApplications = () => {
                 : 'bg-gray-100 text-gray-600'
             }`}>
               {applications.filter(a => a.status === 'pending').length}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('reviewing')}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-              activeTab === 'reviewing'
-                ? 'bg-background text-foreground shadow-sm'
-                : ''
-            }`}
-          >
-            Reviewing
-            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
-              activeTab === 'reviewing'
-                ? 'bg-gray-200 text-gray-900'
-                : 'bg-gray-100 text-gray-600'
-            }`}>
-              {applications.filter(a => a.status === 'reviewing').length}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-              activeTab === 'approved'
-                ? 'bg-background text-foreground shadow-sm'
-                : ''
-            }`}
-          >
-            Approved
-            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
-              activeTab === 'approved'
-                ? 'bg-gray-200 text-gray-900'
-                : 'bg-gray-100 text-gray-600'
-            }`}>
-              {applications.filter(a => a.status === 'approved').length}
             </span>
           </button>
           <button
@@ -472,13 +438,30 @@ const PartnerApplications = () => {
                 : ''
             }`}
           >
-            Archived
+            Archive
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'archived'
                 ? 'bg-gray-200 text-gray-900'
                 : 'bg-gray-100 text-gray-600'
             }`}>
               {applications.filter(a => a.status === 'archived').length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'all'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
+            All
+            <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
+              activeTab === 'all'
+                ? 'bg-gray-200 text-gray-900'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {applications.length}
             </span>
           </button>
         </div>
@@ -544,15 +527,6 @@ const PartnerApplications = () => {
                 </TableHead>
                 <TableHead 
                   className="cursor-pointer select-none"
-                  onClick={() => handleSort('submittedAt')}
-                >
-                  <div className="flex items-center gap-1">
-                    Submitted
-                    {getSortIcon('submittedAt')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-1">
@@ -563,6 +537,15 @@ const PartnerApplications = () => {
                 <TableHead className="w-32">Documents</TableHead>
                 <TableHead className="w-28">Notes</TableHead>
                 <TableHead className="w-36">Bins</TableHead>
+                <TableHead 
+                  className="cursor-pointer select-none"
+                  onClick={() => handleSort('submittedAt')}
+                >
+                  <div className="flex items-center gap-1">
+                    Created
+                    {getSortIcon('submittedAt')}
+                  </div>
+                </TableHead>
                 <TableHead className="text-right w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -581,7 +564,6 @@ const PartnerApplications = () => {
                         <div className="font-medium">{app.organizationName}</div>
                         {app.website && (
                           <div className="text-sm text-muted-foreground">
-                            <Globe className="inline h-3 w-3 mr-1" />
                             <a 
                               href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
                               target="_blank"
@@ -601,10 +583,7 @@ const PartnerApplications = () => {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm">{app.phone || '-'}</span>
-                      </div>
+                      <span className="text-sm">{app.phone || '-'}</span>
                     </TableCell>
                     <TableCell>
                       <a 
@@ -616,9 +595,6 @@ const PartnerApplications = () => {
                         <div>{app.address.street}</div>
                         <div className="text-muted-foreground">{app.address.city}, {app.address.state} {app.address.zipCode}</div>
                       </a>
-                    </TableCell>
-                    <TableCell>
-                      {format(new Date(app.submittedAt), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
                       <Select 
@@ -640,11 +616,10 @@ const PartnerApplications = () => {
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="reviewing">Reviewing</SelectItem>
                           <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="rejected">Rejected</SelectItem>
-                          <SelectItem value="archived">Archived</SelectItem>
+                          <SelectItem value="archived">Archive</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -700,6 +675,9 @@ const PartnerApplications = () => {
                       ) : (
                         <span className="text-gray-400 text-sm">-</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(app.submittedAt), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -763,10 +741,10 @@ const PartnerApplications = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="reviewing">Reviewing</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="archived">Archive</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -956,22 +956,18 @@ function BinsManagement() {
                                 </TooltipTrigger>
                                 <TooltipContent className="p-0" side="left" align="center">
                                   <div className="bg-white rounded-lg shadow-lg p-3 min-w-[240px]">
-                                    <div className="flex items-start gap-2">
-                                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                        <Users className="w-4 h-4 text-green-700" />
-                                      </div>
-                                      <div className="flex-1">
-                                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Partner Organization</p>
-                                        <p className="font-semibold text-gray-900 text-sm">{partner.organizationName}</p>
-                                        {partner.contactPerson && (
-                                          <div className="mt-2 pt-2 border-t border-gray-100">
-                                            <p className="text-xs text-gray-600">
-                                              <span className="font-medium">Contact:</span> {partner.contactPerson}
+                                    <div>
+                                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Partner Organization</p>
+                                      <p className="font-semibold text-gray-900 text-sm">{partner.organizationName}</p>
+                                      {partner.contactPerson && (
+                                        <div className="mt-2 pt-2 border-t border-gray-100">
+                                          <p className="text-xs text-gray-600">
+                                            <span className="font-medium">Contact:</span> {partner.contactPerson}
+                                          </p>
+                                          {partner.email && (
+                                            <p className="text-xs text-gray-600 mt-0.5">
+                                              <span className="font-medium">Email:</span> {partner.email}
                                             </p>
-                                            {partner.email && (
-                                              <p className="text-xs text-gray-600 mt-0.5">
-                                                <span className="font-medium">Email:</span> {partner.email}
-                                              </p>
                                             )}
                                             {partner.phone && (
                                               <p className="text-xs text-gray-600 mt-0.5">
@@ -980,7 +976,6 @@ function BinsManagement() {
                                             )}
                                           </div>
                                         )}
-                                      </div>
                                     </div>
                                   </div>
                                 </TooltipContent>
@@ -1293,14 +1288,11 @@ function BinsManagement() {
                 <div>
                   <Label>Assigned Partner</Label>
                   <div className="px-3 py-2 border rounded-md bg-green-50 border-green-200">
-                    <div className="flex items-center gap-2">
-                      <Info className="w-4 h-4 text-green-600" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-green-900">{partner.organizationName}</p>
-                        {partner.contactPerson && (
-                          <p className="text-xs text-green-700 mt-0.5">Contact: {partner.contactPerson}</p>
-                        )}
-                      </div>
+                    <div>
+                      <p className="text-sm font-medium text-green-900">{partner.organizationName}</p>
+                      {partner.contactPerson && (
+                        <p className="text-xs text-green-700 mt-0.5">Contact: {partner.contactPerson}</p>
+                      )}
                     </div>
                   </div>
                 </div>
