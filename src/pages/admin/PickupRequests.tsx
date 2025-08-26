@@ -48,7 +48,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   MoreHorizontal, 
   Eye, 
@@ -434,7 +433,7 @@ function PickupRequests() {
   }
 
   return (
-    <div className="px-6 pt-10 pb-6">
+    <div className="px-4 sm:px-6 lg:px-8 pt-10 pb-6 w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Pickup Requests' : 'Pickup Requests'}</h1>
         <div className="flex gap-2">
@@ -477,53 +476,31 @@ function PickupRequests() {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-6">
-        <div className="flex items-center gap-4">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              type="text"
-              placeholder="Search by name, email, phone, address, status..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="text-sm text-gray-600">
-            {(() => {
-              // Get requests for current tab (before search filter)
-              let tabRequests = pickupRequests;
-              if (activeTab !== 'all') {
-                const statusMap: Record<string, string> = {
-                  'pending': 'Pending',
-                  'picked-up': 'Picked Up',
-                  'cancelled': 'Cancelled'
-                };
-                tabRequests = pickupRequests.filter(request => 
-                  request.status === statusMap[activeTab]
-                );
-              }
-              
-              const filteredRequests = getFilteredAndSortedRequests();
-              
-              if (searchQuery.trim()) {
-                return <>Showing {filteredRequests.length} of {tabRequests.length} {activeTab === 'all' ? '' : activeTab} requests</>;
-              } else {
-                return <>{tabRequests.length} {activeTab === 'all' ? '' : activeTab} requests total</>;
-              }
-            })()}
-          </div>
+      {/* Search and Tabs */}
+      <div className="flex gap-4 mb-6">
+        <div className="w-1/3 relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search by name, email, phone, address, status..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={(value) => {
-        setActiveTab(value as typeof activeTab);
-        setSelectedRequests(new Set()); // Clear selections when switching tabs
-        setLastSelectedIndex(null);
-      }}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="pending" className="gap-2">
+        
+        <div className="w-2/3 flex items-center gap-1 p-1 bg-muted rounded-lg">
+          <button
+            onClick={() => {
+              setActiveTab('pending');
+              setSelectedRequests(new Set());
+              setLastSelectedIndex(null);
+            }}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'pending'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
             Pending
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'pending'
@@ -532,8 +509,19 @@ function PickupRequests() {
             }`}>
               {getStatusCounts().pending}
             </span>
-          </TabsTrigger>
-          <TabsTrigger value="picked-up" className="gap-2">
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('picked-up');
+              setSelectedRequests(new Set());
+              setLastSelectedIndex(null);
+            }}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'picked-up'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
             Picked Up
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'picked-up'
@@ -542,8 +530,19 @@ function PickupRequests() {
             }`}>
               {getStatusCounts().pickedUp}
             </span>
-          </TabsTrigger>
-          <TabsTrigger value="cancelled" className="gap-2">
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('cancelled');
+              setSelectedRequests(new Set());
+              setLastSelectedIndex(null);
+            }}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'cancelled'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
             Cancelled
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'cancelled'
@@ -552,8 +551,19 @@ function PickupRequests() {
             }`}>
               {getStatusCounts().cancelled}
             </span>
-          </TabsTrigger>
-          <TabsTrigger value="all" className="gap-2">
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('all');
+              setSelectedRequests(new Set());
+              setLastSelectedIndex(null);
+            }}
+            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              activeTab === 'all'
+                ? 'bg-background text-foreground shadow-sm'
+                : ''
+            }`}
+          >
             All
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'all'
@@ -562,11 +572,13 @@ function PickupRequests() {
             }`}>
               {getStatusCounts().all}
             </span>
-          </TabsTrigger>
-        </TabsList>
+          </button>
+        </div>
+      </div>
 
-        <Card className="overflow-hidden">
-          <div className="p-6">
+      {/* Pickup Requests Table */}
+      <Card className="overflow-hidden">
+        <div className="p-6">
             <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -798,7 +810,6 @@ function PickupRequests() {
           </Table>
         </div>
       </Card>
-    </Tabs>
 
       {/* View Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>

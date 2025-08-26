@@ -400,7 +400,7 @@ function DriversManagement() {
   }
 
   return (
-    <div className="px-6 pt-10 pb-6 w-full min-w-full">
+    <div className="px-4 sm:px-6 lg:px-8 pt-10 pb-6 w-full min-w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Drivers</h1>
         <Button onClick={() => setIsAddDialogOpen(true)}>

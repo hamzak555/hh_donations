@@ -700,7 +700,7 @@ function BinsManagement() {
   }
 
   return (
-    <div className="px-6 pt-10 pb-6">
+    <div className="px-4 sm:px-6 lg:px-8 pt-10 pb-6 w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Bins' : 'All Bins'}</h1>
         <div className="flex gap-2">
@@ -771,7 +771,9 @@ function BinsManagement() {
 
       <Card className="overflow-hidden">
         <div className="p-6">
-          <Table>
+          <div className="overflow-x-auto -mx-6">
+            <div className="inline-block min-w-full align-middle px-6">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
                 {!isDriverRole && (
@@ -989,23 +991,44 @@ function BinsManagement() {
                     )}
                     {!isDriverRole && (
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditDialog(bin)}>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              className="h-8 w-8 p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent 
+                            align="end" 
+                            className="z-50"
+                            sideOffset={5}
+                          >
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditDialog(bin);
+                              }}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleViewOnMap(bin)}>
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewOnMap(bin);
+                              }}
+                            >
                               <MapPin className="mr-2 h-4 w-4" />
                               View on Map
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => handleDeleteBin(bin)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteBin(bin);
+                              }}
                               className="text-red-600"
                             >
                               <Trash className="mr-2 h-4 w-4" />
@@ -1020,6 +1043,8 @@ function BinsManagement() {
               })}
             </TableBody>
           </Table>
+            </div>
+          </div>
         </div>
       </Card>
 
