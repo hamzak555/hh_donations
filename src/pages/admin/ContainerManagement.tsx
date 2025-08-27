@@ -78,7 +78,8 @@ import {
   Image as ImageIcon,
   FileCheck,
   ArrowUpDown,
-  ChevronUp
+  ChevronUp,
+  Settings2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Bale, BaleStatus } from '@/contexts/BalesContextSupabase';
@@ -295,6 +296,20 @@ const getBaleStatusBadge = (status: BaleStatus) => {
   return null;
 };
 
+// Column visibility configuration
+const COLUMN_IDS = {
+  containerNumber: 'Container Number',
+  destination: 'Destination',
+  bales: 'Bales',
+  totalWeight: 'Total Weight',
+  shipmentDate: 'Shipment Date',
+  status: 'Status',
+  documents: 'Documents',
+  notes: 'Notes'
+} as const;
+
+type ColumnId = keyof typeof COLUMN_IDS;
+
 function ContainerManagement() {
   const { 
     containers, 
@@ -348,6 +363,38 @@ function ContainerManagement() {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<{id: string, name: string} | null>(null);
+  
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
+    const savedColumns = localStorage.getItem('containersTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        // Filter out any invalid column IDs that don't exist in current COLUMN_IDS
+        const validColumns = parsed.filter((col: string) => col in COLUMN_IDS);
+        return new Set(validColumns as ColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(COLUMN_IDS) as ColumnId[]);
+  });
+  
+  // Save column visibility preferences
+  const handleColumnVisibilityChange = (columnId: ColumnId, visible: boolean) => {
+    setVisibleColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('containersTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
 
   // Handle Google Places Autocomplete for create dialog
   const onDestinationLoad = (autocomplete: google.maps.places.Autocomplete) => {
@@ -922,10 +969,54 @@ function ContainerManagement() {
     <div className="pt-10 pb-20 w-full">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Containers</h1>
-        <Button onClick={() => setIsCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Container
-        </Button>
+        <div className="flex gap-2">
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
+              >
+                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
+                Columns
+                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
+              {Object.entries(COLUMN_IDS).map(([id, label]) => (
+                <DropdownMenuItem
+                  key={id}
+                  className="flex items-center space-x-2"
+                  onSelect={(e) => {
+                    e.preventDefault(); // Prevent dropdown from closing
+                  }}
+                >
+                  <Checkbox
+                    id={id}
+                    checked={visibleColumns.has(id as ColumnId)}
+                    onCheckedChange={(checked) => {
+                      handleColumnVisibilityChange(id as ColumnId, checked as boolean);
+                    }}
+                  />
+                  <label
+                    htmlFor={id}
+                    className="flex-1 cursor-pointer select-none text-sm"
+                  >
+                    {label}
+                  </label>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline">
+            <Plus className="w-4 h-4" />
+            Create Container
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Tabs */}
@@ -1022,85 +1113,101 @@ function ContainerManagement() {
               <Table className="min-w-[1000px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('containerNumber')}
-                >
-                  <div className="flex items-center gap-1">
-                    Container Number
-                    {getSortIcon('containerNumber')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('destination')}
-                >
-                  <div className="flex items-center gap-1">
-                    Destination
-                    {getSortIcon('destination')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('bales')}
-                >
-                  <div className="flex items-center gap-1">
-                    Bales
-                    {getSortIcon('bales')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('totalWeight')}
-                >
-                  <div className="flex items-center gap-1">
-                    Total Weight
-                    {getSortIcon('totalWeight')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('shipmentDate')}
-                >
-                  <div className="flex items-center gap-1">
-                    Shipment Date
-                    {getSortIcon('shipmentDate')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    {getSortIcon('status')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('documents')}
-                >
-                  <div className="flex items-center gap-1">
-                    Documents
-                    {getSortIcon('documents')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('notes')}
-                >
-                  <div className="flex items-center gap-1">
-                    Notes
-                    {getSortIcon('notes')}
-                  </div>
-                </TableHead>
+                {visibleColumns.has('containerNumber') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('containerNumber')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Container Number
+                      {getSortIcon('containerNumber')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('destination') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('destination')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Destination
+                      {getSortIcon('destination')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('bales') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('bales')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Bales
+                      {getSortIcon('bales')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('totalWeight') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('totalWeight')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Total Weight
+                      {getSortIcon('totalWeight')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('shipmentDate') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('shipmentDate')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Shipment Date
+                      {getSortIcon('shipmentDate')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('status') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('documents') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('documents')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Documents
+                      {getSortIcon('documents')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('notes') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('notes')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Notes
+                      {getSortIcon('notes')}
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {containersLoading ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={9} className="h-32 text-center">
+                  <TableCell colSpan={visibleColumns.size + 1} className="h-32 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                       Loading containers...
@@ -1109,7 +1216,7 @@ function ContainerManagement() {
                 </TableRow>
               ) : filteredContainers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={9} className="h-32 text-center text-gray-500">
+                  <TableCell colSpan={visibleColumns.size + 1} className="h-32 text-center text-gray-500">
                     No containers found
                   </TableCell>
                 </TableRow>
@@ -1119,64 +1226,80 @@ function ContainerManagement() {
                   key={`${container.id}-${container.containerNumber}`}
                   className={container.status === 'Shipped' ? 'bg-green-50 hover:bg-green-100' : ''}
                 >
-                  <TableCell className="font-medium">{container.containerNumber}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-gray-400" />
-                      {container.destination}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-3 text-left justify-start"
-                      onClick={() => openAssignBalesDialog(container)}
-                    >
-                      <Package className="w-4 h-4 text-gray-400 mr-1.5" />
-                      <span className="text-xs">{getActualBaleCount(container.containerNumber)} bales</span>
-                    </Button>
-                  </TableCell>
-                  <TableCell>{getContainerTotalWeight(container.containerNumber)} Kg</TableCell>
-                  <TableCell>
-                    {container.shipmentDate ? (
+                  {visibleColumns.has('containerNumber') && (
+                    <TableCell className="font-medium">{container.containerNumber}</TableCell>
+                  )}
+                  {visibleColumns.has('destination') && (
+                    <TableCell>
                       <div className="flex items-center gap-1">
-                        <CalendarIcon className="w-3 h-3 text-gray-400" />
-                        {format(new Date(container.shipmentDate), 'MMM dd, yyyy')}
+                        <MapPin className="w-3 h-3 text-gray-400" />
+                        {container.destination}
                       </div>
-                    ) : (
-                      <span className="text-gray-400">Not scheduled</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(container.status)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-3 text-left justify-start"
-                      onClick={() => openDetailsDialog(container, 'documents')}
-                    >
-                      <FileText className="w-4 h-4 text-gray-400 mr-1.5" />
-                      <span className="text-xs">
-                        {(() => {
-                          const docs = container.documents || [];
-                          const count = Array.isArray(docs) ? docs.length : 0;
-                          return count > 0 ? `${count} file${count !== 1 ? 's' : ''}` : 'No files';
-                        })()}
-                      </span>
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <ContainerNotesHoverCard 
-                      container={container}
-                      noteValue={hoverCardNotes[container.id] || ''}
-                      onNoteChange={(value) => setHoverCardNotes(prev => ({
-                        ...prev,
-                        [container.id]: value
-                      }))}
-                      onAddNote={() => handleAddNoteToTimeline(container.id)}
-                    />
-                  </TableCell>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('bales') && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 text-left justify-start"
+                        onClick={() => openAssignBalesDialog(container)}
+                      >
+                        <Package className="w-4 h-4 text-gray-400 mr-1.5" />
+                        <span className="text-xs">{getActualBaleCount(container.containerNumber)} bales</span>
+                      </Button>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('totalWeight') && (
+                    <TableCell>{getContainerTotalWeight(container.containerNumber)} Kg</TableCell>
+                  )}
+                  {visibleColumns.has('shipmentDate') && (
+                    <TableCell>
+                      {container.shipmentDate ? (
+                        <div className="flex items-center gap-1">
+                          <CalendarIcon className="w-3 h-3 text-gray-400" />
+                          {format(new Date(container.shipmentDate), 'MMM dd, yyyy')}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Not scheduled</span>
+                      )}
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('status') && (
+                    <TableCell>{getStatusBadge(container.status)}</TableCell>
+                  )}
+                  {visibleColumns.has('documents') && (
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-3 text-left justify-start"
+                        onClick={() => openDetailsDialog(container, 'documents')}
+                      >
+                        <FileText className="w-4 h-4 text-gray-400 mr-1.5" />
+                        <span className="text-xs">
+                          {(() => {
+                            const docs = container.documents || [];
+                            const count = Array.isArray(docs) ? docs.length : 0;
+                            return count > 0 ? `${count} file${count !== 1 ? 's' : ''}` : 'No files';
+                          })()}
+                        </span>
+                      </Button>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('notes') && (
+                    <TableCell>
+                      <ContainerNotesHoverCard 
+                        container={container}
+                        noteValue={hoverCardNotes[container.id] || ''}
+                        onNoteChange={(value) => setHoverCardNotes(prev => ({
+                          ...prev,
+                          [container.id]: value
+                        }))}
+                        onAddNote={() => handleAddNoteToTimeline(container.id)}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>

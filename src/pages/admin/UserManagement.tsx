@@ -282,7 +282,7 @@ function UserManagement() {
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} className="flex items-center gap-2">
+        <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
           <Plus className="w-4 h-4" />
           Add User
         </Button>

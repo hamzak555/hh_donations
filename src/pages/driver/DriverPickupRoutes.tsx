@@ -150,7 +150,7 @@ function DriverPickupRoutes() {
                   className="flex-1"
                   onClick={() => openGoogleMaps(pickup.address)}
                 >
-                  <Navigation className="w-4 h-4 mr-1" />
+                  <Navigation className="w-4 h-4" />
                   Navigate
                 </Button>
                 <Button 
@@ -159,7 +159,7 @@ function DriverPickupRoutes() {
                   className="flex-1"
                   disabled={pickup.status === 'Picked Up'}
                 >
-                  <CheckCircle className="w-4 h-4 mr-1" />
+                  <CheckCircle className="w-4 h-4" />
                   {pickup.status === 'Picked Up' ? 'Completed' : 'Complete'}
                 </Button>
               </div>

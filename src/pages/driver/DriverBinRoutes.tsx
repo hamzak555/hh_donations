@@ -99,7 +99,7 @@ function DriverBinRoutes() {
                   className="flex-1"
                   onClick={() => openGoogleMaps(bin.location)}
                 >
-                  <Navigation className="w-4 h-4 mr-1" />
+                  <Navigation className="w-4 h-4" />
                   Navigate
                 </Button>
                 <Button 
@@ -107,7 +107,7 @@ function DriverBinRoutes() {
                   variant="outline"
                   className="flex-1"
                 >
-                  <CheckCircle className="w-4 h-4 mr-1" />
+                  <CheckCircle className="w-4 h-4" />
                   Complete
                 </Button>
               </div>

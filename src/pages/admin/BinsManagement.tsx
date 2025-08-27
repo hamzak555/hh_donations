@@ -55,11 +55,26 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Plus, MoreHorizontal, Edit, Trash, MapPin, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users, Info } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash, MapPin, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users, Info, Settings2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 // Use the shared Bin type from context
 type Bin = BinLocation;
+
+// Column visibility configuration
+const COLUMN_IDS = {
+  binNumber: 'Bin Number',
+  locationName: 'Location Name',
+  address: 'Address',
+  status: 'Status',
+  assignedDriver: 'Assigned Driver',
+  fillLevel: 'Fill Level',
+  batteryLevel: 'Battery',
+  lastSensorUpdate: 'Last Updated',
+  partner: 'Partner'
+} as const;
+
+type ColumnId = keyof typeof COLUMN_IDS;
 
 function BinsManagement() {
   const [isLoading] = useState(false);
@@ -72,6 +87,36 @@ function BinsManagement() {
   const isDriverRole = userRole === 'driver';
   const driverId = localStorage.getItem('driverId');
   const currentDriverName = isDriverRole ? drivers.find(d => d.id === driverId)?.name : null;
+  
+  // Column visibility state - all columns visible by default
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
+    const savedColumns = localStorage.getItem('binsTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        return new Set(parsed as ColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(COLUMN_IDS) as ColumnId[]);
+  });
+  
+  // Save column visibility preferences
+  const handleColumnVisibilityChange = (columnId: ColumnId, visible: boolean) => {
+    setVisibleColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('binsTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
   
   // Helper function to get partner for a bin
   const getPartnerForBin = (binId: string) => {
@@ -710,7 +755,7 @@ function BinsManagement() {
                 onClick={() => setIsBulkAssignDialogOpen(true)}
                 variant="outline"
               >
-                <Users className="w-4 h-4 mr-2" />
+                <Users className="w-4 h-4" />
                 Assign Driver ({selectedBins.size})
               </Button>
               <Button 
@@ -737,9 +782,59 @@ function BinsManagement() {
             )}
             Refresh Sensors
           </Button>
+          
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
+              >
+                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
+                Columns
+                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="px-2 py-1.5 text-sm font-semibold">
+                Toggle columns
+              </div>
+              {Object.entries(COLUMN_IDS).map(([id, label]) => {
+                // Hide partner column for driver role
+                if (isDriverRole && id === 'partner') return null;
+                
+                return (
+                  <DropdownMenuItem
+                    key={id}
+                    className="flex items-center space-x-2"
+                    onSelect={(e) => {
+                      e.preventDefault(); // Prevent dropdown from closing
+                    }}
+                  >
+                    <Checkbox
+                      id={id}
+                      checked={visibleColumns.has(id as ColumnId)}
+                      onCheckedChange={(checked) => {
+                        handleColumnVisibilityChange(id as ColumnId, checked as boolean);
+                      }}
+                    />
+                    <label
+                      htmlFor={id}
+                      className="flex-1 cursor-pointer select-none text-sm"
+                    >
+                      {label}
+                    </label>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           {!isDriverRole && (
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
+              <Plus className="w-4 h-4" />
               Add New Bin
             </Button>
           )}
@@ -759,6 +854,7 @@ function BinsManagement() {
               className="pl-10"
             />
           </div>
+          
           <div className="text-sm text-gray-600">
             {searchQuery.trim() ? (
               <>Showing {getFilteredAndSortedBins().length} of {bins.length} bins</>
@@ -788,79 +884,97 @@ function BinsManagement() {
                     />
                   </TableHead>
                 )}
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('binNumber')}
-                >
-                  <div className="flex items-center gap-1">
-                    Bin Number
-                    {getSortIcon('binNumber')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('locationName')}
-                >
-                  <div className="flex items-center gap-1">
-                    Location Name
-                    {getSortIcon('locationName')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('address')}
-                >
-                  <div className="flex items-center gap-1">
-                    Address
-                    {getSortIcon('address')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    {getSortIcon('status')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('assignedDriver')}
-                >
-                  <div className="flex items-center gap-1">
-                    Assigned Driver
-                    {getSortIcon('assignedDriver')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('fillLevel')}
-                >
-                  <div className="flex items-center gap-1">
-                    Fill Level
-                    {getSortIcon('fillLevel')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('batteryLevel')}
-                >
-                  <div className="flex items-center gap-1">
-                    Battery
-                    {getSortIcon('batteryLevel')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('lastSensorUpdate')}
-                >
-                  <div className="flex items-center gap-1">
-                    Last Updated
-                    {getSortIcon('lastSensorUpdate')}
-                  </div>
-                </TableHead>
-                {!isDriverRole && <TableHead className="text-center w-12">Partner</TableHead>}
+                {visibleColumns.has('binNumber') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('binNumber')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Bin Number
+                      {getSortIcon('binNumber')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('locationName') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('locationName')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Location Name
+                      {getSortIcon('locationName')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('address') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('address')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Address
+                      {getSortIcon('address')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('status') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('assignedDriver') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('assignedDriver')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Assigned Driver
+                      {getSortIcon('assignedDriver')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('fillLevel') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('fillLevel')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Fill Level
+                      {getSortIcon('fillLevel')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('batteryLevel') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('batteryLevel')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Battery
+                      {getSortIcon('batteryLevel')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('lastSensorUpdate') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('lastSensorUpdate')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Last Updated
+                      {getSortIcon('lastSensorUpdate')}
+                    </div>
+                  </TableHead>
+                )}
+                {!isDriverRole && visibleColumns.has('partner') && (
+                  <TableHead className="text-center w-12">Partner</TableHead>
+                )}
                 {!isDriverRole && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
@@ -900,69 +1014,85 @@ function BinsManagement() {
                         />
                       </TableCell>
                     )}
-                    <TableCell className="font-medium">{bin.binNumber}</TableCell>
-                    <TableCell>{bin.locationName}</TableCell>
-                    <TableCell>{bin.address}</TableCell>
-                    <TableCell>{getStatusBadge(bin.status, bin.fullSince)}</TableCell>
-                    <TableCell>
-                      {isDriverRole ? (
-                        <span className="text-sm font-medium">{bin.assignedDriver || 'Unassigned'}</span>
-                      ) : (
-                        <Select
-                          value={bin.assignedDriver || 'unassigned'}
-                          onValueChange={(value) => {
-                            const oldDriverName = bin.assignedDriver;
-                            const newDriverName = value === 'unassigned' ? undefined : value;
-                            
-                            // Update the bin
-                            updateBin(bin.id, { assignedDriver: newDriverName });
-                            
-                            // Update driver assignments
-                            if (oldDriverName && oldDriverName !== newDriverName) {
-                              // Remove bin from old driver's assignedBins
-                              const oldDriver = drivers.find(d => d.name === oldDriverName);
-                              if (oldDriver) {
-                                const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
-                                updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                    {visibleColumns.has('binNumber') && (
+                      <TableCell className="font-medium">{bin.binNumber}</TableCell>
+                    )}
+                    {visibleColumns.has('locationName') && (
+                      <TableCell>{bin.locationName}</TableCell>
+                    )}
+                    {visibleColumns.has('address') && (
+                      <TableCell>{bin.address}</TableCell>
+                    )}
+                    {visibleColumns.has('status') && (
+                      <TableCell>{getStatusBadge(bin.status, bin.fullSince)}</TableCell>
+                    )}
+                    {visibleColumns.has('assignedDriver') && (
+                      <TableCell>
+                        {isDriverRole ? (
+                          <span className="text-sm font-medium">{bin.assignedDriver || 'Unassigned'}</span>
+                        ) : (
+                          <Select
+                            value={bin.assignedDriver || 'unassigned'}
+                            onValueChange={(value) => {
+                              const oldDriverName = bin.assignedDriver;
+                              const newDriverName = value === 'unassigned' ? undefined : value;
+                              
+                              // Update the bin
+                              updateBin(bin.id, { assignedDriver: newDriverName });
+                              
+                              // Update driver assignments
+                              if (oldDriverName && oldDriverName !== newDriverName) {
+                                // Remove bin from old driver's assignedBins
+                                const oldDriver = drivers.find(d => d.name === oldDriverName);
+                                if (oldDriver) {
+                                  const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
+                                  updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                                }
                               }
-                            }
-                            
-                            if (newDriverName && newDriverName !== 'unassigned') {
-                              // Add bin to new driver's assignedBins
-                              const newDriver = drivers.find(d => d.name === newDriverName);
-                              if (newDriver) {
-                                const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
-                                updateDriver(newDriver.id, { assignedBins: updatedBins });
+                              
+                              if (newDriverName && newDriverName !== 'unassigned') {
+                                // Add bin to new driver's assignedBins
+                                const newDriver = drivers.find(d => d.name === newDriverName);
+                                if (newDriver) {
+                                  const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
+                                  updateDriver(newDriver.id, { assignedBins: updatedBins });
+                                }
                               }
-                            }
-                          }}
-                        >
-                        <SelectTrigger className="h-8 w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">
-                            <span className="text-red-600">Unassigned</span>
-                          </SelectItem>
-                          {activeDrivers.map(driver => (
-                            <SelectItem key={driver.id} value={driver.name}>
-                              {driver.name}
+                            }}
+                          >
+                          <SelectTrigger className="h-8 w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unassigned">
+                              <span className="text-red-600">Unassigned</span>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                        </Select>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {renderFillLevel(bin)}
-                    </TableCell>
-                    <TableCell>
-                      {renderBatteryLevel(bin)}
-                    </TableCell>
-                    <TableCell>
-                      {renderLastUpdate(bin)}
-                    </TableCell>
-                    {!isDriverRole && (
+                            {activeDrivers.map(driver => (
+                              <SelectItem key={driver.id} value={driver.name}>
+                                {driver.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                          </Select>
+                        )}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('fillLevel') && (
+                      <TableCell>
+                        {renderFillLevel(bin)}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('batteryLevel') && (
+                      <TableCell>
+                        {renderBatteryLevel(bin)}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('lastSensorUpdate') && (
+                      <TableCell>
+                        {renderLastUpdate(bin)}
+                      </TableCell>
+                    )}
+                    {!isDriverRole && visibleColumns.has('partner') && (
                       <TableCell className="text-center">
                         {(() => {
                           const partner = getPartnerForBin(bin.id);

@@ -53,7 +53,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, MoreHorizontal, Edit, Trash, Printer, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Search, MessageSquare, Send, Camera, ChevronLeft, ChevronRight, X, Undo2 } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, MoreHorizontal, Edit, Trash, Printer, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Search, MessageSquare, Send, Camera, ChevronLeft, ChevronRight, X, Undo2, Settings2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 // Safe date formatter to handle invalid dates
@@ -279,7 +280,7 @@ const PhotosPreview = ({ bale, onAddPhotos }: PhotosPreviewProps) => {
             className="h-8 px-2 text-gray-500 hover:text-gray-700"
             onClick={() => fileInputRef.current?.click()}
           >
-            <Camera className="w-4 h-4 mr-1" />
+            <Camera className="w-4 h-4" />
             <span className="text-sm">Add</span>
           </Button>
         ) : (
@@ -356,7 +357,7 @@ const NotesHoverCard = ({ bale, noteValue, onNoteChange, onAddNote }: NotesHover
           size="sm"
           className="h-8 px-2 hover:bg-gray-100"
         >
-          <MessageSquare className="w-4 h-4 mr-1" />
+          <MessageSquare className="w-4 h-4" />
           <span className="text-sm">{noteCount}</span>
         </Button>
       </PopoverTrigger>
@@ -418,6 +419,34 @@ const NotesHoverCard = ({ bale, noteValue, onNoteChange, onAddNote }: NotesHover
   );
 };
 
+// Column visibility configuration for Active Bales
+const ACTIVE_COLUMN_IDS = {
+  baleNumber: 'Bale Number',
+  contents: 'Contents',
+  weight: 'Weight (kg)',
+  status: 'Status',
+  location: 'Location',
+  notes: 'Notes',
+  photos: 'Photos',
+  createdDate: 'Created Date'
+} as const;
+
+// Column visibility configuration for Sold Bales
+const SOLD_COLUMN_IDS = {
+  baleNumber: 'Bale Number',
+  contents: 'Contents',
+  weight: 'Weight (kg)',
+  destination: 'Destination',
+  salePrice: 'Sale Price',
+  paymentMethod: 'Payment Method',
+  notes: 'Notes',
+  photos: 'Photos',
+  soldDate: 'Sold Date'
+} as const;
+
+type ActiveColumnId = keyof typeof ACTIVE_COLUMN_IDS;
+type SoldColumnId = keyof typeof SOLD_COLUMN_IDS;
+
 function BaleManagement() {
   const { bales, addBale, updateBale, deleteBale, markAsSold, revertToActive, addNoteToTimeline, addPhotos } = useBales();
   const { containers } = useContainers();
@@ -429,6 +458,66 @@ function BaleManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRevertDialogOpen, setIsRevertDialogOpen] = useState(false);
   const [selectedBale, setSelectedBale] = useState<Bale | null>(null);
+  
+  // Column visibility state for Active tab
+  const [visibleActiveColumns, setVisibleActiveColumns] = useState<Set<ActiveColumnId>>(() => {
+    const savedColumns = localStorage.getItem('activeBalesTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        return new Set(parsed as ActiveColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(ACTIVE_COLUMN_IDS) as ActiveColumnId[]);
+  });
+  
+  // Column visibility state for Sold tab
+  const [visibleSoldColumns, setVisibleSoldColumns] = useState<Set<SoldColumnId>>(() => {
+    const savedColumns = localStorage.getItem('soldBalesTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        return new Set(parsed as SoldColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(SOLD_COLUMN_IDS) as SoldColumnId[]);
+  });
+  
+  // Save column visibility preferences for Active tab
+  const handleActiveColumnVisibilityChange = (columnId: ActiveColumnId, visible: boolean) => {
+    setVisibleActiveColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('activeBalesTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
+  
+  // Save column visibility preferences for Sold tab
+  const handleSoldColumnVisibilityChange = (columnId: SoldColumnId, visible: boolean) => {
+    setVisibleSoldColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('soldBalesTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
   const [baleToDelete, setBaleToDelete] = useState<Bale | null>(null);
   const [baleToRevert, setBaleToRevert] = useState<Bale | null>(null);
   
@@ -776,10 +865,97 @@ function BaleManagement() {
     <div className="h-screen flex flex-col pt-10 pb-6">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Bales</h1>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create New Bale
-        </Button>
+        <div className="flex gap-2">
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={
+                  activeTab === 'active' 
+                    ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : "")
+                    : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : "")
+                }
+              >
+                <Settings2 className={
+                  activeTab === 'active'
+                    ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4")
+                    : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4")
+                } />
+                Columns
+                <span className={`text-xs font-medium ${
+                  activeTab === 'active'
+                    ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "text-green-600" : "text-gray-500")
+                    : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "text-green-600" : "text-gray-500")
+                }`}>
+                  {activeTab === 'active' 
+                    ? `(${visibleActiveColumns.size}/${Object.keys(ACTIVE_COLUMN_IDS).length})`
+                    : `(${visibleSoldColumns.size}/${Object.keys(SOLD_COLUMN_IDS).length})`
+                  }
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="px-2 py-1.5 text-sm font-semibold">
+                Toggle columns
+              </div>
+              {activeTab === 'active' ? (
+                Object.entries(ACTIVE_COLUMN_IDS).map(([id, label]) => (
+                  <DropdownMenuItem
+                    key={id}
+                    className="flex items-center space-x-2"
+                    onSelect={(e) => {
+                      e.preventDefault(); // Prevent dropdown from closing
+                    }}
+                  >
+                    <Checkbox
+                      id={id}
+                      checked={visibleActiveColumns.has(id as ActiveColumnId)}
+                      onCheckedChange={(checked) => {
+                        handleActiveColumnVisibilityChange(id as ActiveColumnId, checked as boolean);
+                      }}
+                    />
+                    <label
+                      htmlFor={id}
+                      className="flex-1 cursor-pointer select-none text-sm"
+                    >
+                      {label}
+                    </label>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                Object.entries(SOLD_COLUMN_IDS).map(([id, label]) => (
+                  <DropdownMenuItem
+                    key={id}
+                    className="flex items-center space-x-2"
+                    onSelect={(e) => {
+                      e.preventDefault(); // Prevent dropdown from closing
+                    }}
+                  >
+                    <Checkbox
+                      id={id}
+                      checked={visibleSoldColumns.has(id as SoldColumnId)}
+                      onCheckedChange={(checked) => {
+                        handleSoldColumnVisibilityChange(id as SoldColumnId, checked as boolean);
+                      }}
+                    />
+                    <label
+                      htmlFor={id}
+                      className="flex-1 cursor-pointer select-none text-sm"
+                    >
+                      {label}
+                    </label>
+                  </DropdownMenuItem>
+                ))
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
+            <Plus className="w-4 h-4" />
+            Create New Bale
+          </Button>
+        </div>
       </div>
 
       {/* Search Bar, Tabs and Statistics Layout */}
@@ -908,103 +1084,131 @@ function BaleManagement() {
                   <Table className="min-w-[900px] select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('baleNumber')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Bale Number
-                        {getSortIcon('baleNumber')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('contents')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Contents
-                        {getSortIcon('contents')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('weight')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Weight (Kg)
-                        {getSortIcon('weight')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('status')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Status
-                        {getSortIcon('status')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('location')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Location
-                        {getSortIcon('location')}
-                      </div>
-                    </TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Photos</TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('createdDate')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Created Date
-                        {getSortIcon('createdDate')}
-                      </div>
-                    </TableHead>
+                    {visibleActiveColumns.has('baleNumber') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('baleNumber')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Bale Number
+                          {getSortIcon('baleNumber')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleActiveColumns.has('contents') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('contents')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Contents
+                          {getSortIcon('contents')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleActiveColumns.has('weight') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('weight')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Weight (Kg)
+                          {getSortIcon('weight')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleActiveColumns.has('status') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Status
+                          {getSortIcon('status')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleActiveColumns.has('location') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('location')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Location
+                          {getSortIcon('location')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleActiveColumns.has('notes') && <TableHead>Notes</TableHead>}
+                    {visibleActiveColumns.has('photos') && <TableHead>Photos</TableHead>}
+                    {visibleActiveColumns.has('createdDate') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('createdDate')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Created Date
+                          {getSortIcon('createdDate')}
+                        </div>
+                      </TableHead>
+                    )}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="select-none">
                   {getFilteredAndSortedBales('active').map((bale) => (
                     <TableRow key={bale.id} className="select-none">
-                      <TableCell className="font-medium">{bale.baleNumber}</TableCell>
-                      <TableCell>{getQualityBadge(bale.contents)}</TableCell>
-                      <TableCell>{bale.weight} Kg</TableCell>
-                      <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
-                      <TableCell>
-                        <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
-                          {getBaleLocation(bale)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <NotesHoverCard 
-                          bale={bale}
-                          noteValue={hoverCardNotes[bale.id] || ''}
-                          onNoteChange={(value) => setHoverCardNotes(prev => ({
-                            ...prev,
-                            [bale.id]: value
-                          }))}
-                          onAddNote={() => handleAddNoteToTimeline(bale.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <PhotosPreview 
-                          bale={bale}
-                          onAddPhotos={async (photoFiles) => {
-                            try {
-                              await addPhotos(bale.id, photoFiles);
-                            } catch (error) {
-                              console.error('Failed to add photos:', error);
-                            }
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {safeFormatDate(bale.createdDate)}
-                      </TableCell>
+                      {visibleActiveColumns.has('baleNumber') && (
+                        <TableCell className="font-medium">{bale.baleNumber}</TableCell>
+                      )}
+                      {visibleActiveColumns.has('contents') && (
+                        <TableCell>{getQualityBadge(bale.contents)}</TableCell>
+                      )}
+                      {visibleActiveColumns.has('weight') && (
+                        <TableCell>{bale.weight} Kg</TableCell>
+                      )}
+                      {visibleActiveColumns.has('status') && (
+                        <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
+                      )}
+                      {visibleActiveColumns.has('location') && (
+                        <TableCell>
+                          <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
+                            {getBaleLocation(bale)}
+                          </span>
+                        </TableCell>
+                      )}
+                      {visibleActiveColumns.has('notes') && (
+                        <TableCell>
+                          <NotesHoverCard 
+                            bale={bale}
+                            noteValue={hoverCardNotes[bale.id] || ''}
+                            onNoteChange={(value) => setHoverCardNotes(prev => ({
+                              ...prev,
+                              [bale.id]: value
+                            }))}
+                            onAddNote={() => handleAddNoteToTimeline(bale.id)}
+                          />
+                        </TableCell>
+                      )}
+                      {visibleActiveColumns.has('photos') && (
+                        <TableCell>
+                          <PhotosPreview 
+                            bale={bale}
+                            onAddPhotos={async (photoFiles) => {
+                              try {
+                                await addPhotos(bale.id, photoFiles);
+                              } catch (error) {
+                                console.error('Failed to add photos:', error);
+                              }
+                            }}
+                          />
+                        </TableCell>
+                      )}
+                      {visibleActiveColumns.has('createdDate') && (
+                        <TableCell>
+                          {safeFormatDate(bale.createdDate)}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right">
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
@@ -1056,123 +1260,159 @@ function BaleManagement() {
                   <Table className="min-w-[900px] select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('baleNumber')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Bale Number
-                        {getSortIcon('baleNumber')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('contents')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Contents
-                        {getSortIcon('contents')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('weight')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Weight (Kg)
-                        {getSortIcon('weight')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('location')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Location
-                        {getSortIcon('location')}
-                      </div>
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('salePrice')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Sale Price (USD)
-                        {getSortIcon('salePrice')}
-                      </div>
-                    </TableHead>
-                    <TableHead>
-                      Price/Kg
-                    </TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('paymentMethod')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Payment Method
-                        {getSortIcon('paymentMethod')}
-                      </div>
-                    </TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead>Photos</TableHead>
-                    <TableHead 
-                      className="cursor-pointer select-none"
-                      onClick={() => handleSort('soldDate')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Sold Date
-                        {getSortIcon('soldDate')}
-                      </div>
-                    </TableHead>
+                    {visibleSoldColumns.has('baleNumber') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('baleNumber')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Bale Number
+                          {getSortIcon('baleNumber')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('contents') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('contents')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Contents
+                          {getSortIcon('contents')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('weight') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('weight')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Weight (Kg)
+                          {getSortIcon('weight')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('destination') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('location')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Destination
+                          {getSortIcon('location')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('salePrice') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('salePrice')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Sale Price (USD)
+                          {getSortIcon('salePrice')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('salePrice') && visibleSoldColumns.has('weight') && (
+                      <TableHead>
+                        Price/Kg
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('paymentMethod') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('paymentMethod')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Payment Method
+                          {getSortIcon('paymentMethod')}
+                        </div>
+                      </TableHead>
+                    )}
+                    {visibleSoldColumns.has('notes') && <TableHead>Notes</TableHead>}
+                    {visibleSoldColumns.has('photos') && <TableHead>Photos</TableHead>}
+                    {visibleSoldColumns.has('soldDate') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('soldDate')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Sold Date
+                          {getSortIcon('soldDate')}
+                        </div>
+                      </TableHead>
+                    )}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="select-none">
                   {getFilteredAndSortedBales('sold').map((bale) => (
                     <TableRow key={bale.id} className="select-none">
-                      <TableCell className="font-medium">{bale.baleNumber}</TableCell>
-                      <TableCell>{getQualityBadge(bale.contents)}</TableCell>
-                      <TableCell>{bale.weight} Kg</TableCell>
-                      <TableCell>
-                        <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
-                          {getBaleLocation(bale)}
-                        </span>
-                      </TableCell>
-                      <TableCell>${bale.salePrice ? formatNumber(bale.salePrice) : '0.00'}</TableCell>
-                      <TableCell>
-                        ${bale.salePrice && bale.weight ? formatNumber(bale.salePrice / bale.weight) : '0.00'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-                          {bale.paymentMethod}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <NotesHoverCard 
-                          bale={bale}
-                          noteValue={hoverCardNotes[bale.id] || ''}
-                          onNoteChange={(value) => setHoverCardNotes(prev => ({
-                            ...prev,
-                            [bale.id]: value
-                          }))}
-                          onAddNote={() => handleAddNoteToTimeline(bale.id)}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <PhotosPreview 
-                          bale={bale}
-                          onAddPhotos={async (photoFiles) => {
-                            try {
-                              await addPhotos(bale.id, photoFiles);
-                            } catch (error) {
-                              console.error('Failed to add photos:', error);
-                            }
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {safeFormatDate(bale.soldDate)}
-                      </TableCell>
+                      {visibleSoldColumns.has('baleNumber') && (
+                        <TableCell className="font-medium">{bale.baleNumber}</TableCell>
+                      )}
+                      {visibleSoldColumns.has('contents') && (
+                        <TableCell>{getQualityBadge(bale.contents)}</TableCell>
+                      )}
+                      {visibleSoldColumns.has('weight') && (
+                        <TableCell>{bale.weight} Kg</TableCell>
+                      )}
+                      {visibleSoldColumns.has('destination') && (
+                        <TableCell>
+                          <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
+                            {getBaleLocation(bale)}
+                          </span>
+                        </TableCell>
+                      )}
+                      {visibleSoldColumns.has('salePrice') && (
+                        <TableCell>${bale.salePrice ? formatNumber(bale.salePrice) : '0.00'}</TableCell>
+                      )}
+                      {visibleSoldColumns.has('salePrice') && visibleSoldColumns.has('weight') && (
+                        <TableCell>
+                          ${bale.salePrice && bale.weight ? formatNumber(bale.salePrice / bale.weight) : '0.00'}
+                        </TableCell>
+                      )}
+                      {visibleSoldColumns.has('paymentMethod') && (
+                        <TableCell>
+                          <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                            {bale.paymentMethod}
+                          </Badge>
+                        </TableCell>
+                      )}
+                      {visibleSoldColumns.has('notes') && (
+                        <TableCell>
+                          <NotesHoverCard 
+                            bale={bale}
+                            noteValue={hoverCardNotes[bale.id] || ''}
+                            onNoteChange={(value) => setHoverCardNotes(prev => ({
+                              ...prev,
+                              [bale.id]: value
+                            }))}
+                            onAddNote={() => handleAddNoteToTimeline(bale.id)}
+                          />
+                        </TableCell>
+                      )}
+                      {visibleSoldColumns.has('photos') && (
+                        <TableCell>
+                          <PhotosPreview 
+                            bale={bale}
+                            onAddPhotos={async (photoFiles) => {
+                              try {
+                                await addPhotos(bale.id, photoFiles);
+                              } catch (error) {
+                                console.error('Failed to add photos:', error);
+                              }
+                            }}
+                          />
+                        </TableCell>
+                      )}
+                      {visibleSoldColumns.has('soldDate') && (
+                        <TableCell>
+                          {safeFormatDate(bale.soldDate)}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right">
                         <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>

@@ -82,11 +82,27 @@ import {
   File,
   MoreHorizontal,
   Edit,
-  Plus
+  Plus,
+  Settings2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const libraries: ("places")[] = ['places'];
+
+// Column visibility configuration
+const COLUMN_IDS = {
+  organization: 'Organization',
+  contact: 'Contact',
+  phone: 'Phone',
+  location: 'Location',
+  status: 'Status',
+  documents: 'Documents',
+  notes: 'Notes',
+  bins: 'Bins',
+  created: 'Created'
+} as const;
+
+type ColumnId = keyof typeof COLUMN_IDS;
 
 const PartnerApplications = () => {
   const { applications, addApplication, updateApplicationStatus, updateApplication, deleteApplication, addNoteToTimeline, assignBinToPartner, assignMultipleBinsToPartner, removeBinFromPartner, addDocuments, deleteDocument } = usePartnerApplications();
@@ -98,6 +114,36 @@ const PartnerApplications = () => {
   const [reviewNotes, setReviewNotes] = useState('');
   const [newStatus, setNewStatus] = useState<'pending' | 'approved' | 'rejected' | 'archived'>('approved');
   const [hoverCardNotes, setHoverCardNotes] = useState<Record<string, string>>({});
+  
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
+    const savedColumns = localStorage.getItem('partnersTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        return new Set(parsed as ColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(COLUMN_IDS) as ColumnId[]);
+  });
+  
+  // Save column visibility preferences
+  const handleColumnVisibilityChange = (columnId: ColumnId, visible: boolean) => {
+    setVisibleColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('partnersTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isAssignBinsDialogOpen, setIsAssignBinsDialogOpen] = useState(false);
@@ -399,10 +445,54 @@ const PartnerApplications = () => {
     <div className="pt-10 pb-20 w-full">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Partners</h1>
-        <Button onClick={() => setIsAddPartnerDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Partner
-        </Button>
+        <div className="flex gap-2">
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
+              >
+                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
+                Columns
+                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
+              {Object.entries(COLUMN_IDS).map(([id, label]) => (
+                <DropdownMenuItem
+                  key={id}
+                  className="flex items-center space-x-2"
+                  onSelect={(e) => {
+                    e.preventDefault(); // Prevent dropdown from closing
+                  }}
+                >
+                  <Checkbox
+                    id={id}
+                    checked={visibleColumns.has(id as ColumnId)}
+                    onCheckedChange={(checked) => {
+                      handleColumnVisibilityChange(id as ColumnId, checked as boolean);
+                    }}
+                  />
+                  <label
+                    htmlFor={id}
+                    className="flex-1 cursor-pointer select-none text-sm"
+                  >
+                    {label}
+                  </label>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button onClick={() => setIsAddPartnerDialogOpen(true)} variant="outline">
+            <Plus className="w-4 h-4" />
+            Add Partner
+          </Button>
+        </div>
       </div>
 
       {/* Search and Tabs */}
@@ -529,63 +619,81 @@ const PartnerApplications = () => {
               <Table>
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('organizationName')}
-                >
-                  <div className="flex items-center gap-1">
-                    Organization
-                    {getSortIcon('organizationName')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('contactPerson')}
-                >
-                  <div className="flex items-center gap-1">
-                    Contact
-                    {getSortIcon('contactPerson')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('phone')}
-                >
-                  <div className="flex items-center gap-1">
-                    Phone
-                    {getSortIcon('phone')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('location')}
-                >
-                  <div className="flex items-center gap-1">
-                    Location
-                    {getSortIcon('location')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    {getSortIcon('status')}
-                  </div>
-                </TableHead>
-                <TableHead className="w-32">Documents</TableHead>
-                <TableHead className="w-28">Notes</TableHead>
-                <TableHead className="w-36">Bins</TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('submittedAt')}
-                >
-                  <div className="flex items-center gap-1">
-                    Created
-                    {getSortIcon('submittedAt')}
-                  </div>
-                </TableHead>
+                {visibleColumns.has('organization') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('organizationName')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Organization
+                      {getSortIcon('organizationName')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('contact') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('contactPerson')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Contact
+                      {getSortIcon('contactPerson')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('phone') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('phone')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Phone
+                      {getSortIcon('phone')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('location') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('location')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Location
+                      {getSortIcon('location')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('status') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('documents') && (
+                  <TableHead className="w-32">Documents</TableHead>
+                )}
+                {visibleColumns.has('notes') && (
+                  <TableHead className="w-28">Notes</TableHead>
+                )}
+                {visibleColumns.has('bins') && (
+                  <TableHead className="w-36">Bins</TableHead>
+                )}
+                {visibleColumns.has('created') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('submittedAt')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Created
+                      {getSortIcon('submittedAt')}
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="text-right w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -599,33 +707,40 @@ const PartnerApplications = () => {
               ) : (
                 sortedAndFilteredApplications.map((app) => (
                   <TableRow key={app.id}>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{app.organizationName}</div>
-                        {app.website && (
-                          <div className="text-sm text-muted-foreground">
-                            <a 
-                              href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-primary underline"
-                            >
-                              {app.website}
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{app.contactPerson}</div>
-                        <div className="text-sm text-muted-foreground">{app.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{app.phone || '-'}</span>
-                    </TableCell>
-                    <TableCell>
+                    {visibleColumns.has('organization') && (
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{app.organizationName}</div>
+                          {app.website && (
+                            <div className="text-sm text-muted-foreground">
+                              <a 
+                                href={app.website.startsWith('http') ? app.website : `https://${app.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-primary underline"
+                              >
+                                {app.website}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('contact') && (
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{app.contactPerson}</div>
+                          <div className="text-sm text-muted-foreground">{app.email}</div>
+                        </div>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('phone') && (
+                      <TableCell>
+                        <span className="text-sm">{app.phone || '-'}</span>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('location') && (
+                      <TableCell>
                       <a 
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${app.address.street}, ${app.address.city}, ${app.address.state} ${app.address.zipCode}`)}`}
                         target="_blank"
@@ -636,6 +751,8 @@ const PartnerApplications = () => {
                         <div className="text-muted-foreground">{app.address.city}, {app.address.state} {app.address.zipCode}</div>
                       </a>
                     </TableCell>
+                    )}
+                    {visibleColumns.has('status') && (
                     <TableCell>
                       <Select 
                         value={app.status} 
@@ -683,6 +800,8 @@ const PartnerApplications = () => {
                         </SelectContent>
                       </Select>
                     </TableCell>
+                    )}
+                    {visibleColumns.has('documents') && (
                     <TableCell>
                       <Button
                         variant="ghost"
@@ -703,6 +822,8 @@ const PartnerApplications = () => {
                         </span>
                       </Button>
                     </TableCell>
+                    )}
+                    {visibleColumns.has('notes') && (
                     <TableCell>
                       <PartnerApplicationNotesHoverCard 
                         application={app}
@@ -711,6 +832,8 @@ const PartnerApplications = () => {
                         onAddNote={() => handleAddNoteToTimeline(app.id)}
                       />
                     </TableCell>
+                    )}
+                    {visibleColumns.has('bins') && (
                     <TableCell>
                       {(app.status === 'approved' || app.status === 'archived') ? (
                         <Button
@@ -736,9 +859,12 @@ const PartnerApplications = () => {
                         <span className="text-gray-400 text-sm">-</span>
                       )}
                     </TableCell>
+                    )}
+                    {visibleColumns.has('created') && (
                     <TableCell>
                       {format(new Date(app.submittedAt), 'MMM d, yyyy')}
                     </TableCell>
+                    )}
                     <TableCell className="text-right">
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>

@@ -72,12 +72,26 @@ import {
   ArrowUpDown, 
   Search,
   Settings,
+  Settings2,
   AlertCircle,
   CheckCircle,
   XCircle
 } from 'lucide-react';
 
 const libraries: ("places")[] = ['places'];
+
+// Column visibility configuration
+const COLUMN_IDS = {
+  name: 'Name',
+  email: 'Email',
+  phone: 'Phone',
+  address: 'Address',
+  preferredDate: 'Preferred Date',
+  status: 'Status',
+  assignedDriver: 'Assigned Driver'
+} as const;
+
+type ColumnId = keyof typeof COLUMN_IDS;
 
 function PickupRequests() {
   const [isLoading] = useState(false);
@@ -91,6 +105,36 @@ function PickupRequests() {
   const currentDriverName = isDriverRole ? contextDrivers.find(d => d.id === driverId)?.name : null;
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
+    const savedColumns = localStorage.getItem('pickupRequestsTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        return new Set(parsed as ColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(COLUMN_IDS) as ColumnId[]);
+  });
+  
+  // Save column visibility preferences
+  const handleColumnVisibilityChange = (columnId: ColumnId, visible: boolean) => {
+    setVisibleColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('pickupRequestsTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
   const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
   const [bulkDriverName, setBulkDriverName] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'overdue' | 'picked-up' | 'cancelled'>('pending');
@@ -524,7 +568,7 @@ function PickupRequests() {
                 variant="outline"
                 size="sm"
               >
-                <Settings className="w-4 h-4 mr-2" />
+                <Settings className="w-4 h-4" />
                 Default Driver {defaultDriver && `(${defaultDriver})`}
               </Button>
             </>
@@ -535,7 +579,7 @@ function PickupRequests() {
                 onClick={() => setIsBulkAssignDialogOpen(true)}
                 variant="outline"
               >
-                <Users className="w-4 h-4 mr-2" />
+                <Users className="w-4 h-4" />
                 Assign Driver ({selectedRequests.size})
               </Button>
               <Button 
@@ -550,6 +594,48 @@ function PickupRequests() {
               </Button>
             </>
           )}
+          
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
+              >
+                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
+                Columns
+                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
+              {Object.entries(COLUMN_IDS).map(([id, label]) => (
+                <DropdownMenuItem
+                  key={id}
+                  className="flex items-center space-x-2"
+                  onSelect={(e) => {
+                    e.preventDefault(); // Prevent dropdown from closing
+                  }}
+                >
+                  <Checkbox
+                    id={id}
+                    checked={visibleColumns.has(id as ColumnId)}
+                    onCheckedChange={(checked) => {
+                      handleColumnVisibilityChange(id as ColumnId, checked as boolean);
+                    }}
+                  />
+                  <label
+                    htmlFor={id}
+                    className="flex-1 cursor-pointer select-none text-sm"
+                  >
+                    {label}
+                  </label>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -690,60 +776,72 @@ function PickupRequests() {
                     />
                   </TableHead>
                 )}
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center gap-1">
-                    Name
-                    {getSortIcon('name')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('email')}
-                >
-                  <div className="flex items-center gap-1">
-                    Contact
-                    {getSortIcon('email')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('address')}
-                >
-                  <div className="flex items-center gap-1">
-                    Address
-                    {getSortIcon('address')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('date')}
-                >
-                  <div className="flex items-center gap-1">
-                    Pickup Date
-                    {getSortIcon('date')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('status')}
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    {getSortIcon('status')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('assignedDriver')}
-                >
-                  <div className="flex items-center gap-1">
-                    Driver
-                    {getSortIcon('assignedDriver')}
-                  </div>
-                </TableHead>
+                {visibleColumns.has('name') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Name
+                      {getSortIcon('name')}
+                    </div>
+                  </TableHead>
+                )}
+                {(visibleColumns.has('email') || visibleColumns.has('phone')) && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('email')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Contact
+                      {getSortIcon('email')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('address') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('address')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Address
+                      {getSortIcon('address')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('preferredDate') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('date')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Pickup Date
+                      {getSortIcon('date')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('status') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('assignedDriver') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('assignedDriver')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Driver
+                      {getSortIcon('assignedDriver')}
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead 
                   className="cursor-pointer select-none"
                   onClick={() => handleSort('submittedAt')}
@@ -759,7 +857,7 @@ function PickupRequests() {
             <TableBody>
               {getFilteredAndSortedRequests().length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={visibleColumns.size + (!isDriverRole ? 3 : 1)} className="text-center py-8 text-gray-500">
                     No pickup requests found. Submit a request from the frontend to see it here.
                   </TableCell>
                 </TableRow>
@@ -797,19 +895,30 @@ function PickupRequests() {
                       />
                     </TableCell>
                   )}
-                  <TableCell className="font-medium">{request.name}</TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="text-sm">{request.email}</div>
-                      <div className="text-xs text-gray-500">{request.phone}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="max-w-xs">
-                    <div className="truncate" title={request.address}>
-                      {request.address}
-                    </div>
-                  </TableCell>
-                  <TableCell>
+                  {visibleColumns.has('name') && (
+                    <TableCell className="font-medium">{request.name}</TableCell>
+                  )}
+                  {(visibleColumns.has('email') || visibleColumns.has('phone')) && (
+                    <TableCell>
+                      <div className="space-y-1">
+                        {visibleColumns.has('email') && (
+                          <div className="text-sm">{request.email}</div>
+                        )}
+                        {visibleColumns.has('phone') && (
+                          <div className="text-xs text-gray-500">{request.phone}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('address') && (
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={request.address}>
+                        {request.address}
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('preferredDate') && (
+                    <TableCell>
                     <Popover 
                       open={openDatePicker === request.id} 
                       onOpenChange={(open) => setOpenDatePicker(open ? request.id : null)}
@@ -841,8 +950,10 @@ function PickupRequests() {
                       </PopoverContent>
                     </Popover>
                   </TableCell>
-                  <TableCell>
-                    <Select 
+                  )}
+                  {visibleColumns.has('status') && (
+                    <TableCell>
+                      <Select 
                       value={request.status}
                       onValueChange={(value) => {
                         updatePickupRequest(request.id, { 
@@ -883,8 +994,10 @@ function PickupRequests() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    {isDriverRole ? (
+                  )}
+                  {visibleColumns.has('assignedDriver') && (
+                    <TableCell>
+                      {isDriverRole ? (
                       <span className="text-sm font-medium">{request.assignedDriver || 'Unassigned'}</span>
                     ) : (
                       <Select 
@@ -911,6 +1024,7 @@ function PickupRequests() {
                       </Select>
                     )}
                   </TableCell>
+                  )}
                   <TableCell>{formatDate(request.submittedAt)}</TableCell>
                   {!isDriverRole && (
                     <TableCell className="text-right">

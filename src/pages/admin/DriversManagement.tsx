@@ -46,7 +46,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, MoreHorizontal, Edit, Trash, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin, Key, Copy } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash, Phone, Mail, Truck, ChevronUp, ChevronDown, ArrowUpDown, Package, MapPin, Key, Copy, Settings2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
 interface Pickup {
@@ -60,6 +61,19 @@ interface Pickup {
   estimatedWeight: number;
   actualWeight?: number;
 }
+
+// Column visibility configuration
+const COLUMN_IDS = {
+  name: 'Name',
+  email: 'Email',
+  phone: 'Phone',
+  loginStatus: 'Login Status',
+  password: 'Password',
+  assignedBins: 'Assigned Bins',
+  status: 'Status'
+} as const;
+
+type ColumnId = keyof typeof COLUMN_IDS;
 
 function DriversManagement() {
   const [isLoading] = useState(false);
@@ -161,6 +175,38 @@ function DriversManagement() {
   });
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
+    const savedColumns = localStorage.getItem('driversTableColumns');
+    if (savedColumns) {
+      try {
+        const parsed = JSON.parse(savedColumns);
+        // Filter out any invalid column IDs that don't exist in current COLUMN_IDS
+        const validColumns = parsed.filter((col: string) => col in COLUMN_IDS);
+        return new Set(validColumns as ColumnId[]);
+      } catch {
+        // If parsing fails, return default
+      }
+    }
+    // Default visible columns
+    return new Set(Object.keys(COLUMN_IDS) as ColumnId[]);
+  });
+  
+  // Save column visibility preferences
+  const handleColumnVisibilityChange = (columnId: ColumnId, visible: boolean) => {
+    setVisibleColumns(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(columnId);
+      } else {
+        newSet.delete(columnId);
+      }
+      // Save to localStorage
+      localStorage.setItem('driversTableColumns', JSON.stringify(Array.from(newSet)));
+      return newSet;
+    });
+  };
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
 
   const handleSort = (column: string) => {
@@ -403,10 +449,54 @@ function DriversManagement() {
     <div className="pt-10 pb-20 w-full min-w-full">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Drivers</h1>
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add New Driver
-        </Button>
+        <div className="flex gap-2">
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
+              >
+                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
+                Columns
+                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
+              {Object.entries(COLUMN_IDS).map(([id, label]) => (
+                <DropdownMenuItem
+                  key={id}
+                  className="flex items-center space-x-2"
+                  onSelect={(e) => {
+                    e.preventDefault(); // Prevent dropdown from closing
+                  }}
+                >
+                  <Checkbox
+                    id={id}
+                    checked={visibleColumns.has(id as ColumnId)}
+                    onCheckedChange={(checked) => {
+                      handleColumnVisibilityChange(id as ColumnId, checked as boolean);
+                    }}
+                  />
+                  <label
+                    htmlFor={id}
+                    className="flex-1 cursor-pointer select-none text-sm"
+                  >
+                    {label}
+                  </label>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
+            <Plus className="w-4 h-4" />
+            Add New Driver
+          </Button>
+        </div>
       </div>
 
       {/* Drivers Table */}
@@ -424,40 +514,54 @@ function DriversManagement() {
               >
             <TableHeader>
               <TableRow style={{width: '100%'}} className="hover:bg-transparent">
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('name')}
-                  style={{width: '20%'}}
-                >
-                  <div className="flex items-center gap-1">
-                    Name
-                    {getSortIcon('name')}
-                  </div>
-                </TableHead>
-                <TableHead style={{width: '20%'}}>Email</TableHead>
-                <TableHead style={{width: '15%'}}>Phone</TableHead>
-                <TableHead style={{width: '12%'}}>Login Status</TableHead>
-                <TableHead style={{width: '15%'}}>Password</TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('assignedBins')}
-                  style={{width: '18%'}}
-                >
-                  <div className="flex items-center gap-1">
-                    Assigned Bins
-                    {getSortIcon('assignedBins')}
-                  </div>
-                </TableHead>
-                <TableHead 
-                  className="cursor-pointer select-none"
-                  onClick={() => handleSort('status')}
-                  style={{width: '10%'}}
-                >
-                  <div className="flex items-center gap-1">
-                    Status
-                    {getSortIcon('status')}
-                  </div>
-                </TableHead>
+                {visibleColumns.has('name') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('name')}
+                    style={{width: '20%'}}
+                  >
+                    <div className="flex items-center gap-1">
+                      Name
+                      {getSortIcon('name')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('email') && (
+                  <TableHead style={{width: '20%'}}>Email</TableHead>
+                )}
+                {visibleColumns.has('phone') && (
+                  <TableHead style={{width: '15%'}}>Phone</TableHead>
+                )}
+                {visibleColumns.has('loginStatus') && (
+                  <TableHead style={{width: '12%'}}>Login Status</TableHead>
+                )}
+                {visibleColumns.has('password') && (
+                  <TableHead style={{width: '15%'}}>Password</TableHead>
+                )}
+                {visibleColumns.has('assignedBins') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('assignedBins')}
+                    style={{width: '18%'}}
+                  >
+                    <div className="flex items-center gap-1">
+                      Assigned Bins
+                      {getSortIcon('assignedBins')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('status') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('status')}
+                    style={{width: '10%'}}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {getSortIcon('status')}
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="text-right" style={{width: '5%'}}>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -482,98 +586,112 @@ function DriversManagement() {
                       });
                     }}
                   >
-                    <TableCell className="font-medium" style={{width: '20%'}}>
-                      <div className="flex items-center gap-2">
-                        {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-gray-400" />
-                        )}
-                        {driver.name}
-                      </div>
-                    </TableCell>
-                    <TableCell style={{width: '20%'}}>
-                      <div className="flex items-center gap-2 text-sm">
-                        {driver.email && (
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              copyToClipboard(driver.email, 'Email');
-                            }}
-                            title="Copy email"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          {driver.email || <span className="text-red-500 italic">No email</span>}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell style={{width: '15%'}}>
-                      <div className="text-sm">
-                        {driver.phone}
-                      </div>
-                    </TableCell>
-                    <TableCell style={{width: '12%'}}>
-                      {driver.hasCredentials ? (
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                          <Key className="w-3 h-3 mr-1" />
-                          Active
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700 border-gray-200">
-                          No Login
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell style={{width: '15%'}}>
-                      {driver.hasCredentials ? (
+                    {visibleColumns.has('name') && (
+                      <TableCell className="font-medium" style={{width: '20%'}}>
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6 flex-shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Copy the password if we have it stored temporarily
-                              const password = driverPasswords[driver.id];
-                              if (password) {
-                                copyToClipboard(password, 'Password');
-                              } else {
-                                copyToClipboard('Password not available - use Change Password to generate a new one', 'Notice');
-                              }
-                            }}
-                            title="Copy current password info"
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                          <span className="text-xs text-gray-500 font-mono">••••••••••••</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 italic">No password set</span>
-                      )}
-                    </TableCell>
-                    <TableCell style={{width: '18%'}}>
-                      {driver.assignedBins.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 items-center">
-                          {driver.assignedBins.slice(0, 2).map(bin => (
-                            <Badge key={bin} variant="outline">{bin}</Badge>
-                          ))}
-                          {driver.assignedBins.length > 2 && (
-                            <span className="text-sm text-gray-600 font-medium">
-                              +{driver.assignedBins.length - 2}
-                            </span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
                           )}
+                          {driver.name}
                         </div>
-                      ) : (
-                        <span className="text-gray-400">None assigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell style={{width: '10%'}}>{getStatusBadge(driver.status)}</TableCell>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('email') && (
+                      <TableCell style={{width: '20%'}}>
+                        <div className="flex items-center gap-2 text-sm">
+                          {driver.email && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(driver.email, 'Email');
+                              }}
+                              title="Copy email"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            {driver.email || <span className="text-red-500 italic">No email</span>}
+                          </div>
+                        </div>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('phone') && (
+                      <TableCell style={{width: '15%'}}>
+                        <div className="text-sm">
+                          {driver.phone}
+                        </div>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('loginStatus') && (
+                      <TableCell style={{width: '12%'}}>
+                        {driver.hasCredentials ? (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            <Key className="w-3 h-3 mr-1" />
+                            Active
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700 border-gray-200">
+                            No Login
+                          </Badge>
+                        )}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('password') && (
+                      <TableCell style={{width: '15%'}}>
+                        {driver.hasCredentials ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Copy the password if we have it stored temporarily
+                                const password = driverPasswords[driver.id];
+                                if (password) {
+                                  copyToClipboard(password, 'Password');
+                                } else {
+                                  copyToClipboard('Password not available - use Change Password to generate a new one', 'Notice');
+                                }
+                              }}
+                              title="Copy current password info"
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                            <span className="text-xs text-gray-500 font-mono">••••••••••••</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400 italic">No password set</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('assignedBins') && (
+                      <TableCell style={{width: '18%'}}>
+                        {driver.assignedBins.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 items-center">
+                            {driver.assignedBins.slice(0, 2).map(bin => (
+                              <Badge key={bin} variant="outline">{bin}</Badge>
+                            ))}
+                            {driver.assignedBins.length > 2 && (
+                              <span className="text-sm text-gray-600 font-medium">
+                                +{driver.assignedBins.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">None assigned</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('status') && (
+                      <TableCell style={{width: '10%'}}>{getStatusBadge(driver.status)}</TableCell>
+                    )}
                     <TableCell className="text-right" style={{width: '5%'}} onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>

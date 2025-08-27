@@ -231,7 +231,7 @@ const Contact = () => {
                     className="w-full md:w-auto" 
                     disabled={isSubmitting}
                   >
-                    <Send className="w-4 h-4 mr-2" />
+                    <Send className="w-4 h-4" />
                     {isSubmitting ? 'Sending...' : 'Send Message'}
                   </Button>
                 </form>
