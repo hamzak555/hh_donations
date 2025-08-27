@@ -7,6 +7,7 @@ export interface NoteEntry {
   id: string;
   text: string;
   timestamp: string;
+  author?: string; // User who created the note
 }
 
 export interface DocumentEntry {
@@ -409,11 +410,17 @@ const addContainer = async (containerData: Omit<Container, 'id' | 'containerNumb
     const container = containers.find(c => c.id === containerId);
     if (!container) return;
     
+    // Get current user info
+    const userEmail = localStorage.getItem('userEmail');
+    const userFullName = localStorage.getItem('userFullName');
+    const author = userFullName || userEmail || 'Unknown User';
+    
     // Create new note entry
     const newNote: NoteEntry = {
       id: generateUUID(),
       text: noteText,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      author
     };
     
     // Get current notes timeline (parse from notes field or use existing notesTimeline)

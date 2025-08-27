@@ -524,28 +524,24 @@ function Reporting() {
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{binMetrics.total}</div>
                   <p className="text-sm text-gray-600 mt-1">Total Bins</p>
-                  <div className="text-xs text-gray-500 mt-2">{binMetrics.active} active</div>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.total}</div>
                   <p className="text-sm text-gray-600 mt-1">Pickup Requests</p>
-                  <div className="text-xs text-gray-500 mt-2">{pickupMetrics.pickedUp} completed</div>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{driverBinAssignments.length}</div>
                   <p className="text-sm text-gray-600 mt-1">Active Drivers</p>
-                  <div className="text-xs text-gray-500 mt-2">{driverBinAssignments.reduce((sum, d) => sum + d.bins, 0)} bins assigned</div>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{partnerMetrics.approved}</div>
                   <p className="text-sm text-gray-600 mt-1">Active Partners</p>
-                  <div className="text-xs text-gray-500 mt-2">{partnerMetrics.pending} pending</div>
                 </CardContent>
               </Card>
             </div>
@@ -600,6 +596,8 @@ function Reporting() {
                       layout="vertical"
                       margin={{ right: 100 }}
                     >
+                      <YAxis dataKey="status" type="category" hide />
+                      <XAxis type="number" hide />
                       <Bar dataKey="bins" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
@@ -728,6 +726,8 @@ function Reporting() {
                       layout="vertical"
                       margin={{ right: 100 }}
                     >
+                      <YAxis dataKey="driver" type="category" hide />
+                      <XAxis type="number" hide />
                       <Bar dataKey="pickups" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="pickups" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
@@ -775,6 +775,8 @@ function Reporting() {
                       layout="vertical"
                       margin={{ right: 100 }}
                     >
+                      <YAxis dataKey="status" type="category" hide />
+                      <XAxis type="number" hide />
                       <Bar dataKey="applications" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="applications" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />

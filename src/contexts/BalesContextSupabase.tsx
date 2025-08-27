@@ -12,6 +12,7 @@ export interface NoteEntry {
   id: string;
   text: string;
   timestamp: string;
+  author?: string; // User who created the note
 }
 
 export interface Bale {
@@ -290,10 +291,16 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
   const addNoteToTimeline = async (baleId: string, noteText: string) => {
     if (!noteText.trim()) return;
     
+    // Get current user info
+    const userEmail = localStorage.getItem('userEmail');
+    const userFullName = localStorage.getItem('userFullName');
+    const author = userFullName || userEmail || 'Unknown User';
+    
     const newNote: NoteEntry = {
       id: generateUUID(),
       text: noteText,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      author
     };
     
     // Get current bale data before updating state
