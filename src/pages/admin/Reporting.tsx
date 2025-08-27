@@ -268,8 +268,8 @@ function Reporting() {
     
     // Unsold by status
     const warehouseBales = unsoldBales.filter(b => b.status === 'Warehouse');
-    const containerBales = unsoldBales.filter(b => b.status === 'Container');
-    const shippedBales = unsoldBales.filter(b => b.status === 'Shipped');
+    // Combine Container and Shipped status into single "Shipped" category
+    const shippedBales = unsoldBales.filter(b => b.status === 'Container' || b.status === 'Shipped');
     
     const totalSales = soldBales.reduce((sum, bale) => sum + (bale.salePrice || 0), 0);
     const totalWeight = soldBales.reduce((sum, bale) => sum + (bale.weight || 0), 0);
@@ -322,7 +322,6 @@ function Reporting() {
       count: soldBales.length,
       unsoldCount: unsoldBales.length,
       warehouseCount: warehouseBales.length,
-      containerCount: containerBales.length,
       shippedCount: shippedBales.length,
       totalSales,
       totalWeight,
@@ -450,9 +449,9 @@ function Reporting() {
   } satisfies ChartConfig;
 
   return (
-    <div className="h-screen flex flex-col pt-10 pb-6 bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50">
       <div className="flex-1 overflow-y-auto">
-      <div className="px-4 sm:px-6 lg:px-8 mb-6 pb-8">
+      <div className="px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Analytics & Reporting</h1>
@@ -648,6 +647,8 @@ function Reporting() {
                       layout="vertical"
                       margin={{ right: 100 }}
                     >
+                      <YAxis dataKey="driver" type="category" hide />
+                      <XAxis type="number" hide />
                       <Bar dataKey="bins" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
@@ -810,28 +811,24 @@ function Reporting() {
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>${Math.round(salesMetrics.totalSales).toLocaleString()}</div>
                   <p className="text-sm text-gray-600 mt-1">Total Revenue</p>
-                  <div className="text-xs text-gray-500 mt-2">{salesMetrics.count} bales sold</div>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{salesMetrics.unsoldCount}</div>
-                  <p className="text-sm text-gray-600 mt-1">Unsold Inventory</p>
-                  <div className="text-xs text-gray-500 mt-2">{salesMetrics.unsoldWeight.toFixed(0)} kg total</div>
+                  <p className="text-sm text-gray-600 mt-1">Unsold Bales</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.unshippedCount}</div>
                   <p className="text-sm text-gray-600 mt-1">Containers in Warehouse</p>
-                  <div className="text-xs text-gray-500 mt-2">{containerMetrics.unshippedBales} bales ready</div>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
                   <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.shippedCount}</div>
                   <p className="text-sm text-gray-600 mt-1">Containers Shipped</p>
-                  <div className="text-xs text-gray-500 mt-2">{containerMetrics.uniqueDestinations} destinations</div>
                 </CardContent>
               </Card>
             </div>
@@ -1077,10 +1074,6 @@ function Reporting() {
                       <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.warehouseCount}</span>
                     </div>
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                      <span className="text-sm text-gray-700">In Containers</span>
-                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.containerCount}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
                       <span className="text-sm text-gray-700">Shipped</span>
                       <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.shippedCount}</span>
                     </div>
@@ -1107,7 +1100,7 @@ function Reporting() {
               {/* Container Metrics */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Container Operations</CardTitle>
+                  <CardTitle className="text-lg">Containers</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
@@ -1120,19 +1113,12 @@ function Reporting() {
                       <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.unshippedCount}</span>
                     </div>
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                      <span className="text-sm text-gray-700">Destinations</span>
-                      <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.uniqueDestinations}</span>
+                      <span className="text-sm text-gray-700">Avg Bales/Container</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{Math.round(containerMetrics.avgBalesPerContainer)}</span>
                     </div>
-                    <div className="border-t pt-3">
-                      <div className="text-xs font-semibold text-gray-600 mb-2">AVERAGES</div>
-                      <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                        <span className="text-sm text-gray-700">Bales/Container</span>
-                        <span className="font-bold" style={{ color: '#0b503c' }}>{Math.round(containerMetrics.avgBalesPerContainer)}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50 mt-1">
-                        <span className="text-sm text-gray-700">Weight/Container</span>
-                        <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.avgWeightPerContainer.toFixed(0)} kg</span>
-                      </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">Avg Weight/Container</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.avgWeightPerContainer.toFixed(0)} kg</span>
                     </div>
                   </div>
                 </CardContent>

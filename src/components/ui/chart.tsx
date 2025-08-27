@@ -281,6 +281,10 @@ const ChartLegendContent = React.forwardRef<
         id?: string
         color?: string
         dataKey?: string
+        payload?: {
+          fill?: string
+          [key: string]: any
+        }
       }>
       verticalAlign?: "top" | "middle" | "bottom"
       hideIcon?: boolean
