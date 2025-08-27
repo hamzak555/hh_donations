@@ -165,14 +165,18 @@ function Reporting() {
   ): T[] => {
     if (!dateRange?.from || !dateRange?.to) return data;
     
+    // TypeScript needs explicit type narrowing here
+    const rangeStart = dateRange.from;
+    const rangeEnd = dateRange.to;
+    
     return data.filter(item => {
       const itemDate = item[dateField];
       if (!itemDate) return false;
       
       const date = new Date(itemDate);
       return isWithinInterval(date, {
-        start: startOfDay(dateRange.from),
-        end: endOfDay(dateRange.to)
+        start: startOfDay(rangeStart),
+        end: endOfDay(rangeEnd)
       });
     });
   };
