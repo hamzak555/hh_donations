@@ -344,7 +344,7 @@ function Reporting() {
   }, [bales, containers, dateRange]);
 
   const containerMetrics = useMemo(() => {
-    const shippedContainers = containers.filter(c => c.status === 'Shipped' || c.status === 'In Transit' || c.status === 'Delivered');
+    const shippedContainers = containers.filter(c => c.status === 'Shipped');
     
     // Unshipped containers
     const unshippedContainers = containers.filter(c => c.status === 'Warehouse');
@@ -449,13 +449,11 @@ function Reporting() {
   } satisfies ChartConfig;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col pt-10 pb-6 bg-gray-50">
       <div className="flex-1 overflow-y-auto">
-      <div className="px-4 sm:px-6 lg:px-8 py-6">
+      <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Analytics & Reporting</h1>
-          </div>
+          <h1 className="text-3xl font-bold">Analytics & Reporting</h1>
           
           {/* Date Range Selector */}
           <div className="flex items-center gap-2">
