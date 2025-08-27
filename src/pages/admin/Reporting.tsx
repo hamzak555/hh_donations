@@ -596,7 +596,7 @@ function Reporting() {
                     >
                       <YAxis dataKey="status" type="category" hide />
                       <XAxis type="number" hide />
-                      <Bar dataKey="bins" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                      <Bar dataKey="bins" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
                       </Bar>
@@ -645,7 +645,7 @@ function Reporting() {
                     >
                       <YAxis dataKey="driver" type="category" hide />
                       <XAxis type="number" hide />
-                      <Bar dataKey="bins" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                      <Bar dataKey="bins" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
                       </Bar>
@@ -726,7 +726,7 @@ function Reporting() {
                     >
                       <YAxis dataKey="driver" type="category" hide />
                       <XAxis type="number" hide />
-                      <Bar dataKey="pickups" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                      <Bar dataKey="pickups" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="pickups" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
                       </Bar>
@@ -775,7 +775,7 @@ function Reporting() {
                     >
                       <YAxis dataKey="status" type="category" hide />
                       <XAxis type="number" hide />
-                      <Bar dataKey="applications" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                      <Bar dataKey="applications" fill="#0b503c" radius={4} maxBarSize={40}>
                         <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
                         <LabelList dataKey="applications" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
                       </Bar>
@@ -924,7 +924,6 @@ function Reporting() {
                       />
                       <Bar
                         dataKey="revenue"
-                        layout="vertical"
                         fill="#0b503c"
                         radius={4}
                       >
@@ -1019,7 +1018,6 @@ function Reporting() {
                       />
                       <Bar
                         dataKey="amount"
-                        layout="vertical"
                         fill="#0b503c"
                         radius={4}
                         maxBarSize={40}
