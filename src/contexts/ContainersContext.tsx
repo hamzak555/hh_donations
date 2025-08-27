@@ -7,6 +7,7 @@ export interface NoteEntry {
   id: string;
   text: string;
   timestamp: string;
+  author?: string; // User who created the note
 }
 
 export interface DocumentEntry {
@@ -77,7 +78,8 @@ export const ContainersProvider = ({ children }: ContainersProviderProps) => {
           container.notesTimeline = [{
             id: String(Date.now()),
             text: container.notes,
-            timestamp: container.createdDate || new Date().toISOString()
+            timestamp: container.createdDate || new Date().toISOString(),
+            author: 'Legacy Note'
           }];
         }
         return container;
@@ -121,7 +123,8 @@ export const ContainersProvider = ({ children }: ContainersProviderProps) => {
       notesTimeline: containerData.notes ? [{
         id: String(Date.now()),
         text: containerData.notes,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        author: localStorage.getItem('userFullName') || localStorage.getItem('userEmail') || 'Unknown User'
       }] : undefined
     };
     
@@ -174,13 +177,19 @@ export const ContainersProvider = ({ children }: ContainersProviderProps) => {
   const addNoteToTimeline = (containerId: string, noteText: string) => {
     if (!noteText.trim()) return;
     
+    // Get current user info
+    const userEmail = localStorage.getItem('userEmail');
+    const userFullName = localStorage.getItem('userFullName');
+    const author = userFullName || userEmail || 'Unknown User';
+    
     setContainers(prev => 
       prev.map(container => {
         if (container.id === containerId) {
           const newNote: NoteEntry = {
             id: String(Date.now()),
             text: noteText,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            author
           };
           
           const currentTimeline = container.notesTimeline || [];

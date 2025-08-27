@@ -10,6 +10,7 @@ export interface NoteEntry {
   id: string;
   text: string;
   timestamp: string;
+  author?: string; // User who created the note
 }
 
 export interface Bale {
@@ -92,7 +93,8 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
           bale.notesTimeline = [{
             id: String(Date.now()),
             text: bale.notes,
-            timestamp: bale.createdDate || new Date().toISOString()
+            timestamp: bale.createdDate || new Date().toISOString(),
+            author: 'Legacy Note'
           }];
         }
         
@@ -141,7 +143,8 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
       notesTimeline: baleData.notes ? [{
         id: String(Date.now()),
         text: baleData.notes,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        author: localStorage.getItem('userFullName') || localStorage.getItem('userEmail') || 'Unknown User'
       }] : undefined
     };
     
@@ -191,13 +194,19 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
   const addNoteToTimeline = (baleId: string, noteText: string) => {
     if (!noteText.trim()) return;
     
+    // Get current user info
+    const userEmail = localStorage.getItem('userEmail');
+    const userFullName = localStorage.getItem('userFullName');
+    const author = userFullName || userEmail || 'Unknown User';
+    
     setBales(prev => 
       prev.map(bale => {
         if (bale.id === baleId) {
           const newNote: NoteEntry = {
             id: String(Date.now()),
             text: noteText,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            author
           };
           
           const currentTimeline = bale.notesTimeline || [];

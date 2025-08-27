@@ -347,11 +347,16 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
   const addNoteToTimeline = async (id: string, note: string) => {
     if (!note.trim()) return;
     
+    // Get current user info
+    const userEmail = localStorage.getItem('userEmail');
+    const userFullName = localStorage.getItem('userFullName');
+    const author = userFullName || userEmail || 'Unknown User';
+    
     const newNote = {
       id: Date.now().toString(),
       text: note,
       timestamp: new Date().toISOString(),
-      user: 'Admin' // You can get this from auth context if available
+      user: author
     };
 
     setApplications(prev =>

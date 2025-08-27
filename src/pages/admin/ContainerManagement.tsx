@@ -1693,7 +1693,10 @@ function ContainerManagement() {
                           <div key={note.id} className="border-l-2 border-gray-200 pl-4">
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <Clock className="w-3 h-3" />
-                              {format(new Date(note.timestamp), 'MMM dd, yyyy HH:mm')}
+                              <span>
+                                {note.author && <span className="font-medium">{note.author} • </span>}
+                                {format(new Date(note.timestamp), 'MMM dd, yyyy HH:mm')}
+                              </span>
                             </div>
                             <p className="mt-1">{note.text}</p>
                           </div>
@@ -2229,6 +2232,7 @@ const ContainerNotesHoverCard = ({ container, noteValue, onNoteChange, onAddNote
                   <div key={note.id} className="border-l-2 border-gray-200 pl-3 ml-1">
                     <p className="text-sm text-gray-700">{note.text}</p>
                     <p className="text-xs text-gray-500 mt-1">
+                      {note.author && <span className="font-medium">{note.author} • </span>}
                       {format(new Date(note.timestamp), 'MMM dd, yyyy h:mm a')}
                     </p>
                   </div>
