@@ -900,9 +900,11 @@ function BaleManagement() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
         <TabsContent value="active" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <Card className="overflow-hidden flex-1 flex flex-col">
-            <div className="flex-1 overflow-auto p-6">
-              <Table className="select-none">
+          <div className="overflow-x-auto flex-1 flex flex-col">
+            <Card className="min-w-fit flex-1 flex flex-col">
+              <div className="p-6">
+                <div className="inline-block min-w-full align-middle">
+                  <Table className="min-w-[900px] select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
                     <TableHead 
@@ -1003,13 +1005,16 @@ function BaleManagement() {
                         {safeFormatDate(bale.createdDate)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent 
+                            align="end" 
+                            className="z-50"
+                          >
                             <DropdownMenuItem onClick={() => openEditDialog(bale)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
@@ -1035,15 +1040,19 @@ function BaleManagement() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
-          </Card>
+                  </Table>
+                </div>
+              </div>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="sold" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <Card className="overflow-hidden flex-1 flex flex-col">
-            <div className="flex-1 overflow-auto p-6">
-              <Table className="select-none">
+          <div className="overflow-x-auto flex-1 flex flex-col">
+            <Card className="min-w-fit flex-1 flex flex-col">
+              <div className="p-6">
+                <div className="inline-block min-w-full align-middle">
+                  <Table className="min-w-[900px] select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
                     <TableHead 
@@ -1164,13 +1173,16 @@ function BaleManagement() {
                         {safeFormatDate(bale.soldDate)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent 
+                            align="end" 
+                            className="z-50"
+                          >
                             <DropdownMenuItem onClick={() => openEditSoldDialog(bale)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit Sale Details
@@ -1196,9 +1208,11 @@ function BaleManagement() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
-          </Card>
+                  </Table>
+                </div>
+              </div>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

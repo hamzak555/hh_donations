@@ -24,6 +24,13 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    
+    /* Chart colors - using custom green theme based on #14532d */
+    --chart-1: 152 47% 15%;  /* #14532d - darkest */
+    --chart-2: 152 49% 18%;  /* #1e7e34 - dark */
+    --chart-3: 152 61% 27%;  /* #28a745 - medium */
+    --chart-4: 152 70% 38%;  /* #40c463 - light */
+    --chart-5: 152 74% 53%;  /* #6fd788 - lighter */
   }
 
   .dark {
@@ -46,6 +53,13 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    
+    /* Chart colors - using custom green theme for dark mode */
+    --chart-1: 152 61% 27%;  /* #28a745 - medium */
+    --chart-2: 152 70% 38%;  /* #40c463 - light */
+    --chart-3: 152 74% 53%;  /* #6fd788 - lighter */
+    --chart-4: 152 78% 68%;  /* #9ae6b4 - lightest */
+    --chart-5: 152 49% 18%;  /* #1e7e34 - dark */
   }
 }
 
@@ -55,11 +69,17 @@
   }
   html {
     overflow-x: hidden;
+    height: 100%;
   }
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
     position: relative;
+    height: 100%;
+    margin: 0;
+  }
+  #root {
+    height: 100%;
   }
 }
 

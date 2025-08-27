@@ -18,11 +18,13 @@ const AdminLayout = () => {
   return (
     <>
       <NoIndexSEO title="Admin Dashboard" />
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex h-full min-w-fit bg-gray-50">
         <AdminSidebar />
         {/* Content Area - Responsive margins */}
-        <div className="flex-1 lg:ml-64 pt-16 lg:pt-0">
-          <Outlet />
+        <div className="flex-1 lg:ml-64 pt-16 lg:pt-0 min-w-0 h-full overflow-auto">
+          <div className="min-h-full">
+            <Outlet />
+          </div>
         </div>
       </div>
     </>

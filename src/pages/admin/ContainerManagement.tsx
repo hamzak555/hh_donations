@@ -919,7 +919,7 @@ function ContainerManagement() {
   };
 
   return (
-    <div className="pt-10 pb-6 w-full">
+    <div className="pt-10 pb-20 w-full">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Containers</h1>
         <Button onClick={() => setIsCreateDialogOpen(true)}>
@@ -997,8 +997,9 @@ function ContainerManagement() {
       </div>
 
       {/* Containers Table */}
-      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
-        <div className="p-6">
+      <div className="overflow-x-auto mx-4 sm:mx-6 lg:mx-8">
+        <Card className="min-w-fit">
+          <div className="p-6">
           {/* Results Count */}
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-600">
@@ -1017,7 +1018,8 @@ function ContainerManagement() {
             </div>
           </div>
           
-          <Table>
+            <div className="inline-block min-w-full align-middle">
+              <Table className="min-w-[1000px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead 
@@ -1176,13 +1178,16 @@ function ContainerManagement() {
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent 
+                        align="end" 
+                        className="z-50"
+                      >
                         <DropdownMenuItem onClick={() => openDetailsDialog(container)}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
@@ -1234,9 +1239,11 @@ function ContainerManagement() {
                 ))
               )}
             </TableBody>
-          </Table>
-        </div>
-      </Card>
+              </Table>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* Create Container Dialog */}
       <Dialog 

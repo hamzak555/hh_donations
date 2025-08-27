@@ -373,13 +373,16 @@ function UserManagement() {
                       }
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent 
+                          align="end" 
+                          className="z-50"
+                        >
                           <DropdownMenuItem onClick={() => openEditDialog(user)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit

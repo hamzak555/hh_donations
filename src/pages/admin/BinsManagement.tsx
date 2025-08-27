@@ -700,7 +700,7 @@ function BinsManagement() {
   }
 
   return (
-    <div className="pt-10 pb-6 w-full">
+    <div className="pt-10 pb-20 w-full">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Bins' : 'All Bins'}</h1>
         <div className="flex gap-2">
@@ -769,10 +769,10 @@ function BinsManagement() {
         </div>
       </div>
 
-      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
-        <div className="p-6">
-          <div className="overflow-x-auto -mx-6">
-            <div className="inline-block min-w-full align-middle px-6">
+      <div className="overflow-x-auto mx-4 sm:mx-6 lg:mx-8">
+        <Card className="min-w-fit">
+          <div className="p-6">
+            <div className="inline-block min-w-full align-middle">
               <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
@@ -1063,8 +1063,8 @@ function BinsManagement() {
           </Table>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Add Bin Dialog */}
       <LoadScript 

@@ -396,7 +396,7 @@ const PartnerApplications = () => {
   };
 
   return (
-    <div className="pt-10 pb-6 w-full">
+    <div className="pt-10 pb-20 w-full">
       <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold">Partners</h1>
         <Button onClick={() => setIsAddPartnerDialogOpen(true)}>
@@ -507,8 +507,9 @@ const PartnerApplications = () => {
       </div>
 
       {/* Applications Table */}
-      <Card className="overflow-hidden mx-4 sm:mx-6 lg:mx-8">
-        <div className="p-6">
+      <div className="overflow-x-auto mx-4 sm:mx-6 lg:mx-8">
+        <Card className="min-w-fit">
+          <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-600">
               {(() => {
@@ -524,8 +525,7 @@ const PartnerApplications = () => {
             </div>
           </div>
           
-          <div className="overflow-x-auto -mx-6">
-            <div className="inline-block min-w-full align-middle px-6">
+            <div className="inline-block min-w-full align-middle">
               <Table>
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
@@ -740,13 +740,16 @@ const PartnerApplications = () => {
                       {format(new Date(app.submittedAt), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent 
+                          align="end" 
+                          className="z-50"
+                        >
                           <DropdownMenuItem 
                             onClick={() => {
                               setEditingApplication(app);
@@ -766,8 +769,8 @@ const PartnerApplications = () => {
           </Table>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {/* Review Modal */}
       <Dialog open={reviewModalOpen} onOpenChange={setReviewModalOpen}>

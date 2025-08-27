@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -23,13 +23,22 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Archive
+  Archive,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { format, subDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 
 // Chart components
-import { ChartContainer, ChartConfig } from '@/components/ui/chart-container';
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+} from '@/components/ui/chart';
 import {
   BarChart,
   Bar,
@@ -41,9 +50,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
   Area,
   AreaChart,
   RadialBarChart,
@@ -59,20 +65,10 @@ import { useBales } from '@/contexts/BalesContextSupabase';
 import { useContainers } from '@/contexts/ContainersContextSupabase';
 import { usePartnerApplications } from '@/contexts/PartnerApplicationsContextSupabase';
 
-// Brand colors - matching H&H Donations green theme
+// Using CSS variables for consistent theming
 const chartColors = {
-  primary: "#22c55e",     // Brand green
-  secondary: "#16a34a",   // Darker green
-  accent: "#86efac",      // Light green
-  warning: "#f59e0b",     // Amber
-  danger: "#ef4444",      // Red
-  info: "#3b82f6",        // Blue
-  gray: "#6b7280",        // Gray
-  success: "#10b981",     // Success green
-  purple: "#8b5cf6",      // Purple
-  teal: "#14b8a6",        // Teal
-  orange: "#fb923c",      // Orange
-  dark: "#15803d"         // Dark green
+  danger: "hsl(var(--destructive))",
+  gray: "hsl(var(--muted-foreground))",
 };
 
 interface QuickRange {
@@ -90,26 +86,6 @@ const quickRanges: QuickRange[] = [
   { label: '1y', years: 1 }
 ];
 
-// Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-lg border bg-background p-2 shadow-sm">
-        <div className="grid grid-cols-1 gap-2">
-          <div className="flex flex-col">
-            <span className="text-[0.70rem] uppercase text-muted-foreground">
-              {label}
-            </span>
-            <span className="font-bold text-muted-foreground">
-              {payload[0].value}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return null;
-};
 
 // Custom label component
 const CustomLabel = ({ x, y, width, height, value }: any) => {
@@ -140,7 +116,8 @@ function Reporting() {
     to: new Date()
   });
 
-  const [activeTab, setActiveTab] = useState('operational');
+  const [activeTab, setActiveTab] = useState('financial');
+  const [isLocationExpanded, setIsLocationExpanded] = useState(false);
 
   // Quick range selection
   const handleQuickRange = (range: QuickRange) => {
@@ -197,10 +174,10 @@ function Reporting() {
       almostFull: almostFullBins.length,
       total: bins.length,
       pieData: [
-        { name: 'Available', value: availableBins.length, fill: chartColors.primary },
-        { name: 'Full', value: fullBins.length, fill: chartColors.danger },
-        { name: 'Almost Full', value: almostFullBins.length, fill: chartColors.warning },
-        { name: 'Unavailable', value: inactiveBins.length, fill: chartColors.gray }
+        { name: 'Available', value: availableBins.length },
+        { name: 'Full', value: fullBins.length },
+        { name: 'Almost Full', value: almostFullBins.length },
+        { name: 'Unavailable', value: inactiveBins.length }
       ]
     };
   }, [bins]);
@@ -234,10 +211,10 @@ function Reporting() {
       pickedUp: pickedUp.length,
       cancelled: cancelled.length,
       chartData: [
-        { name: 'Pending', value: pending.length, fill: chartColors.warning },
-        { name: 'Overdue', value: overdue.length, fill: chartColors.danger },
-        { name: 'Picked Up', value: pickedUp.length, fill: chartColors.success },
-        { name: 'Cancelled', value: cancelled.length, fill: chartColors.gray }
+        { name: 'Pending', value: pending.length },
+        { name: 'Overdue', value: overdue.length },
+        { name: 'Picked Up', value: pickedUp.length },
+        { name: 'Cancelled', value: cancelled.length }
       ]
     };
   }, [pickupRequests, dateRange]);
@@ -270,10 +247,10 @@ function Reporting() {
       rejected: rejected.length,
       archived: archived.length,
       chartData: [
-        { name: 'Approved', value: approved.length, fill: chartColors.primary },
-        { name: 'Pending', value: pending.length, fill: chartColors.warning },
-        { name: 'Rejected', value: rejected.length, fill: chartColors.danger },
-        { name: 'Archived', value: archived.length, fill: chartColors.gray }
+        { name: 'Approved', value: approved.length },
+        { name: 'Pending', value: pending.length },
+        { name: 'Rejected', value: rejected.length },
+        { name: 'Archived', value: archived.length }
       ]
     };
   }, [applications]);
@@ -301,7 +278,7 @@ function Reporting() {
     // Sales by location
     const salesByLocation: { [key: string]: number } = {};
     soldBales.forEach(bale => {
-      let location = 'Local';
+      let location = 'Warehouse';
       if (bale.containerNumber) {
         const container = containers.find(c => c.containerNumber === bale.containerNumber);
         if (container?.destination) {
@@ -322,10 +299,23 @@ function Reporting() {
       salesByQuality[quality].revenue += bale.salePrice || 0;
     });
     
-    // Unsold by quality
+    // Unsold by quality - include all quality types
+    const allQualityTypes = ['A-Quality', 'B-Quality', 'C-Quality', 'Creme', 'Shoes'];
     const unsoldByQuality: { [key: string]: number } = {};
+    
+    // Initialize all quality types with 0
+    allQualityTypes.forEach(quality => {
+      unsoldByQuality[quality] = 0;
+    });
+    
+    // Count actual unsold bales
     unsoldBales.forEach(bale => {
-      unsoldByQuality[bale.contents] = (unsoldByQuality[bale.contents] || 0) + 1;
+      if (unsoldByQuality.hasOwnProperty(bale.contents)) {
+        unsoldByQuality[bale.contents]++;
+      } else {
+        // Handle any quality types not in our predefined list
+        unsoldByQuality[bale.contents] = (unsoldByQuality[bale.contents] || 0) + 1;
+      }
     });
     
     return {
@@ -339,7 +329,7 @@ function Reporting() {
       unsoldWeight,
       avgPricePerKg,
       byLocation: Object.entries(salesByLocation).map(([location, amount]) => ({
-        location,
+        location: location.split(',')[0].trim(),
         amount
       })),
       byQuality: Object.entries(salesByQuality).map(([quality, data]) => ({
@@ -355,10 +345,7 @@ function Reporting() {
   }, [bales, containers, dateRange]);
 
   const containerMetrics = useMemo(() => {
-    const shippedContainers = filterByDateRange(
-      containers.filter(c => c.status === 'Shipped'),
-      'shipmentDate'
-    );
+    const shippedContainers = containers.filter(c => c.status === 'Shipped' || c.status === 'In Transit' || c.status === 'Delivered');
     
     // Unshipped containers
     const unshippedContainers = containers.filter(c => c.status === 'Warehouse');
@@ -374,18 +361,22 @@ function Reporting() {
     
     const destinations = new Set(shippedContainers.map(c => c.destination));
     
-    // Calculate shipped averages
+    // Calculate averages using all containers with bales
     let totalBales = 0;
     let totalWeight = 0;
+    let containersWithBales = 0;
     
-    shippedContainers.forEach(container => {
+    containers.forEach(container => {
       const containerBales = bales.filter(b => b.containerNumber === container.containerNumber);
-      totalBales += containerBales.length;
-      totalWeight += containerBales.reduce((sum, bale) => sum + (bale.weight || 0), 0);
+      if (containerBales.length > 0) {
+        containersWithBales++;
+        totalBales += containerBales.length;
+        totalWeight += containerBales.reduce((sum, bale) => sum + (bale.weight || 0), 0);
+      }
     });
     
-    const avgBalesPerContainer = shippedContainers.length > 0 ? totalBales / shippedContainers.length : 0;
-    const avgWeightPerContainer = shippedContainers.length > 0 ? totalWeight / shippedContainers.length : 0;
+    const avgBalesPerContainer = containersWithBales > 0 ? totalBales / containersWithBales : 0;
+    const avgWeightPerContainer = containersWithBales > 0 ? totalWeight / containersWithBales : 0;
     
     // Destinations list
     const destinationCounts: { [key: string]: number } = {};
@@ -408,28 +399,63 @@ function Reporting() {
     };
   }, [containers, bales, dateRange]);
 
-  // Chart configs
-  const binStatusConfig: ChartConfig = {
-    available: { label: "Available", color: chartColors.primary },
-    full: { label: "Full", color: chartColors.danger },
-    almostFull: { label: "Almost Full", color: chartColors.warning },
-    unavailable: { label: "Unavailable", color: chartColors.gray }
+  // Chart configs - using monochromatic green theme based on #14532d
+  const greenColors = {
+    darkest: "#14532d",   // Base color
+    dark: "#1e7e34",      // Lighter shade 1
+    medium: "#28a745",    // Lighter shade 2
+    light: "#40c463",     // Lighter shade 3
+    lighter: "#6fd788",   // Lighter shade 4
+    lightest: "#9ae6b4"   // Lighter shade 5
   };
 
-  const pickupStatusConfig: ChartConfig = {
-    pending: { label: "Pending", color: chartColors.warning },
-    overdue: { label: "Overdue", color: chartColors.danger },
-    pickedUp: { label: "Picked Up", color: chartColors.success },
-    cancelled: { label: "Cancelled", color: chartColors.gray }
-  };
+  const binStatusConfig = {
+    available: { label: "Available", color: greenColors.medium },
+    full: { label: "Full", color: greenColors.darkest },
+    almostFull: { label: "Almost Full", color: greenColors.light },
+    unavailable: { label: "Unavailable", color: greenColors.lighter }
+  } satisfies ChartConfig;
+
+  const pickupStatusConfig = {
+    pending: { label: "Pending", color: greenColors.light },
+    overdue: { label: "Overdue", color: greenColors.darkest },
+    pickedUp: { label: "Picked Up", color: greenColors.medium },
+    cancelled: { label: "Cancelled", color: greenColors.lighter }
+  } satisfies ChartConfig;
+
+  const driverConfig = {
+    bins: { label: "Assigned Bins", color: greenColors.medium },
+  } satisfies ChartConfig;
+
+  const pickupsConfig = {
+    pickups: { label: "Pickups", color: greenColors.medium },
+  } satisfies ChartConfig;
+
+  const partnerConfig = {
+    approved: { label: "Approved", color: greenColors.medium },
+    pending: { label: "Pending", color: greenColors.light },
+    rejected: { label: "Rejected", color: greenColors.darkest },
+    archived: { label: "Archived", color: greenColors.lighter }
+  } satisfies ChartConfig;
+
+  const salesConfig = {
+    sales: { label: "Sales", color: greenColors.medium },
+    count: { label: "Count", color: greenColors.medium },
+    revenue: { label: "Revenue", color: greenColors.dark },
+    unsold: { label: "Unsold", color: greenColors.lighter },
+  } satisfies ChartConfig;
+
+  const containerConfig = {
+    containers: { label: "Containers", color: greenColors.light },
+  } satisfies ChartConfig;
 
   return (
-    <div className="h-screen flex flex-col pt-10 pb-6 bg-gradient-to-br from-green-50 to-white">
-      <div className="px-4 sm:px-6 lg:px-8 mb-6">
+    <div className="h-screen flex flex-col pt-10 pb-6 bg-gray-50">
+      <div className="flex-1 overflow-y-auto">
+      <div className="px-4 sm:px-6 lg:px-8 mb-6 pb-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-green-900">Analytics & Reporting</h1>
-            <p className="text-sm text-gray-600 mt-1">Track your operational and financial performance</p>
+            <h1 className="text-3xl font-bold">Analytics & Reporting</h1>
           </div>
           
           {/* Date Range Selector */}
@@ -487,33 +513,68 @@ function Reporting() {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="operational">Operational</TabsTrigger>
             <TabsTrigger value="financial">Financial</TabsTrigger>
+            <TabsTrigger value="operational">Operational</TabsTrigger>
           </TabsList>
 
           {/* Operational Tab */}
-          <TabsContent value="operational" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <TabsContent value="operational" className="space-y-6 mb-8">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <Card className="border-gray-200 bg-white">
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{binMetrics.total}</div>
+                  <p className="text-sm text-gray-600 mt-1">Total Bins</p>
+                  <div className="text-xs text-gray-500 mt-2">{binMetrics.active} active</div>
+                </CardContent>
+              </Card>
+              <Card className="border-gray-200 bg-white">
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.total}</div>
+                  <p className="text-sm text-gray-600 mt-1">Pickup Requests</p>
+                  <div className="text-xs text-gray-500 mt-2">{pickupMetrics.pickedUp} completed</div>
+                </CardContent>
+              </Card>
+              <Card className="border-gray-200 bg-white">
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{driverBinAssignments.length}</div>
+                  <p className="text-sm text-gray-600 mt-1">Active Drivers</p>
+                  <div className="text-xs text-gray-500 mt-2">{driverBinAssignments.reduce((sum, d) => sum + d.bins, 0)} bins assigned</div>
+                </CardContent>
+              </Card>
+              <Card className="border-gray-200 bg-white">
+                <CardContent className="pt-6">
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{partnerMetrics.approved}</div>
+                  <p className="text-sm text-gray-600 mt-1">Active Partners</p>
+                  <div className="text-xs text-gray-500 mt-2">{partnerMetrics.pending} pending</div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               
               {/* Bins Overview */}
-              <Card className="border-l-4 border-l-green-500">
+              <Card className="border-l-4 border-l-[#0b503c]">
                 <CardHeader>
-                  <CardTitle className="text-green-800">Bins Overview</CardTitle>
-                  <CardDescription>Active vs Inactive bins</CardDescription>
+                  <CardTitle className="text-lg">Bins Overview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="text-center p-3 rounded-lg bg-green-50">
-                      <div className="text-2xl font-bold text-green-700">{binMetrics.active}</div>
-                      <div className="text-xs text-gray-600">Active</div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">Active Bins</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{binMetrics.active}</span>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-gray-50">
-                      <div className="text-2xl font-bold text-gray-700">{binMetrics.inactive}</div>
-                      <div className="text-xs text-gray-600">Inactive</div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">Inactive Bins</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{binMetrics.inactive}</span>
                     </div>
-                    <div className="text-center p-3 rounded-lg bg-blue-50">
-                      <div className="text-2xl font-bold text-blue-700">{binMetrics.total}</div>
-                      <div className="text-xs text-gray-600">Total</div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">Total Bins</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{binMetrics.total}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">Utilization</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{Math.round((binMetrics.active / binMetrics.total) * 100)}%</span>
                     </div>
                   </div>
                 </CardContent>
@@ -522,65 +583,91 @@ function Reporting() {
               {/* Bin Status Distribution */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Bin Status Distribution</CardTitle>
-                  <CardDescription>Current status breakdown</CardDescription>
+                  <CardTitle className="text-lg">Bin Status Distribution</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={binStatusConfig} className="h-[200px]">
-                    <PieChart>
-                      <Pie
-                        data={binMetrics.pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {binMetrics.pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                    </PieChart>
+                  <ChartContainer config={{
+                    bins: {
+                      label: "Bins",
+                      color: "#0b503c",
+                    },
+                    label: {
+                      color: "var(--background)",
+                    },
+                  }} className="h-[200px]">
+                    <BarChart
+                      accessibilityLayer
+                      data={binMetrics.pieData.map(item => ({ status: item.name, bins: item.value }))}
+                      layout="vertical"
+                      margin={{ right: 100 }}
+                    >
+                      <Bar dataKey="bins" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                        <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
+                        <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                      </Bar>
+                      <ChartTooltip
+                        cursor={false}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="rounded-lg border border-border/50 bg-background px-3 py-2 shadow-sm">
+                                <div className="text-sm font-medium">{data.status}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  Bins: {data.bins}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </BarChart>
                   </ChartContainer>
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    {binMetrics.pieData.map((item, index) => (
-                      <div key={index} className="flex items-center gap-2 text-sm">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: item.fill }}
-                        />
-                        <span>{item.name}: {item.value}</span>
-                      </div>
-                    ))}
-                  </div>
                 </CardContent>
               </Card>
 
               {/* Bins per Driver */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Bins per Driver</CardTitle>
-                  <CardDescription>Driver assignments</CardDescription>
+                  <CardTitle className="text-lg">Bins per Driver</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{}} className="h-[200px]">
-                    <BarChart data={driverBinAssignments}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="driver" 
-                        angle={-45} 
-                        textAnchor="end" 
-                        height={60}
-                        className="text-xs"
-                      />
-                      <YAxis className="text-xs" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="bins" 
-                        fill={chartColors.primary} 
-                        radius={[8, 8, 0, 0]}
+                  <ChartContainer config={{
+                    bins: {
+                      label: "Bins",
+                      color: "#0b503c",
+                    },
+                    label: {
+                      color: "var(--background)",
+                    },
+                  }} className="h-[200px]">
+                    <BarChart
+                      accessibilityLayer
+                      data={driverBinAssignments}
+                      layout="vertical"
+                      margin={{ right: 100 }}
+                    >
+                      <Bar dataKey="bins" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                        <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
+                        <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                      </Bar>
+                      <ChartTooltip
+                        cursor={false}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="rounded-lg border border-border/50 bg-background px-3 py-2 shadow-sm">
+                                <div className="text-sm font-medium">{data.driver}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  Bins: {data.bins}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
                       />
                     </BarChart>
                   </ChartContainer>
@@ -588,51 +675,31 @@ function Reporting() {
               </Card>
 
               {/* Pickup Requests Status */}
-              <Card className="border-l-4 border-l-green-500">
+              <Card className="border-l-4 border-l-[#0b503c]">
                 <CardHeader>
-                  <CardTitle className="text-green-800">Pickup Requests</CardTitle>
-                  <CardDescription>Status breakdown</CardDescription>
+                  <CardTitle className="text-lg">Pickup Requests</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div className="text-center p-2 rounded-lg bg-gray-50">
-                      <div className="text-xl font-bold">{pickupMetrics.total}</div>
-                      <div className="text-xs text-gray-600">Total</div>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
+                      <span className="text-sm text-gray-700">Total</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.total}</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-green-50">
-                      <div className="text-xl font-bold text-green-700">{pickupMetrics.pickedUp}</div>
-                      <div className="text-xs text-gray-600">Completed</div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
+                      <span className="text-sm text-gray-700">Completed</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.pickedUp}</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-yellow-50">
-                      <div className="text-xl font-bold text-yellow-700">{pickupMetrics.pending}</div>
-                      <div className="text-xs text-gray-600">Pending</div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
+                      <span className="text-sm text-gray-700">Pending</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.pending}</span>
                     </div>
-                    <div className="text-center p-2 rounded-lg bg-red-50">
-                      <div className="text-xl font-bold text-red-700">{pickupMetrics.overdue}</div>
-                      <div className="text-xs text-gray-600">Overdue</div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
+                      <span className="text-sm text-gray-700">Overdue</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.overdue}</span>
                     </div>
                   </div>
-                  {pickupMetrics.total > 0 ? (
-                    <ChartContainer config={pickupStatusConfig} className="h-[180px]">
-                      <PieChart>
-                        <Pie
-                          data={pickupMetrics.chartData.filter(item => item.value > 0)}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={40}
-                          outerRadius={70}
-                          paddingAngle={2}
-                          dataKey="value"
-                        >
-                          {pickupMetrics.chartData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.fill} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                      </PieChart>
-                    </ChartContainer>
-                  ) : (
-                    <div className="h-[180px] flex items-center justify-center text-gray-400">
+                  {pickupMetrics.total === 0 && (
+                    <div className="mt-4 flex items-center justify-center text-gray-400">
                       <p className="text-sm">No pickup requests in selected period</p>
                     </div>
                   )}
@@ -642,26 +709,44 @@ function Reporting() {
               {/* Pickups per Driver */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Pickups per Driver</CardTitle>
-                  <CardDescription>Performance metrics</CardDescription>
+                  <CardTitle className="text-lg">Pickups per Driver</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{}} className="h-[200px]">
-                    <BarChart data={pickupsPerDriver}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="driver" 
-                        angle={-45} 
-                        textAnchor="end" 
-                        height={60}
-                        className="text-xs"
-                      />
-                      <YAxis className="text-xs" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="pickups" 
-                        fill={chartColors.info} 
-                        radius={[8, 8, 0, 0]}
+                  <ChartContainer config={{
+                    pickups: {
+                      label: "Pickups",
+                      color: "#0b503c",
+                    },
+                    label: {
+                      color: "var(--background)",
+                    },
+                  }} className="h-[200px]">
+                    <BarChart
+                      accessibilityLayer
+                      data={pickupsPerDriver}
+                      layout="vertical"
+                      margin={{ right: 100 }}
+                    >
+                      <Bar dataKey="pickups" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                        <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
+                        <LabelList dataKey="pickups" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                      </Bar>
+                      <ChartTooltip
+                        cursor={false}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="rounded-lg border border-border/50 bg-background px-3 py-2 shadow-sm">
+                                <div className="text-sm font-medium">{data.driver}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  Pickups: {data.pickups}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
                       />
                     </BarChart>
                   </ChartContainer>
@@ -671,27 +756,46 @@ function Reporting() {
               {/* Partner Applications */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Partner Applications</CardTitle>
-                  <CardDescription>Application status</CardDescription>
+                  <CardTitle className="text-lg">Partner Applications</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{}} className="h-[200px]">
-                    <PieChart>
-                      <Pie
-                        data={partnerMetrics.chartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, value }) => `${name}: ${value}`}
-                        outerRadius={80}
-                        dataKey="value"
-                      >
-                        {partnerMetrics.chartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
+                  <ChartContainer config={{
+                    applications: {
+                      label: "Applications",
+                      color: "#0b503c",
+                    },
+                    label: {
+                      color: "var(--background)",
+                    },
+                  }} className="h-[200px]">
+                    <BarChart
+                      accessibilityLayer
+                      data={partnerMetrics.chartData.map(item => ({ status: item.name, applications: item.value }))}
+                      layout="vertical"
+                      margin={{ right: 100 }}
+                    >
+                      <Bar dataKey="applications" layout="vertical" fill="#0b503c" radius={4} maxBarSize={40}>
+                        <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
+                        <LabelList dataKey="applications" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                      </Bar>
+                      <ChartTooltip
+                        cursor={false}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="rounded-lg border border-border/50 bg-background px-3 py-2 shadow-sm">
+                                <div className="text-sm font-medium">{data.status}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  Applications: {data.applications}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                    </BarChart>
                   </ChartContainer>
                 </CardContent>
               </Card>
@@ -699,169 +803,302 @@ function Reporting() {
           </TabsContent>
 
           {/* Financial Tab */}
-          <TabsContent value="financial" className="space-y-6">
+          <TabsContent value="financial" className="space-y-6 mb-8">
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-              <Card className="border-green-200 bg-gradient-to-br from-green-50 to-white">
+              <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-green-700">${salesMetrics.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>${Math.round(salesMetrics.totalSales).toLocaleString()}</div>
                   <p className="text-sm text-gray-600 mt-1">Total Revenue</p>
                   <div className="text-xs text-gray-500 mt-2">{salesMetrics.count} bales sold</div>
                 </CardContent>
               </Card>
-              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+              <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-blue-700">{salesMetrics.unsoldCount}</div>
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{salesMetrics.unsoldCount}</div>
                   <p className="text-sm text-gray-600 mt-1">Unsold Inventory</p>
                   <div className="text-xs text-gray-500 mt-2">{salesMetrics.unsoldWeight.toFixed(0)} kg total</div>
                 </CardContent>
               </Card>
-              <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-white">
+              <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-orange-700">{containerMetrics.unshippedCount}</div>
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.unshippedCount}</div>
                   <p className="text-sm text-gray-600 mt-1">Containers in Warehouse</p>
                   <div className="text-xs text-gray-500 mt-2">{containerMetrics.unshippedBales} bales ready</div>
                 </CardContent>
               </Card>
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <Card className="border-gray-200 bg-white">
                 <CardContent className="pt-6">
-                  <div className="text-2xl font-bold text-purple-700">{containerMetrics.shippedCount}</div>
+                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.shippedCount}</div>
                   <p className="text-sm text-gray-600 mt-1">Containers Shipped</p>
                   <div className="text-xs text-gray-500 mt-2">{containerMetrics.uniqueDestinations} destinations</div>
                 </CardContent>
               </Card>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               
-              {/* Sales & Inventory Overview */}
-              <Card className="border-l-4 border-l-green-500">
+              {/* Sales Overview */}
+              <Card className="border-l-4 border-l-[#0b503c]">
                 <CardHeader>
-                  <CardTitle className="text-green-800">Sales & Inventory</CardTitle>
-                  <CardDescription>Current status overview</CardDescription>
+                  <CardTitle className="text-lg">Sales</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
                       <span className="text-sm text-gray-700">Revenue</span>
-                      <span className="font-bold text-green-700">
-                        ${salesMetrics.totalSales.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      <span className="font-bold" style={{ color: '#0b503c' }}>
+                        ${Math.round(salesMetrics.totalSales).toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
                       <span className="text-sm text-gray-700">Sold Weight</span>
-                      <span className="font-bold">{salesMetrics.totalWeight.toFixed(0)} kg</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>
+                        {salesMetrics.totalWeight.toFixed(0)} kg
+                      </span>
                     </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-blue-50">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
                       <span className="text-sm text-gray-700">Avg Price/kg</span>
-                      <span className="font-bold text-blue-700">
+                      <span className="font-bold" style={{ color: '#0b503c' }}>
                         ${salesMetrics.avgPricePerKg.toFixed(2)}
                       </span>
                     </div>
-                    <div className="border-t pt-3 mt-3">
-                      <div className="text-xs font-semibold text-gray-600 mb-2">UNSOLD INVENTORY</div>
-                      <div className="flex justify-between items-center p-2 rounded-lg bg-orange-50">
-                        <span className="text-sm text-gray-700">In Warehouse</span>
-                        <span className="font-bold text-orange-700">{salesMetrics.warehouseCount}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-2 rounded-lg bg-purple-50 mt-1">
-                        <span className="text-sm text-gray-700">In Containers</span>
-                        <span className="font-bold text-purple-700">{salesMetrics.containerCount}</span>
-                      </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
+                      <span className="text-sm text-gray-700">Bales Sold</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.count}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Sales by Location */}
+              {/* Sales by Type */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Sales by Location</CardTitle>
-                  <CardDescription>Revenue distribution</CardDescription>
+                  <CardTitle className="text-lg">Sales by Type</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{}} className="h-[200px]">
-                    <BarChart data={salesMetrics.byLocation}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="location" 
-                        angle={-45} 
-                        textAnchor="end" 
-                        height={80}
-                        className="text-xs"
+                  <ChartContainer config={{
+                    revenue: {
+                      label: "Revenue",
+                      color: "#0b503c",
+                    },
+                    label: {
+                      color: "var(--background)",
+                    },
+                  }} className="h-[200px]">
+                    <BarChart
+                      accessibilityLayer
+                      data={salesMetrics.byQuality}
+                      layout="vertical"
+                      margin={{
+                        right: 100,
+                      }}
+                    >
+                      <CartesianGrid horizontal={false} />
+                      <YAxis
+                        dataKey="quality"
+                        type="category"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        hide
                       />
-                      <YAxis className="text-xs" />
-                      <Tooltip 
-                        content={<CustomTooltip />}
-                        formatter={(value: number) => `$${value.toFixed(2)}`}
+                      <XAxis dataKey="revenue" type="number" hide />
+                      <ChartTooltip
+                        cursor={false}
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <div className="h-10 w-1 shrink-0 rounded-[2px] bg-[#0b503c]" />
+                                    <div className="grid gap-1">
+                                      <span className="text-sm font-semibold text-foreground">{label}</span>
+                                      <span className="text-xs text-muted-foreground">Revenue: ${Number(payload[0].value).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
                       />
-                      <Bar 
-                        dataKey="amount" 
-                        fill={chartColors.primary} 
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-
-              {/* Sales by Quality */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Sales by Quality</CardTitle>
-                  <CardDescription>Content breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer config={{}} className="h-[200px]">
-                    <BarChart data={salesMetrics.byQuality}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="quality" className="text-xs" />
-                      <YAxis yAxisId="left" orientation="left" stroke={chartColors.primary} className="text-xs" />
-                      <YAxis yAxisId="right" orientation="right" stroke={chartColors.secondary} className="text-xs" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        yAxisId="left" 
-                        dataKey="count" 
-                        fill={chartColors.primary} 
-                        name="Count"
-                        radius={[8, 8, 0, 0]}
-                      />
-                      <Bar 
-                        yAxisId="right" 
-                        dataKey="revenue" 
-                        fill={chartColors.secondary} 
-                        name="Revenue ($)"
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-
-              {/* Unsold Inventory by Quality */}
-              <Card className="border-l-4 border-l-orange-500">
-                <CardHeader>
-                  <CardTitle className="text-orange-800">Unsold Inventory</CardTitle>
-                  <CardDescription>By quality type</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {salesMetrics.unsoldByQuality.length > 0 ? (
-                    <ChartContainer config={{}} className="h-[200px]">
-                      <BarChart data={salesMetrics.unsoldByQuality}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="quality" className="text-xs" />
-                        <YAxis className="text-xs" />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar 
-                          dataKey="count" 
-                          fill={chartColors.orange}
-                          radius={[8, 8, 0, 0]}
+                      <Bar
+                        dataKey="revenue"
+                        layout="vertical"
+                        fill="#0b503c"
+                        radius={4}
+                      >
+                        <LabelList
+                          dataKey="quality"
+                          position="right"
+                          offset={8}
+                          className="fill-foreground"
+                          fontSize={11}
+                          dy={-6}
                         />
-                      </BarChart>
-                    </ChartContainer>
+                        <LabelList
+                          dataKey="revenue"
+                          position="right"
+                          offset={8}
+                          dy={6}
+                          className="fill-muted-foreground"
+                          fontSize={10}
+                          formatter={(value: number) => `$${value.toLocaleString()}`}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Sales by Location - Horizontal Bar Chart */}
+              <div className={`relative ${isLocationExpanded ? "row-span-2" : ""}`}>
+                <Card className={`${isLocationExpanded ? "absolute z-10 flex flex-col" : "relative"}`} style={isLocationExpanded ? {
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0, // Stretch to fill available space
+                } : {}}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-lg">Sales by Location</CardTitle>
+                  {salesMetrics.totalSales > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      Total sales: ${Math.round(salesMetrics.totalSales).toLocaleString()}
+                    </div>
+                  )}
+                </CardHeader>
+                <CardContent className={`pb-2 ${isLocationExpanded ? "flex-1 flex flex-col" : ""}`}>
+                  <ChartContainer config={{
+                    amount: {
+                      label: "Revenue",
+                      color: "#0b503c",
+                    },
+                    label: {
+                      color: "var(--background)",
+                    },
+                  }} className={isLocationExpanded ? "flex-1" : "h-[200px]"}>
+                    <BarChart
+                      accessibilityLayer
+                      data={salesMetrics.byLocation}
+                      layout="vertical"
+                      margin={{
+                        right: 100,
+                      }}
+                    >
+                      <CartesianGrid horizontal={false} />
+                      <YAxis
+                        dataKey="location"
+                        type="category"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value.slice(0, 10)}
+                        hide
+                      />
+                      <XAxis dataKey="amount" type="number" hide />
+                      <ChartTooltip
+                        cursor={false}
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                <div className="grid grid-cols-1 gap-2">
+                                  <div className="flex items-start gap-2">
+                                    <div className="h-10 w-1 shrink-0 rounded-[2px] bg-[#0b503c]" />
+                                    <div className="grid gap-1">
+                                      <span className="text-sm font-semibold text-foreground">{label}</span>
+                                      <span className="text-xs text-muted-foreground">Revenue: ${Number(payload[0].value).toLocaleString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar
+                        dataKey="amount"
+                        layout="vertical"
+                        fill="#0b503c"
+                        radius={4}
+                        maxBarSize={40}
+                      >
+                        <LabelList
+                          dataKey="location"
+                          position="right"
+                          offset={8}
+                          className="fill-foreground"
+                          fontSize={11}
+                          dy={-6}
+                        />
+                        <LabelList
+                          dataKey="amount"
+                          position="right"
+                          offset={8}
+                          dy={6}
+                          className="fill-muted-foreground"
+                          fontSize={10}
+                          formatter={(value: number) => `$${value.toLocaleString()}`}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+                <div className="flex justify-center pb-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsLocationExpanded(!isLocationExpanded)}
+                    className="h-6 px-2 text-muted-foreground hover:text-foreground"
+                  >
+                    {isLocationExpanded ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </Card>
+              </div>
+
+              {/* Unsold Bales by Quality */}
+              <Card className="border-l-4 border-l-[#0b503c]">
+                <CardHeader>
+                  <CardTitle className="text-lg">Unsold Bales</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 mb-4">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">In Warehouse</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.warehouseCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">In Containers</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.containerCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-700">Shipped</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.shippedCount}</span>
+                    </div>
+                  </div>
+                  {salesMetrics.unsoldByQuality.length > 0 ? (
+                    <div className="mt-4 flex flex-wrap gap-1">
+                      {salesMetrics.unsoldByQuality.map((item, index) => (
+                        <div key={index} className="flex items-center gap-1">
+                          <span className="text-xs text-gray-700">{item.quality}</span>
+                          <span className="inline-flex items-center justify-center w-4 h-4 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                            {item.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   ) : (
-                    <div className="h-[200px] flex items-center justify-center text-gray-400">
-                      <p className="text-sm">No unsold inventory</p>
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-400">No unsold inventory</p>
                     </div>
                   )}
                 </CardContent>
@@ -870,79 +1107,41 @@ function Reporting() {
               {/* Container Metrics */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Container Operations</CardTitle>
-                  <CardDescription>Shipping & warehouse status</CardDescription>
+                  <CardTitle className="text-lg">Container Operations</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-green-50">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
                       <span className="text-sm text-gray-700">Shipped</span>
-                      <span className="font-bold text-green-700">{containerMetrics.shippedCount}</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.shippedCount}</span>
                     </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-orange-50">
+                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
                       <span className="text-sm text-gray-700">In Warehouse</span>
-                      <span className="font-bold text-orange-700">{containerMetrics.unshippedCount}</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.unshippedCount}</span>
                     </div>
                     <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
                       <span className="text-sm text-gray-700">Destinations</span>
-                      <span className="font-bold">{containerMetrics.uniqueDestinations}</span>
+                      <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.uniqueDestinations}</span>
                     </div>
                     <div className="border-t pt-3">
                       <div className="text-xs font-semibold text-gray-600 mb-2">AVERAGES</div>
-                      <div className="flex justify-between items-center p-2 rounded-lg bg-blue-50">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
                         <span className="text-sm text-gray-700">Bales/Container</span>
-                        <span className="font-bold text-blue-700">{containerMetrics.avgBalesPerContainer.toFixed(1)}</span>
+                        <span className="font-bold" style={{ color: '#0b503c' }}>{Math.round(containerMetrics.avgBalesPerContainer)}</span>
                       </div>
-                      <div className="flex justify-between items-center p-2 rounded-lg bg-purple-50 mt-1">
+                      <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50 mt-1">
                         <span className="text-sm text-gray-700">Weight/Container</span>
-                        <span className="font-bold text-purple-700">{containerMetrics.avgWeightPerContainer.toFixed(0)} kg</span>
+                        <span className="font-bold" style={{ color: '#0b503c' }}>{containerMetrics.avgWeightPerContainer.toFixed(0)} kg</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Destinations Chart */}
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Shipping Destinations</CardTitle>
-                  <CardDescription>Container distribution</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ChartContainer config={{}} className="h-[200px]">
-                    <BarChart data={containerMetrics.destinations}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis 
-                        dataKey="destination" 
-                        angle={-45} 
-                        textAnchor="end" 
-                        height={80}
-                        className="text-xs"
-                      />
-                      <YAxis className="text-xs" />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="containers" 
-                        fill={chartColors.info} 
-                        radius={[8, 8, 0, 0]}
-                      />
-                    </BarChart>
-                  </ChartContainer>
-                  <ScrollArea className="h-32 mt-4">
-                    <div className="space-y-2">
-                      {containerMetrics.destinations.map((dest, index) => (
-                        <div key={index} className="flex justify-between items-center p-2 rounded-lg hover:bg-muted">
-                          <span className="text-sm font-medium">{dest.destination}</span>
-                          <Badge variant="outline">{dest.containers} containers</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
         </Tabs>
+      </div>
       </div>
     </div>
   );
