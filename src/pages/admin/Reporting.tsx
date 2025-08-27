@@ -942,7 +942,7 @@ function Reporting() {
                           dy={6}
                           className="fill-muted-foreground"
                           fontSize={10}
-                          formatter={(value: number) => `$${value.toLocaleString()}`}
+                          formatter={(value) => `$${Number(value).toLocaleString()}`}
                         />
                       </Bar>
                     </BarChart>
@@ -1037,7 +1037,7 @@ function Reporting() {
                           dy={6}
                           className="fill-muted-foreground"
                           fontSize={10}
-                          formatter={(value: number) => `$${value.toLocaleString()}`}
+                          formatter={(value) => `$${Number(value).toLocaleString()}`}
                         />
                       </Bar>
                     </BarChart>
