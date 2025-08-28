@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMap, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api';
 import { GoogleMapsLoader, GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
+import { SafeGoogleMap, SafeMarker, SafeInfoWindow } from '@/components/SafeGoogleMap';
+import { SafeAutocomplete } from '@/components/SafeAutocomplete';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -176,8 +177,15 @@ const FindBin = () => {
     if (!searchQuery || !mapsLoaded) return;
     
     setLocationError('');
+    
+    // Check if Google Maps is available
+    if (typeof window === 'undefined' || !window.google || !window.google.maps) {
+      setLocationError('Maps service is not available. Please try again later.');
+      return;
+    }
+    
     // If autocomplete hasn't triggered, use geocoding service
-    const geocoder = new google.maps.Geocoder();
+    const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ address: searchQuery }, (results, status) => {
       if (status === 'OK' && results && results[0]) {
         const location = results[0].geometry.location;
@@ -272,7 +280,7 @@ const FindBin = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
               <div className="lg:col-span-2 relative autocomplete-container overflow-visible">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                <Autocomplete
+                <SafeAutocomplete
                   onLoad={onAutocompleteLoad}
                   onPlaceChanged={onPlaceChanged}
                   options={{
@@ -289,7 +297,7 @@ const FindBin = () => {
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="pl-10 w-full h-10"
                   />
-                </Autocomplete>
+                </SafeAutocomplete>
               </div>
               <Button 
                 variant="outline" 
@@ -314,7 +322,7 @@ const FindBin = () => {
             {/* Map */}
             <Card className="h-full">
               <CardContent className="p-0 h-full">
-                <GoogleMap
+                <SafeGoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={center}
                   zoom={12}
@@ -323,7 +331,7 @@ const FindBin = () => {
                 >
                   {/* User Location Marker */}
                   {userLocation && (
-                    <Marker
+                    <SafeMarker
                       position={userLocation}
                       icon={{
                         path: google.maps.SymbolPath.CIRCLE,
@@ -339,7 +347,7 @@ const FindBin = () => {
 
                   {/* Bin Markers */}
                   {bins.map((bin) => (
-                    <Marker
+                    <SafeMarker
                       key={bin.id}
                       position={{ lat: bin.lat, lng: bin.lng }}
                       onClick={() => {
@@ -358,7 +366,7 @@ const FindBin = () => {
 
                   {/* Info Window */}
                   {selectedBin && (
-                    <InfoWindow
+                    <SafeInfoWindow
                       position={{ lat: selectedBin.lat, lng: selectedBin.lng }}
                       onCloseClick={() => setSelectedBin(null)}
                       options={{
@@ -372,9 +380,9 @@ const FindBin = () => {
                           Status: {selectedBin.status}
                         </p>
                       </div>
-                    </InfoWindow>
+                    </SafeInfoWindow>
                   )}
-                </GoogleMap>
+                </SafeGoogleMap>
               </CardContent>
             </Card>
           </div>
