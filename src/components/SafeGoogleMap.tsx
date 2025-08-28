@@ -1,5 +1,4 @@
 import React from 'react';
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapPin, AlertCircle } from 'lucide-react';
@@ -25,18 +24,31 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
 }) => {
   // Check if Google Maps is available
   const [mapError, setMapError] = React.useState(false);
+  const [GoogleMapComponent, setGoogleMapComponent] = React.useState<any>(null);
 
   React.useEffect(() => {
-    // Check if Google Maps is loaded
-    if (typeof window !== 'undefined' && (!window.google || !window.google.maps)) {
-      console.warn('Google Maps not available');
-      setMapError(true);
-    } else {
-      setMapError(false);
-    }
+    // Check if Google Maps is loaded and try to import the component
+    const checkAndLoadMap = async () => {
+      if (typeof window !== 'undefined' && window.google && window.google.maps) {
+        try {
+          // Dynamically import the GoogleMap component only when Google Maps is available
+          const { GoogleMap } = await import('@react-google-maps/api');
+          setGoogleMapComponent(() => GoogleMap);
+          setMapError(false);
+        } catch (err) {
+          console.error('Failed to load GoogleMap component:', err);
+          setMapError(true);
+        }
+      } else {
+        console.warn('Google Maps not available');
+        setMapError(true);
+      }
+    };
+
+    checkAndLoadMap();
   }, []);
 
-  if (mapError) {
+  if (mapError || !GoogleMapComponent) {
     // Fallback UI when Google Maps is not available
     return (
       <div style={mapContainerStyle} className="flex items-center justify-center bg-gray-100 rounded-lg">
@@ -48,10 +60,10 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
             </div>
           </CardHeader>
           <CardContent>
-            <Alert className="border-yellow-200 bg-yellow-50">
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-800">
-                The interactive map is temporarily unavailable. You can still browse the list of locations on the right.
+            <Alert className="border-amber-200 bg-amber-50">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <AlertDescription className="text-amber-800">
+                The interactive map is currently unavailable. You can still search for bins using the search bar above.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -62,7 +74,7 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
 
   try {
     return (
-      <GoogleMap
+      <GoogleMapComponent
         mapContainerStyle={mapContainerStyle}
         center={center}
         zoom={zoom}
@@ -71,7 +83,7 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
         options={options}
       >
         {children}
-      </GoogleMap>
+      </GoogleMapComponent>
     );
   } catch (error) {
     console.error('Error rendering Google Map:', error);
@@ -95,11 +107,29 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
 
 // Safe Marker component
 export const SafeMarker: React.FC<any> = (props) => {
-  try {
-    if (typeof window !== 'undefined' && window.google && window.google.maps) {
-      return <Marker {...props} />;
-    }
+  const [MarkerComponent, setMarkerComponent] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const loadMarker = async () => {
+      if (typeof window !== 'undefined' && window.google && window.google.maps) {
+        try {
+          const { Marker } = await import('@react-google-maps/api');
+          setMarkerComponent(() => Marker);
+        } catch (err) {
+          console.warn('Failed to load Marker component:', err);
+        }
+      }
+    };
+
+    loadMarker();
+  }, []);
+
+  if (!MarkerComponent) {
     return null;
+  }
+
+  try {
+    return <MarkerComponent {...props} />;
   } catch (error) {
     console.warn('Error rendering marker:', error);
     return null;
@@ -108,11 +138,29 @@ export const SafeMarker: React.FC<any> = (props) => {
 
 // Safe InfoWindow component
 export const SafeInfoWindow: React.FC<any> = (props) => {
-  try {
-    if (typeof window !== 'undefined' && window.google && window.google.maps) {
-      return <InfoWindow {...props} />;
-    }
+  const [InfoWindowComponent, setInfoWindowComponent] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const loadInfoWindow = async () => {
+      if (typeof window !== 'undefined' && window.google && window.google.maps) {
+        try {
+          const { InfoWindow } = await import('@react-google-maps/api');
+          setInfoWindowComponent(() => InfoWindow);
+        } catch (err) {
+          console.warn('Failed to load InfoWindow component:', err);
+        }
+      }
+    };
+
+    loadInfoWindow();
+  }, []);
+
+  if (!InfoWindowComponent) {
     return null;
+  }
+
+  try {
+    return <InfoWindowComponent {...props} />;
   } catch (error) {
     console.warn('Error rendering info window:', error);
     return null;
