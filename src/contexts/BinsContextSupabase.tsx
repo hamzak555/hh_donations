@@ -215,7 +215,7 @@ const initialBins: BinLocation[] = [
 const STORAGE_KEY = 'binsData';
 
 export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [bins, setBins] = useState<BinLocation[]>([]);
+  const [bins, setBins] = useState<BinLocation[]>(initialBins); // Start with initial bins to avoid empty state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -22,6 +22,7 @@ export const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({
   const [loadError, setLoadError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   // Check if Google Maps is already loaded
   useEffect(() => {
@@ -32,6 +33,11 @@ export const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({
 
   const handleLoadError = (error: Error) => {
     console.error('Google Maps failed to load:', error);
+    // Check if it's likely blocked by ad blocker
+    const errorMessage = error.message || error.toString();
+    if (errorMessage.includes('ERR_BLOCKED_BY_CLIENT') || errorMessage.includes('blocked')) {
+      setIsBlocked(true);
+    }
     setLoadError(true);
     setIsLoading(false);
   };
@@ -78,10 +84,21 @@ export const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({
           <AlertCircle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-700">
             <strong>Failed to load Google Maps</strong>
-            <p className="mt-2">
-              The maps service is temporarily unavailable. You can still use other features of the application.
-            </p>
-            {retryCount < 3 && (
+            {isBlocked ? (
+              <>
+                <p className="mt-2">
+                  It appears Google Maps is being blocked by an ad blocker or browser extension.
+                </p>
+                <p className="mt-1 text-sm">
+                  To use the map, please disable your ad blocker for this site or add an exception for maps.googleapis.com
+                </p>
+              </>
+            ) : (
+              <p className="mt-2">
+                The maps service is temporarily unavailable. You can still use other features of the application.
+              </p>
+            )}
+            {retryCount < 3 && !isBlocked && (
               <Button
                 onClick={handleRetry}
                 variant="outline"

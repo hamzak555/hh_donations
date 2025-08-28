@@ -29,20 +29,42 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
   React.useEffect(() => {
     // Check if Google Maps is loaded and try to import the component
     const checkAndLoadMap = async () => {
-      if (typeof window !== 'undefined' && window.google && window.google.maps) {
-        try {
-          // Dynamically import the GoogleMap component only when Google Maps is available
-          const { GoogleMap } = await import('@react-google-maps/api');
-          setGoogleMapComponent(() => GoogleMap);
-          setMapError(false);
-        } catch (err) {
-          console.error('Failed to load GoogleMap component:', err);
-          setMapError(true);
+      // Wait a bit for Google Maps to be fully loaded
+      const maxAttempts = 10;
+      let attempts = 0;
+      
+      const tryLoad = async () => {
+        if (typeof window !== 'undefined' && window.google && window.google.maps) {
+          try {
+            // Dynamically import the GoogleMap component only when Google Maps is available
+            const { GoogleMap } = await import('@react-google-maps/api');
+            setGoogleMapComponent(() => GoogleMap);
+            setMapError(false);
+            return true;
+          } catch (err) {
+            console.error('Failed to load GoogleMap component:', err);
+            return false;
+          }
         }
-      } else {
-        console.warn('Google Maps not available');
-        setMapError(true);
-      }
+        return false;
+      };
+
+      // Try immediately
+      if (await tryLoad()) return;
+      
+      // If not loaded, try a few more times with delays
+      const intervalId = setInterval(async () => {
+        attempts++;
+        if (await tryLoad() || attempts >= maxAttempts) {
+          clearInterval(intervalId);
+          if (attempts >= maxAttempts) {
+            console.warn('Google Maps not available after multiple attempts');
+            setMapError(true);
+          }
+        }
+      }, 500);
+      
+      return () => clearInterval(intervalId);
     };
 
     checkAndLoadMap();
@@ -111,14 +133,35 @@ export const SafeMarker: React.FC<any> = (props) => {
 
   React.useEffect(() => {
     const loadMarker = async () => {
-      if (typeof window !== 'undefined' && window.google && window.google.maps) {
-        try {
-          const { Marker } = await import('@react-google-maps/api');
-          setMarkerComponent(() => Marker);
-        } catch (err) {
-          console.warn('Failed to load Marker component:', err);
+      const maxAttempts = 10;
+      let attempts = 0;
+      
+      const tryLoad = async () => {
+        if (typeof window !== 'undefined' && window.google && window.google.maps) {
+          try {
+            const { Marker } = await import('@react-google-maps/api');
+            setMarkerComponent(() => Marker);
+            return true;
+          } catch (err) {
+            console.warn('Failed to load Marker component:', err);
+            return false;
+          }
         }
-      }
+        return false;
+      };
+
+      // Try immediately
+      if (await tryLoad()) return;
+      
+      // If not loaded, try a few more times with delays
+      const intervalId = setInterval(async () => {
+        attempts++;
+        if (await tryLoad() || attempts >= maxAttempts) {
+          clearInterval(intervalId);
+        }
+      }, 500);
+      
+      return () => clearInterval(intervalId);
     };
 
     loadMarker();
@@ -142,14 +185,34 @@ export const SafeInfoWindow: React.FC<any> = (props) => {
 
   React.useEffect(() => {
     const loadInfoWindow = async () => {
-      if (typeof window !== 'undefined' && window.google && window.google.maps) {
-        try {
-          const { InfoWindow } = await import('@react-google-maps/api');
-          setInfoWindowComponent(() => InfoWindow);
-        } catch (err) {
-          console.warn('Failed to load InfoWindow component:', err);
+      const maxAttempts = 10;
+      let attempts = 0;
+      
+      const tryLoad = async () => {
+        if (typeof window !== 'undefined' && window.google && window.google.maps) {
+          try {
+            const { InfoWindow } = await import('@react-google-maps/api');
+            setInfoWindowComponent(() => InfoWindow);
+            return true;
+          } catch (err) {
+            console.warn('Failed to load InfoWindow component:', err);
+            return false;
+          }
         }
-      }
+        return false;
+      };
+
+      // Try immediately  
+      if (await tryLoad()) return;
+      
+      // If not loaded, try a few more times with delays
+      const intervalId = setInterval(async () => {
+        attempts++;
+        if (await tryLoad() || attempts >= maxAttempts) {
+          clearInterval(intervalId);
+        }
+      }, 500);
+      
     };
 
     loadInfoWindow();
