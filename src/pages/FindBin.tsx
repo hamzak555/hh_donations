@@ -44,28 +44,10 @@ const FindBin = () => {
   };
 
   useEffect(() => {
-    // Check if Google Maps is available
-    const checkGoogleMaps = () => {
-      if (typeof window !== 'undefined' && window.google && window.google.maps) {
-        setGoogleMapsAvailable(true);
-        return true;
-      }
-      return false;
-    };
-
-    // Initial check
-    if (!checkGoogleMaps()) {
-      // Try again after a delay
-      const timeout = setTimeout(() => {
-        if (!checkGoogleMaps()) {
-          setGoogleMapsAvailable(false);
-          setIsLoading(false);
-        }
-      }, 2000);
-      return () => clearTimeout(timeout);
-    } else {
-      setIsLoading(false);
-    }
+    // Since GoogleMapsGuard handles the waiting for Google Maps to load,
+    // we can assume it's available when this component renders
+    setGoogleMapsAvailable(true);
+    setIsLoading(false);
   }, []);
 
   const onLoad = useCallback((map: any) => {
