@@ -59,10 +59,10 @@ export class GlobalErrorBoundary extends Component<Props, State> {
               </div>
             </CardHeader>
             <CardContent>
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>An error occurred while loading the application.</AlertTitle>
-                <AlertDescription className="mt-2">
+              <Alert className="mb-6 border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertTitle className="text-red-800">An error occurred while loading the application.</AlertTitle>
+                <AlertDescription className="mt-2 text-red-700">
                   {isGoogleMapsError ? (
                     <>
                       <p className="mb-2">

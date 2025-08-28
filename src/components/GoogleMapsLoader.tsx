@@ -4,9 +4,11 @@ import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
+type Library = "places" | "drawing" | "geometry" | "visualization";
+
 interface GoogleMapsLoaderProps {
   children: ReactNode;
-  libraries?: ("places" | "drawing" | "geometry" | "localContext" | "visualization")[];
+  libraries?: Library[];
   fallback?: ReactNode;
 }
 
@@ -14,7 +16,7 @@ const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
 
 export const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({
   children,
-  libraries = ['places'],
+  libraries = ['places'] as Library[],
   fallback
 }) => {
   const [loadError, setLoadError] = useState(false);
@@ -72,9 +74,9 @@ export const GoogleMapsLoader: React.FC<GoogleMapsLoaderProps> = ({
   if (loadError) {
     return (
       <div className="p-4">
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-700">
             <strong>Failed to load Google Maps</strong>
             <p className="mt-2">
               The maps service is temporarily unavailable. You can still use other features of the application.
@@ -144,9 +146,9 @@ export class GoogleMapsErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="p-4">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-700">
               <strong>Map component error</strong>
               <p className="mt-2">
                 There was an error loading the map. Please refresh the page to try again.
