@@ -102,21 +102,21 @@ function Login() {
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-gray-50 px-4 py-8 overflow-hidden">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 pb-4">
-          <div className="flex items-center justify-center mb-2">
-            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center">
-              <KeyRound className="w-7 h-7 text-primary" />
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-50 px-4 overflow-hidden">
+      <Card className="w-full max-w-md my-auto">
+        <CardHeader className="space-y-1 pb-3">
+          <div className="flex items-center justify-center mb-1">
+            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+              <KeyRound className="w-6 h-6 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-xl font-bold text-center">Welcome back</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-lg sm:text-xl font-bold text-center">Welcome back</CardTitle>
+          <CardDescription className="text-center text-sm">
             Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-3 py-3">
             {error && (
               <Alert className="border-red-200 bg-red-50">
                 <div className="flex items-center gap-2">
