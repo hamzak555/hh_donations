@@ -24,6 +24,7 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
 }) => {
   // Check if Google Maps is available
   const [mapError, setMapError] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [GoogleMapComponent, setGoogleMapComponent] = React.useState<any>(null);
 
   React.useEffect(() => {
@@ -40,6 +41,7 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
             const { GoogleMap } = await import('@react-google-maps/api');
             setGoogleMapComponent(() => GoogleMap);
             setMapError(false);
+            setIsLoading(false);
             return true;
           } catch (err) {
             console.error('Failed to load GoogleMap component:', err);
@@ -60,6 +62,7 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
           if (attempts >= maxAttempts) {
             console.warn('Google Maps not available after multiple attempts');
             setMapError(true);
+            setIsLoading(false);
           }
         }
       }, 500);
@@ -70,6 +73,19 @@ export const SafeGoogleMap: React.FC<SafeGoogleMapProps> = ({
     checkAndLoadMap();
   }, []);
 
+  // Show loading spinner while maps are loading
+  if (isLoading) {
+    return (
+      <div style={mapContainerStyle} className="flex items-center justify-center bg-gray-50 rounded-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-sm text-muted-foreground">Loading map...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error only after loading fails
   if (mapError || !GoogleMapComponent) {
     // Fallback UI when Google Maps is not available
     return (
