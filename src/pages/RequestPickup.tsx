@@ -29,7 +29,7 @@ const RequestPickup = () => {
   const [validationError, setValidationError] = useState<string>('');
   
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const [autocomplete, setAutocomplete] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isGoogleMapsLoaded, setIsGoogleMapsLoaded] = useState(false);
@@ -47,7 +47,7 @@ const RequestPickup = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
+  const onAutocompleteLoad = (autocompleteInstance: any) => {
     setAutocomplete(autocompleteInstance);
   };
 
@@ -530,9 +530,9 @@ const RequestPickup = () => {
                         title="Pickup Location"
                         icon={{
                           url: '/images/hh map pin icon.png',
-                          scaledSize: new google.maps.Size(30, 30),
-                          origin: new google.maps.Point(0, 0),
-                          anchor: new google.maps.Point(15, 30)
+                          scaledSize: window.google && window.google.maps ? new window.google.maps.Size(30, 30) : undefined,
+                          origin: window.google && window.google.maps ? new window.google.maps.Point(0, 0) : undefined,
+                          anchor: window.google && window.google.maps ? new window.google.maps.Point(15, 30) : undefined
                         }}
                       />
                     )}

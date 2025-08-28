@@ -140,7 +140,7 @@ const FindBin = () => {
   };
 
   // Handle autocomplete load
-  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
+  const onAutocompleteLoad = (autocompleteInstance: any) => {
     setAutocomplete(autocompleteInstance);
   };
 
@@ -185,6 +185,10 @@ const FindBin = () => {
     }
     
     // If autocomplete hasn't triggered, use geocoding service
+    if (!window.google || !window.google.maps) {
+      console.warn('Google Maps not available for geocoding');
+      return;
+    }
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ address: searchQuery }, (results, status) => {
       if (status === 'OK' && results && results[0]) {
@@ -333,14 +337,14 @@ const FindBin = () => {
                   {userLocation && (
                     <SafeMarker
                       position={userLocation}
-                      icon={{
-                        path: google.maps.SymbolPath.CIRCLE,
+                      icon={window.google && window.google.maps ? {
+                        path: window.google.maps.SymbolPath.CIRCLE,
                         scale: 10,
                         fillColor: '#4285F4',
                         fillOpacity: 1,
                         strokeColor: '#ffffff',
                         strokeWeight: 3,
-                      }}
+                      } : undefined}
                       title="Your Location"
                     />
                   )}
@@ -354,12 +358,12 @@ const FindBin = () => {
                         setSelectedBin(bin);
                         scrollToBin(bin.id);
                       }}
-                      icon={{
+                      icon={window.google && window.google.maps ? {
                         url: '/images/hh map pin icon.png',
-                        scaledSize: new google.maps.Size(30, 30),
-                        origin: new google.maps.Point(0, 0),
-                        anchor: new google.maps.Point(15, 30)
-                      }}
+                        scaledSize: new window.google.maps.Size(30, 30),
+                        origin: new window.google.maps.Point(0, 0),
+                        anchor: new window.google.maps.Point(15, 30)
+                      } : { url: '/images/hh map pin icon.png' }}
                       opacity={bin.status === 'Unavailable' ? 0.4 : 1}
                     />
                   ))}
@@ -370,7 +374,7 @@ const FindBin = () => {
                       position={{ lat: selectedBin.lat, lng: selectedBin.lng }}
                       onCloseClick={() => setSelectedBin(null)}
                       options={{
-                        pixelOffset: new google.maps.Size(0, -35)
+                        pixelOffset: window.google && window.google.maps ? new window.google.maps.Size(0, -35) : undefined
                       }}
                     >
                       <div className="p-2">
