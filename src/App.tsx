@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
+import { LoadScript } from '@react-google-maps/api';
 // Use Supabase contexts - now properly configured
 import { BinsProvider } from './contexts/BinsContextSupabase';
 import { PickupRequestsProvider } from './contexts/PickupRequestsContextSupabase';
@@ -48,6 +49,9 @@ import './utils/dataExportImport';
 import './utils/fixContainerNumbers';
 import './utils/clearStaleData';
 
+const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = ['places'];
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
+
 function App() {
   console.log('App component rendering...');
   console.log('Environment check:', {
@@ -59,7 +63,12 @@ function App() {
     <GlobalErrorBoundary>
       <ErrorBoundary>
         <HelmetProvider>
-          <BinsProvider>
+          <LoadScript
+            googleMapsApiKey={GOOGLE_MAPS_API_KEY}
+            libraries={libraries}
+            loadingElement={<></>}
+          >
+            <BinsProvider>
             <PickupRequestsProvider>
               <BalesProvider>
                 <ContainersProvider>
@@ -120,8 +129,9 @@ function App() {
               </ContainersProvider>
             </BalesProvider>
           </PickupRequestsProvider>
-        </BinsProvider>
-      </HelmetProvider>
+            </BinsProvider>
+          </LoadScript>
+        </HelmetProvider>
     </ErrorBoundary>
     </GlobalErrorBoundary>
   );

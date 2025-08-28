@@ -229,6 +229,7 @@ export const SafeInfoWindow: React.FC<any> = (props) => {
         }
       }, 500);
       
+      return () => clearInterval(intervalId);
     };
 
     loadInfoWindow();

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleMap, LoadScript, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
-import { SafeMarker } from '@/components/SafeGoogleMap';
+import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContextSupabase';
 import { useDrivers } from '@/contexts/DriversContextSupabase';

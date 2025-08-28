@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMapsLoader, GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
-import { GoogleMapsGuard } from '@/components/GoogleMapsGuard';
-import { SafeGoogleMap, SafeMarker, SafeInfoWindow } from '@/components/SafeGoogleMap';
-import { SafeAutocomplete } from '@/components/SafeAutocomplete';
+import { GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
+import { SimpleGoogleMap } from '@/components/SimpleGoogleMap';
+import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
+import { InfoWindow, Autocomplete } from '@react-google-maps/api';
 import { FallbackMap } from '@/components/FallbackMap';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,11 +21,12 @@ const FindBin = () => {
   const [nearbyBins, setNearbyBins] = useState<BinLocation[]>([]);
   const [map, setMap] = useState<any>(null);
   const [autocomplete, setAutocomplete] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [mapsLoaded, setMapsLoaded] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string>('');
-  const [googleMapsAvailable, setGoogleMapsAvailable] = useState(false);
+  const [userLocationIcon, setUserLocationIcon] = useState<any>(undefined);
+  const [binIcon, setBinIcon] = useState<any>({ url: '/images/hh map pin icon.png' });
+  const [pixelOffset, setPixelOffset] = useState<any>(undefined);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [googleMapsReady, setGoogleMapsReady] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const binRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -44,15 +45,75 @@ const FindBin = () => {
   };
 
   useEffect(() => {
-    // Since GoogleMapsGuard handles the waiting for Google Maps to load,
-    // we can assume it's available when this component renders
-    setGoogleMapsAvailable(true);
-    setIsLoading(false);
+    // Check if Google Maps is fully loaded
+    const checkGoogleMaps = () => {
+      if (typeof window !== 'undefined' && 
+          window.google && 
+          window.google.maps &&
+          window.google.maps.SymbolPath &&
+          window.google.maps.Size &&
+          window.google.maps.Point) {
+        setGoogleMapsReady(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Try immediately
+    if (checkGoogleMaps()) return;
+
+    // If not ready, keep checking
+    const interval = setInterval(() => {
+      if (checkGoogleMaps()) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
+
+  // Set icons only when Google Maps is ready
+  useEffect(() => {
+    if (googleMapsReady && window.google && window.google.maps) {
+      try {
+        setUserLocationIcon({
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: '#4285F4',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        });
+        
+        setBinIcon({
+          url: '/images/hh map pin icon.png',
+          scaledSize: new window.google.maps.Size(30, 30),
+          origin: new window.google.maps.Point(0, 0),
+          anchor: new window.google.maps.Point(15, 30)
+        });
+        
+        setPixelOffset(new window.google.maps.Size(0, -35));
+      } catch (error) {
+        console.warn('Error setting Google Maps icons:', error);
+      }
+    }
+  }, [googleMapsReady]);
 
   const onLoad = useCallback((map: any) => {
     setMap(map);
-    setIsLoading(false);
+    // Ensure both map and Google Maps API are ready
+    const checkReady = () => {
+      if (window.google && 
+          window.google.maps && 
+          window.google.maps.SymbolPath &&
+          window.google.maps.Size) {
+        setMapLoaded(true);
+        setGoogleMapsReady(true);
+      } else {
+        setTimeout(checkReady, 100);
+      }
+    };
+    checkReady();
   }, []);
 
   const onUnmount = useCallback(() => {
@@ -89,18 +150,6 @@ const FindBin = () => {
     }
   };
 
-  // Add a timeout to handle stuck loading states
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (isLoading && !mapsLoaded) {
-        console.warn('Maps loading timeout - forcing load complete');
-        setIsLoading(false);
-        setLoadError('Maps took too long to load. Some features may be limited.');
-      }
-    }, 10000); // 10 second timeout
-
-    return () => clearTimeout(timeout);
-  }, [isLoading, mapsLoaded]);
 
   // Update nearby bins when user location changes
   useEffect(() => {
@@ -157,34 +206,42 @@ const FindBin = () => {
   // Handle place selection from autocomplete
   const onPlaceChanged = () => {
     if (autocomplete) {
-      const place = autocomplete.getPlace();
-      
-      if (place.geometry && place.geometry.location) {
-        const newLocation = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
-        };
+      try {
+        const place = autocomplete.getPlace();
         
-        // Update user location to searched location
-        setUserLocation(newLocation);
-        
-        // Center map on the selected location
-        if (map) {
-          map.panTo(newLocation);
-          map.setZoom(14);
+        if (place && place.geometry && place.geometry.location) {
+          const location = place.geometry.location;
+          const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
+          const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+          const newLocation = {
+            lat: Number(lat),
+            lng: Number(lng)
+          };
+          
+          // Update user location to searched location
+          setUserLocation(newLocation);
+          
+          // Center map on the selected location
+          if (map) {
+            map.panTo(newLocation);
+            map.setZoom(14);
+          }
+          
+          // Update search query with formatted address
+          if (place.formatted_address) {
+            setSearchQuery(place.formatted_address);
+          }
         }
-        
-        // Update search query with formatted address
-        if (place.formatted_address) {
-          setSearchQuery(place.formatted_address);
-        }
+      } catch (error) {
+        console.error('Error handling place change:', error);
+        setLocationError('Unable to process the selected location. Please try again.');
       }
     }
   };
 
   // Handle manual search (when pressing Enter or clicking Search)
   const handleSearch = () => {
-    if (!searchQuery || !mapsLoaded) return;
+    if (!searchQuery) return;
     
     setLocationError('');
     
@@ -199,25 +256,32 @@ const FindBin = () => {
       console.warn('Google Maps not available for geocoding');
       return;
     }
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address: searchQuery }, (results, status) => {
-      if (status === 'OK' && results && results[0]) {
-        const location = results[0].geometry.location;
-        const newLocation = {
-          lat: location.lat(),
-          lng: location.lng()
-        };
-        
-        setUserLocation(newLocation);
-        
-        if (map) {
-          map.panTo(newLocation);
-          map.setZoom(14);
+    try {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address: searchQuery }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
+          const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+          const newLocation = {
+            lat: Number(lat),
+            lng: Number(lng)
+          };
+          
+          setUserLocation(newLocation);
+          
+          if (map) {
+            map.panTo(newLocation);
+            map.setZoom(14);
+          }
+        } else {
+          setLocationError('Address not found. Please try a different search.');
         }
-      } else {
-        setLocationError('Address not found. Please try a different search.');
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error geocoding address:', error);
+      setLocationError('Unable to search for this address. Please try again.');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -254,33 +318,6 @@ const FindBin = () => {
         }}
       />
       <GoogleMapsErrorBoundary fallback={<LoadingSkeleton type="findbin" />}>
-        <GoogleMapsLoader 
-          libraries={['places']}
-          fallback={
-            <div className="p-8">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Map Unavailable</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">
-                    The map service is temporarily unavailable. You can still view the list of donation bins:
-                  </p>
-                  <div className="space-y-2">
-                    {bins.filter(bin => bin.status !== 'Unavailable').map(bin => (
-                      <div key={bin.id} className="border rounded p-3">
-                        <h4 className="font-semibold">{bin.locationName}</h4>
-                        <p className="text-sm text-gray-500">{bin.address}</p>
-                        <p className={`text-sm font-medium ${getStatusColor(bin.status)}`}>{bin.status}</p>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          }
-        >
-        <GoogleMapsGuard>
         <div className="flex flex-col lg:h-screen">
           {/* Header */}
           <div className="px-8 pt-10 pb-6">
@@ -295,26 +332,14 @@ const FindBin = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
               <div className="lg:col-span-2 relative autocomplete-container overflow-visible">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                {googleMapsAvailable ? (
-                  <SafeAutocomplete
-                    onLoad={onAutocompleteLoad}
-                    onPlaceChanged={onPlaceChanged}
-                    options={{
-                      componentRestrictions: { country: 'ca' }, // Restrict to Canada
-                      fields: ['formatted_address', 'geometry']
-                    }}
-                  >
-                    <Input
-                      ref={searchInputRef}
-                      type="text"
-                      placeholder="Enter address or postal code..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                      className="pl-10 w-full h-10"
-                    />
-                  </SafeAutocomplete>
-                ) : (
+                <Autocomplete
+                  onLoad={onAutocompleteLoad}
+                  onPlaceChanged={onPlaceChanged}
+                  options={{
+                    componentRestrictions: { country: 'ca' }, // Restrict to Canada
+                    fields: ['formatted_address', 'geometry']
+                  }}
+                >
                   <Input
                     ref={searchInputRef}
                     type="text"
@@ -324,7 +349,7 @@ const FindBin = () => {
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="pl-10 w-full h-10"
                   />
-                )}
+                </Autocomplete>
               </div>
               <Button 
                 variant="outline" 
@@ -349,8 +374,7 @@ const FindBin = () => {
             {/* Map */}
             <Card className="h-full">
               <CardContent className="p-0 h-full">
-                {googleMapsAvailable ? (
-                  <SafeGoogleMap
+                <SimpleGoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={center}
                   zoom={12}
@@ -358,23 +382,16 @@ const FindBin = () => {
                   onUnmount={onUnmount}
                 >
                   {/* User Location Marker */}
-                  {userLocation && (
+                  {mapLoaded && googleMapsReady && userLocation && (
                     <SafeMarker
                       position={userLocation}
-                      icon={window.google && window.google.maps ? {
-                        path: window.google.maps.SymbolPath.CIRCLE,
-                        scale: 10,
-                        fillColor: '#4285F4',
-                        fillOpacity: 1,
-                        strokeColor: '#ffffff',
-                        strokeWeight: 3,
-                      } : undefined}
+                      icon={userLocationIcon}
                       title="Your Location"
                     />
                   )}
 
                   {/* Bin Markers */}
-                  {bins.map((bin) => (
+                  {mapLoaded && googleMapsReady && bins.map((bin) => (
                     <SafeMarker
                       key={bin.id}
                       position={{ lat: bin.lat, lng: bin.lng }}
@@ -382,23 +399,18 @@ const FindBin = () => {
                         setSelectedBin(bin);
                         scrollToBin(bin.id);
                       }}
-                      icon={window.google && window.google.maps ? {
-                        url: '/images/hh map pin icon.png',
-                        scaledSize: new window.google.maps.Size(30, 30),
-                        origin: new window.google.maps.Point(0, 0),
-                        anchor: new window.google.maps.Point(15, 30)
-                      } : { url: '/images/hh map pin icon.png' }}
+                      icon={binIcon}
                       opacity={bin.status === 'Unavailable' ? 0.4 : 1}
                     />
                   ))}
 
                   {/* Info Window */}
-                  {selectedBin && (
-                    <SafeInfoWindow
+                  {mapLoaded && googleMapsReady && selectedBin && (
+                    <InfoWindow
                       position={{ lat: selectedBin.lat, lng: selectedBin.lng }}
                       onCloseClick={() => setSelectedBin(null)}
                       options={{
-                        pixelOffset: window.google && window.google.maps ? new window.google.maps.Size(0, -35) : undefined
+                        pixelOffset: pixelOffset
                       }}
                     >
                       <div className="p-2">
@@ -408,18 +420,9 @@ const FindBin = () => {
                           Status: {selectedBin.status}
                         </p>
                       </div>
-                    </SafeInfoWindow>
+                    </InfoWindow>
                   )}
-                  </SafeGoogleMap>
-                ) : (
-                  <FallbackMap 
-                    bins={bins}
-                    onBinClick={(bin) => {
-                      setSelectedBin(bin);
-                      scrollToBin(bin.id);
-                    }}
-                  />
-                )}
+                  </SimpleGoogleMap>
               </CardContent>
             </Card>
           </div>
@@ -513,8 +516,6 @@ const FindBin = () => {
           </div>
           </div>
         </div>
-        </GoogleMapsGuard>
-        </GoogleMapsLoader>
       </GoogleMapsErrorBoundary>
     </>
   );

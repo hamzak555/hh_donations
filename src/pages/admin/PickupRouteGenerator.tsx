@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MapPin, Truck, Navigation, Check, AlertCircle, Phone } from 'lucide-react';
 import { useJsApiLoader, Autocomplete, GoogleMap, DirectionsRenderer } from '@react-google-maps/api';
-import { SafeMarker } from '@/components/SafeGoogleMap';
+import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
 
 const libraries: ("places")[] = ['places'];
 
@@ -521,7 +521,7 @@ function PickupRouteGenerator() {
               </div>
 
               {/* Route Preview Map */}
-              {directionsResponse && selectedDriver && isLoaded && (
+              {isLoaded && (
                 <div className="mt-4 flex-1 flex flex-col">
                   <Label>Route Preview</Label>
                   <div className="mt-2 rounded-lg overflow-hidden border flex-1 min-h-[300px]">

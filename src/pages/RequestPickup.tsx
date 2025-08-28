@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { GoogleMap, LoadScript, Autocomplete } from '@react-google-maps/api';
-import { SafeMarker } from '@/components/SafeGoogleMap';
+import { GoogleMap, Autocomplete } from '@react-google-maps/api';
+import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -514,12 +514,6 @@ const RequestPickup = () => {
             <CardContent className="p-0 flex-1 flex flex-col">
               <div className="flex-1 min-h-[300px]">
                 {!isSubmitted && ( // Only render map when not in submitted state
-                  <LoadScript 
-                    googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-                    libraries={['places']}
-                    loadingElement={<div className="w-full h-full bg-gray-100 animate-pulse" />}
-                    onLoad={() => setIsGoogleMapsLoaded(true)}
-                  >
                     <GoogleMap
                       mapContainerStyle={{ width: '100%', height: '100%' }}
                       center={center}
@@ -538,7 +532,6 @@ const RequestPickup = () => {
                       />
                     )}
                     </GoogleMap>
-                  </LoadScript>
                 )}
               </div>
             
