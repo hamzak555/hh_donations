@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMapsLoader, GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
 import { SafeGoogleMap, SafeMarker, SafeInfoWindow } from '@/components/SafeGoogleMap';
 import { SafeAutocomplete } from '@/components/SafeAutocomplete';
+import { FallbackMap } from '@/components/FallbackMap';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ const FindBin = () => {
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string>('');
+  const [googleMapsAvailable, setGoogleMapsAvailable] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const binRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -39,6 +41,31 @@ const FindBin = () => {
     lat: userLocation?.lat || 43.6532,
     lng: userLocation?.lng || -79.3832
   };
+
+  useEffect(() => {
+    // Check if Google Maps is available
+    const checkGoogleMaps = () => {
+      if (typeof window !== 'undefined' && window.google && window.google.maps) {
+        setGoogleMapsAvailable(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Initial check
+    if (!checkGoogleMaps()) {
+      // Try again after a delay
+      const timeout = setTimeout(() => {
+        if (!checkGoogleMaps()) {
+          setGoogleMapsAvailable(false);
+          setIsLoading(false);
+        }
+      }, 2000);
+      return () => clearTimeout(timeout);
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
 
   const onLoad = useCallback((map: any) => {
     setMap(map);
@@ -284,14 +311,26 @@ const FindBin = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
               <div className="lg:col-span-2 relative autocomplete-container overflow-visible">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                <SafeAutocomplete
-                  onLoad={onAutocompleteLoad}
-                  onPlaceChanged={onPlaceChanged}
-                  options={{
-                    componentRestrictions: { country: 'ca' }, // Restrict to Canada
-                    fields: ['formatted_address', 'geometry']
-                  }}
-                >
+                {googleMapsAvailable ? (
+                  <SafeAutocomplete
+                    onLoad={onAutocompleteLoad}
+                    onPlaceChanged={onPlaceChanged}
+                    options={{
+                      componentRestrictions: { country: 'ca' }, // Restrict to Canada
+                      fields: ['formatted_address', 'geometry']
+                    }}
+                  >
+                    <Input
+                      ref={searchInputRef}
+                      type="text"
+                      placeholder="Enter address or postal code..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                      className="pl-10 w-full h-10"
+                    />
+                  </SafeAutocomplete>
+                ) : (
                   <Input
                     ref={searchInputRef}
                     type="text"
@@ -301,7 +340,7 @@ const FindBin = () => {
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     className="pl-10 w-full h-10"
                   />
-                </SafeAutocomplete>
+                )}
               </div>
               <Button 
                 variant="outline" 
@@ -326,7 +365,8 @@ const FindBin = () => {
             {/* Map */}
             <Card className="h-full">
               <CardContent className="p-0 h-full">
-                <SafeGoogleMap
+                {googleMapsAvailable ? (
+                  <SafeGoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={center}
                   zoom={12}
@@ -386,7 +426,16 @@ const FindBin = () => {
                       </div>
                     </SafeInfoWindow>
                   )}
-                </SafeGoogleMap>
+                  </SafeGoogleMap>
+                ) : (
+                  <FallbackMap 
+                    bins={bins}
+                    onBinClick={(bin) => {
+                      setSelectedBin(bin);
+                      scrollToBin(bin.id);
+                    }}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
