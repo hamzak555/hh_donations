@@ -52,6 +52,7 @@ export interface DatabaseBin {
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full'
   assignedDriver?: string // Keep for backward compatibility (driver name)
   driver_id?: string // Foreign key reference to drivers.id
+  partner_application_id?: string // Foreign key reference to partner_applications.id
   createdDate?: string
   fullSince?: string
   // Sensor fields
