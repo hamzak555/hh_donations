@@ -529,9 +529,9 @@ const FindBin = () => {
               </CardContent>
             </Card>
           </div>
+          </div>
         </div>
         </GoogleMapsGuard>
-      </div>
         </GoogleMapsLoader>
       </GoogleMapsErrorBoundary>
     </>
