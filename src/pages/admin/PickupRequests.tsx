@@ -596,7 +596,7 @@ function PickupRequests() {
           )}
           
           {/* Column Visibility Dropdown */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 

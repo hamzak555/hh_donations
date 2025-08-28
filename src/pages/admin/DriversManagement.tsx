@@ -455,7 +455,7 @@ function DriversManagement() {
         <h1 className="text-3xl font-bold">Drivers</h1>
         <div className="flex gap-2">
           {/* Column Visibility Dropdown */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 

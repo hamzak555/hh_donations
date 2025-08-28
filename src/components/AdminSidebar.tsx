@@ -176,7 +176,7 @@ const AdminSidebar = () => {
       icon: Settings,
       subItems: [
         { path: '/admin/users', label: 'User Management', icon: Shield },
-        { path: '/admin/sensor-test', label: 'Sensor Test', icon: Wifi }
+        { path: '/admin/sensor-test', label: 'Sensor API', icon: Wifi }
       ]
     },
   ];

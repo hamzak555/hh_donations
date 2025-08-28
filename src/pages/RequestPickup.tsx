@@ -25,6 +25,7 @@ const RequestPickup = () => {
     additionalNotes: ''
   });
   const [selectedDate, setSelectedDate] = useState<Date>();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
   
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -156,17 +157,17 @@ const RequestPickup = () => {
             </div>
           </div>
           
-          <div className="text-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button 
               onClick={() => {
                 // Simply reload the page to ensure everything resets properly
                 window.location.reload();
               }}
-              className="mr-4"
+              className="w-full sm:w-auto"
             >
               Submit Another Request
             </Button>
-            <Button variant="outline" onClick={() => window.location.href = '/home'}>
+            <Button variant="outline" onClick={() => window.location.href = '/home'} className="w-full sm:w-auto">
               Return to Home
             </Button>
           </div>
@@ -367,7 +368,7 @@ const RequestPickup = () => {
                       
                       <div>
                         <Label>Pickup Date *</Label>
-                        <Popover>
+                        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                           <PopoverTrigger asChild>
                             <Button
                               variant="outline"
@@ -381,7 +382,10 @@ const RequestPickup = () => {
                             <Calendar
                               mode="single"
                               selected={selectedDate}
-                              onSelect={setSelectedDate}
+                              onSelect={(date) => {
+                                setSelectedDate(date);
+                                setIsCalendarOpen(false); // Close calendar when date is selected
+                              }}
                               disabled={(date) => {
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);

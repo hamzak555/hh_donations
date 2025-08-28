@@ -55,6 +55,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { MobileTooltip } from '@/components/MobileTooltip';
 import { Plus, MoreHorizontal, Edit, Trash, MapPin, ChevronUp, ChevronDown, ArrowUpDown, Search, Package, Users, Info, Settings2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -784,7 +785,7 @@ function BinsManagement() {
           </Button>
           
           {/* Column Visibility Dropdown */}
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button 
                 variant="outline" 
@@ -1101,40 +1102,40 @@ function BinsManagement() {
                         {(() => {
                           const partner = getPartnerForBin(bin.id);
                           return partner ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" className="h-8 w-8 p-0 mx-auto">
-                                    <Info className="h-4 w-4 text-green-600" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent className="p-0" side="left" align="center">
-                                  <div className="bg-white rounded-lg shadow-lg p-3 min-w-[240px]">
-                                    <div>
-                                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Partner Organization</p>
-                                      <p className="font-semibold text-gray-900 text-sm">{partner.organizationName}</p>
-                                      {partner.contactPerson && (
-                                        <div className="mt-2 pt-2 border-t border-gray-100">
-                                          <p className="text-xs text-gray-600">
-                                            <span className="font-medium">Contact:</span> {partner.contactPerson}
+                            <MobileTooltip
+                              trigger={
+                                <Button variant="ghost" className="h-8 w-8 p-0 mx-auto">
+                                  <Info className="h-4 w-4 text-green-600" />
+                                </Button>
+                              }
+                              content={
+                                <div className="bg-white rounded-lg shadow-lg p-3 min-w-[240px]">
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Partner Organization</p>
+                                    <p className="font-semibold text-gray-900 text-sm">{partner.organizationName}</p>
+                                    {partner.contactPerson && (
+                                      <div className="mt-2 pt-2 border-t border-gray-100">
+                                        <p className="text-xs text-gray-600">
+                                          <span className="font-medium">Contact:</span> {partner.contactPerson}
+                                        </p>
+                                        {partner.email && (
+                                          <p className="text-xs text-gray-600 mt-0.5">
+                                            <span className="font-medium">Email:</span> {partner.email}
                                           </p>
-                                          {partner.email && (
-                                            <p className="text-xs text-gray-600 mt-0.5">
-                                              <span className="font-medium">Email:</span> {partner.email}
-                                            </p>
-                                            )}
-                                            {partner.phone && (
-                                              <p className="text-xs text-gray-600 mt-0.5">
-                                                <span className="font-medium">Phone:</span> {partner.phone}
-                                              </p>
-                                            )}
-                                          </div>
                                         )}
-                                    </div>
+                                        {partner.phone && (
+                                          <p className="text-xs text-gray-600 mt-0.5">
+                                            <span className="font-medium">Phone:</span> {partner.phone}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                                </div>
+                              }
+                              side="left"
+                              align="center"
+                            />
                           ) : (
                             <span className="text-gray-400">-</span>
                           );

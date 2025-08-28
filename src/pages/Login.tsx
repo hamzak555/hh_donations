@@ -85,7 +85,7 @@ function Login() {
       }
       
       // Invalid credentials
-      setError('Invalid email or password. Please try again.');
+      setError('Invalid email or password');
     } catch (err) {
       console.error('Login error:', err);
       setError('An error occurred during login. Please try again.');
@@ -102,15 +102,15 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-8">
+    <div className="h-screen flex items-center justify-center bg-gray-50 px-4 py-8 overflow-hidden">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-              <KeyRound className="w-8 h-8 text-primary" />
+        <CardHeader className="space-y-1 pb-4">
+          <div className="flex items-center justify-center mb-2">
+            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center">
+              <KeyRound className="w-7 h-7 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
+          <CardTitle className="text-xl font-bold text-center">Welcome back</CardTitle>
           <CardDescription className="text-center">
             Enter your credentials to access your account
           </CardDescription>
@@ -118,9 +118,11 @@ function Login() {
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <Alert className="border-red-200 bg-red-50 text-red-800">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
+              <Alert className="border-red-200 bg-red-50">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <AlertDescription className="text-red-800">{error}</AlertDescription>
+                </div>
               </Alert>
             )}
             <div className="space-y-2">

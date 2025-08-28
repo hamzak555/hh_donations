@@ -35,7 +35,7 @@ const ResponsiveSidebar = () => {
     };
   }, [isMobileMenuOpen]);
 
-  const navItems = [
+  const allNavItems = [
     { path: '/home', label: 'Home', icon: Home },
     { path: '/find-bin', label: 'Find a Bin', icon: MapPin },
     { path: '/request-pickup', label: 'Request a Pickup', icon: Truck },
@@ -45,6 +45,10 @@ const ResponsiveSidebar = () => {
     { path: '/faq', label: 'FAQ', icon: HelpCircle },
     { path: '/contact', label: 'Contact', icon: Phone },
   ];
+  
+  // Remove 'Request a Pickup' from mobile menu
+  const mobileNavItems = allNavItems.filter(item => item.path !== '/request-pickup');
+  const desktopNavItems = allNavItems;
 
   return (
     <>
@@ -112,7 +116,7 @@ const ResponsiveSidebar = () => {
           {/* Mobile Navigation Links */}
           <nav className="flex-1 overflow-y-auto p-4">
             <ul className="space-y-1">
-              {navItems.map((item) => {
+              {mobileNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
                 return (
@@ -153,7 +157,7 @@ const ResponsiveSidebar = () => {
         {/* Desktop Navigation Links */}
         <nav className="flex-1 p-4 overflow-y-auto">
           <ul className="space-y-2">
-            {navItems.map((item) => {
+            {desktopNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.path;
               return (

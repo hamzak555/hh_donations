@@ -449,20 +449,21 @@ function Reporting() {
   } satisfies ChartConfig;
 
   return (
-    <div className="h-screen flex flex-col pt-10 pb-6 bg-gray-50">
-      <div className="flex-1 overflow-y-auto">
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Reporting</h1>
+    <div className="min-h-screen flex flex-col pt-10 pb-6 bg-gray-50">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
+      <div className="px-2 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold">Reporting</h1>
           
           {/* Date Range Selector */}
-          <div className="flex items-center gap-2">
-            {/* Quick Range Buttons */}
-            {quickRanges.map(range => (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Range Buttons - Hide some on mobile */}
+            {quickRanges.map((range, index) => (
               <Button
                 key={range.label}
                 variant="outline"
                 size="sm"
+                className={`${index > 2 ? 'hidden sm:inline-flex' : ''}`}
                 onClick={() => handleQuickRange(range)}
                 className={
                   dateRange?.from && dateRange?.to &&
@@ -483,7 +484,7 @@ function Reporting() {
             {/* Date Range Picker */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="min-w-[240px] justify-start">
+                <Button variant="outline" size="sm" className="w-full sm:min-w-[240px] justify-start">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dateRange?.from && dateRange?.to ? (
                     <>
@@ -499,7 +500,7 @@ function Reporting() {
                   mode="range"
                   selected={dateRange}
                   onSelect={setDateRange}
-                  numberOfMonths={2}
+                  numberOfMonths={typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 2}
                   initialFocus
                 />
               </PopoverContent>
@@ -509,7 +510,7 @@ function Reporting() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full sm:max-w-md grid-cols-2">
             <TabsTrigger value="financial">Financial</TabsTrigger>
             <TabsTrigger value="operational">Operational</TabsTrigger>
           </TabsList>
@@ -587,18 +588,18 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className="h-[200px]">
+                  }} className="h-[200px] w-full">
                     <BarChart
                       accessibilityLayer
                       data={binMetrics.pieData.map(item => ({ status: item.name, bins: item.value }))}
                       layout="vertical"
-                      margin={{ right: 100 }}
+                      margin={{ right: 60, left: 5 }}
                     >
                       <YAxis dataKey="status" type="category" hide />
                       <XAxis type="number" hide />
                       <Bar dataKey="bins" fill="#0b503c" radius={4} maxBarSize={40}>
-                        <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
-                        <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                        <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={10} dy={-6} />
+                        <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={9} />
                       </Bar>
                       <ChartTooltip
                         cursor={false}
@@ -636,18 +637,18 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className="h-[200px]">
+                  }} className="h-[200px] w-full">
                     <BarChart
                       accessibilityLayer
                       data={driverBinAssignments}
                       layout="vertical"
-                      margin={{ right: 100 }}
+                      margin={{ right: 60, left: 5 }}
                     >
                       <YAxis dataKey="driver" type="category" hide />
                       <XAxis type="number" hide />
                       <Bar dataKey="bins" fill="#0b503c" radius={4} maxBarSize={40}>
-                        <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
-                        <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                        <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={10} dy={-6} />
+                        <LabelList dataKey="bins" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={9} />
                       </Bar>
                       <ChartTooltip
                         cursor={false}
@@ -717,18 +718,18 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className="h-[200px]">
+                  }} className="h-[200px] w-full">
                     <BarChart
                       accessibilityLayer
                       data={pickupsPerDriver}
                       layout="vertical"
-                      margin={{ right: 100 }}
+                      margin={{ right: 60, left: 5 }}
                     >
                       <YAxis dataKey="driver" type="category" hide />
                       <XAxis type="number" hide />
                       <Bar dataKey="pickups" fill="#0b503c" radius={4} maxBarSize={40}>
-                        <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
-                        <LabelList dataKey="pickups" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                        <LabelList dataKey="driver" position="right" offset={8} className="fill-foreground" fontSize={10} dy={-6} />
+                        <LabelList dataKey="pickups" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={9} />
                       </Bar>
                       <ChartTooltip
                         cursor={false}
@@ -766,18 +767,18 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className="h-[200px]">
+                  }} className="h-[200px] w-full">
                     <BarChart
                       accessibilityLayer
                       data={partnerMetrics.chartData.map(item => ({ status: item.name, applications: item.value }))}
                       layout="vertical"
-                      margin={{ right: 100 }}
+                      margin={{ right: 60, left: 5 }}
                     >
                       <YAxis dataKey="status" type="category" hide />
                       <XAxis type="number" hide />
                       <Bar dataKey="applications" fill="#0b503c" radius={4} maxBarSize={40}>
-                        <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={11} dy={-6} />
-                        <LabelList dataKey="applications" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={10} />
+                        <LabelList dataKey="status" position="right" offset={8} className="fill-foreground" fontSize={10} dy={-6} />
+                        <LabelList dataKey="applications" position="right" offset={8} dy={6} className="fill-muted-foreground" fontSize={9} />
                       </Bar>
                       <ChartTooltip
                         cursor={false}
@@ -882,13 +883,14 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className="h-[200px]">
+                  }} className="h-[200px] w-full">
                     <BarChart
                       accessibilityLayer
                       data={salesMetrics.byQuality}
                       layout="vertical"
                       margin={{
-                        right: 100,
+                        right: 60,
+                        left: 5,
                       }}
                     >
                       <CartesianGrid horizontal={false} />
@@ -966,7 +968,7 @@ function Reporting() {
                     </div>
                   )}
                 </CardHeader>
-                <CardContent className={`pb-2 ${isLocationExpanded ? "flex-1 flex flex-col" : ""}`}>
+                <CardContent className={`pb-2 ${isLocationExpanded ? "flex-1 flex flex-col" : ""} overflow-hidden`}>
                   <ChartContainer config={{
                     amount: {
                       label: "Revenue",
@@ -975,13 +977,14 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className={isLocationExpanded ? "flex-1" : "h-[200px]"}>
+                  }} className={`w-full ${isLocationExpanded ? "flex-1" : "h-[200px]"}`}>
                     <BarChart
                       accessibilityLayer
                       data={salesMetrics.byLocation}
                       layout="vertical"
                       margin={{
-                        right: 100,
+                        right: 60,
+                        left: 5,
                       }}
                     >
                       <CartesianGrid horizontal={false} />
