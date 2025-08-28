@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { GoogleMap, LoadScript, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api';
+import { GoogleMapsLoader, GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +16,8 @@ const FindBin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [nearbyBins, setNearbyBins] = useState<BinLocation[]>([]);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const [map, setMap] = useState<any>(null);
+  const [autocomplete, setAutocomplete] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -38,9 +39,9 @@ const FindBin = () => {
     lng: userLocation?.lng || -79.3832
   };
 
-  const onLoad = useCallback((map: google.maps.Map) => {
+  const onLoad = useCallback((map: any) => {
     setMap(map);
-    // Don't set isLoading here - it's handled by LoadScript
+    setIsLoading(false);
   }, []);
 
   const onUnmount = useCallback(() => {
@@ -230,38 +231,33 @@ const FindBin = () => {
           "serviceType": "Donation Collection"
         }}
       />
-      <LoadScript 
-      googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-      libraries={['places']}
-      loadingElement={<LoadingSkeleton type="findbin" />}
-      onLoad={() => {
-        setMapsLoaded(true);
-        setIsLoading(false);
-      }}
-      onError={(error) => {
-        console.error('Error loading Google Maps:', error);
-        setLoadError('Failed to load Google Maps. Please check your internet connection.');
-        setIsLoading(false);
-      }}
-    >
-      {loadError ? (
-        <div className="flex items-center justify-center h-screen">
-          <Card className="p-6 max-w-md">
-            <CardContent>
-              <h2 className="text-xl font-semibold text-red-600 mb-2">Map Loading Error</h2>
-              <p className="text-gray-600">{loadError}</p>
-              <Button 
-                onClick={() => window.location.reload()} 
-                className="mt-4"
-              >
-                Reload Page
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      ) : isLoading ? (
-        <LoadingSkeleton type="findbin" />
-      ) : (
+      <GoogleMapsErrorBoundary fallback={<LoadingSkeleton type="findbin" />}>
+        <GoogleMapsLoader 
+          libraries={['places']}
+          fallback={
+            <div className="p-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Map Unavailable</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 mb-4">
+                    The map service is temporarily unavailable. You can still view the list of donation bins:
+                  </p>
+                  <div className="space-y-2">
+                    {bins.filter(bin => bin.status !== 'Unavailable').map(bin => (
+                      <div key={bin.id} className="border rounded p-3">
+                        <h4 className="font-semibold">{bin.locationName}</h4>
+                        <p className="text-sm text-gray-500">{bin.address}</p>
+                        <p className={`text-sm font-medium ${getStatusColor(bin.status)}`}>{bin.status}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          }
+        >
         <div className="flex flex-col lg:h-screen">
           {/* Header */}
           <div className="px-8 pt-10 pb-6">
@@ -472,8 +468,8 @@ const FindBin = () => {
           </div>
         </div>
       </div>
-      )}
-      </LoadScript>
+        </GoogleMapsLoader>
+      </GoogleMapsErrorBoundary>
     </>
   );
 };

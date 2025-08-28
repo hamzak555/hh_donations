@@ -13,6 +13,7 @@ import ResponsiveLayout from './components/ResponsiveLayout';
 import AdminLayout from './components/AdminLayout';
 import DriverLayout from './components/DriverLayout';
 import ErrorBoundary from './components/ErrorBoundary';
+import { GlobalErrorBoundary } from './components/GlobalErrorBoundary';
 import Dashboard from './pages/Dashboard';
 import FindBin from './pages/FindBin';
 import RequestPickup from './pages/RequestPickup';
@@ -55,20 +56,21 @@ function App() {
   });
   
   return (
-    <ErrorBoundary>
-      <HelmetProvider>
-        <BinsProvider>
-          <PickupRequestsProvider>
-            <BalesProvider>
-              <ContainersProvider>
-                <DriversProvider>
-                  <PartnerApplicationsProvider>
-                    <Router>
-                      <ScrollToTop />
-                      <ScrollToTopButton />
-                      <NetworkStatus />
-                      <Toaster />
-                      <Routes>
+    <GlobalErrorBoundary>
+      <ErrorBoundary>
+        <HelmetProvider>
+          <BinsProvider>
+            <PickupRequestsProvider>
+              <BalesProvider>
+                <ContainersProvider>
+                  <DriversProvider>
+                    <PartnerApplicationsProvider>
+                      <Router>
+                        <ScrollToTop />
+                        <ScrollToTopButton />
+                        <NetworkStatus />
+                        <Toaster />
+                        <Routes>
                         {/* Public Routes */}
                         <Route element={<ResponsiveLayout />}>
                           <Route path="/home" element={<Dashboard />} />
@@ -121,6 +123,7 @@ function App() {
         </BinsProvider>
       </HelmetProvider>
     </ErrorBoundary>
+    </GlobalErrorBoundary>
   );
 }
 

@@ -1,4 +1,4 @@
-import { supabase, TABLES, DatabaseBin, DatabaseDriver, DatabaseContainer, DatabaseBale, DatabasePickupRequest, DatabaseAdminUser, DatabasePartnerApplication } from '@/lib/supabase'
+import { supabase, TABLES, DatabaseBin, DatabaseDriver, DatabaseContainer, DatabaseBale, DatabasePickupRequest, DatabaseAdminUser, DatabasePartner } from '@/lib/supabase'
 import { BinLocation } from '@/contexts/BinsContextSupabase'
 
 // Simplified utility functions - direct mapping after column rename
@@ -6,7 +6,7 @@ const convertDatabaseBinToApp = (dbBin: DatabaseBin): BinLocation => ({
   // Direct mapping - all fields match after column rename
   ...dbBin,
   driverId: dbBin.driver_id, // Map snake_case to camelCase
-  partnerApplicationId: dbBin.partner_application_id, // Map snake_case to camelCase
+  partnerId: dbBin.partner_id, // Map snake_case to camelCase (renamed from partner_application_id)
   assignedDriver: dbBin.assignedDriver // Keep for backward compatibility
 })
 
@@ -14,7 +14,7 @@ const convertAppBinToDatabase = (appBin: BinLocation): Omit<DatabaseBin, 'create
   // Direct mapping - no field name conversion needed
   ...appBin,
   driver_id: appBin.driverId, // Map camelCase to snake_case
-  partner_application_id: appBin.partnerApplicationId, // Map camelCase to snake_case
+  partner_id: appBin.partnerId, // Map camelCase to snake_case (renamed from partnerApplicationId)
   assignedDriver: appBin.assignedDriver // Keep for backward compatibility
 })
 
@@ -99,7 +99,7 @@ export class BinsService {
   static async getAllBins(): Promise<BinLocation[]> {
     const { data, error } = await supabase
       .from(TABLES.BINS)
-      .select('id, binNumber, locationName, address, lat, lng, status, assignedDriver, driver_id, partner_application_id, createdDate, fullSince, sensorId, containerId, fillLevel, lastSensorUpdate, batteryLevel, temperature, sensorEnabled, created_at, updated_at')
+      .select('id, binNumber, locationName, address, lat, lng, status, assignedDriver, driver_id, partner_id, createdDate, fullSince, sensorId, containerId, fillLevel, lastSensorUpdate, batteryLevel, temperature, sensorEnabled, created_at, updated_at')
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -609,7 +609,7 @@ export class AdminUsersService {
 export class PartnerApplicationsService {
   static async getAllPartnerApplications() {
     const { data, error } = await supabase
-      .from(TABLES.PARTNER_APPLICATIONS)
+      .from(TABLES.PARTNERS)
       .select('id, organization_name, contact_person, email, phone, website, street, city, state, zip_code, additional_info, status, submitted_at, reviewed_at, review_notes, assigned_bins, documents, created_at, updated_at')
       .order('created_at', { ascending: false })
 
@@ -621,9 +621,9 @@ export class PartnerApplicationsService {
     return data
   }
 
-  static async createPartnerApplication(application: Omit<DatabasePartnerApplication, 'id' | 'created_at' | 'updated_at'>) {
+  static async createPartnerApplication(application: Omit<DatabasePartner, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase
-      .from(TABLES.PARTNER_APPLICATIONS)
+      .from(TABLES.PARTNERS)
       .insert([application])
       .select()
       .single()
@@ -636,9 +636,9 @@ export class PartnerApplicationsService {
     return data
   }
 
-  static async updatePartnerApplication(id: string, updates: Partial<DatabasePartnerApplication>) {
+  static async updatePartnerApplication(id: string, updates: Partial<DatabasePartner>) {
     const { data, error } = await supabase
-      .from(TABLES.PARTNER_APPLICATIONS)
+      .from(TABLES.PARTNERS)
       .update(updates)
       .eq('id', id)
       .select()
@@ -654,7 +654,7 @@ export class PartnerApplicationsService {
 
   static async deletePartnerApplication(id: string) {
     const { error } = await supabase
-      .from(TABLES.PARTNER_APPLICATIONS)
+      .from(TABLES.PARTNERS)
       .delete()
       .eq('id', id)
 

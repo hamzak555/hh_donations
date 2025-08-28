@@ -38,7 +38,7 @@ export const TABLES = {
   BALES: 'bales',
   PICKUP_REQUESTS: 'pickup_requests',
   ADMIN_USERS: 'admin_users',
-  PARTNER_APPLICATIONS: 'partner_applications'
+  PARTNERS: 'partners' // Renamed from PARTNER_APPLICATIONS
 } as const
 
 // Types for database records - Updated for column rename
@@ -52,7 +52,7 @@ export interface DatabaseBin {
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full'
   assignedDriver?: string // Keep for backward compatibility (driver name)
   driver_id?: string // Foreign key reference to drivers.id
-  partner_application_id?: string // Foreign key reference to partner_applications.id
+  partner_id?: string // Foreign key reference to partners.id (renamed from partner_application_id)
   createdDate?: string
   fullSince?: string
   // Sensor fields
@@ -128,6 +128,7 @@ export interface DatabaseBale {
   notesTimeline?: any
   photos?: string[]
   containerNumber?: string
+  container_id?: string // Foreign key reference to containers.id
   created_at?: string
   updated_at?: string
 }
@@ -143,7 +144,8 @@ export interface DatabasePickupRequest {
   additionalNotes?: string
   location?: any
   status: 'Pending' | 'Picked Up' | 'Cancelled'
-  assignedDriver?: string
+  assignedDriver?: string // Keep for backward compatibility (driver name)
+  driver_id?: string // Foreign key reference to drivers.id
   adminNotes?: string
   submittedAt?: string
   created_at?: string
@@ -162,7 +164,7 @@ export interface DatabaseAdminUser {
   updated_at?: string
 }
 
-export interface DatabasePartnerApplication {
+export interface DatabasePartner {
   id: string
   organization_name: string
   contact_person: string
@@ -180,6 +182,12 @@ export interface DatabasePartnerApplication {
   review_notes?: string
   assigned_bins?: string[] // JSON array of bin IDs
   documents?: any // JSON array of document objects
+  partner_since?: string // New field
+  is_active?: boolean // New field
+  bin_collection_frequency?: string // New field
+  last_collection_date?: string // New field
+  total_collections?: number // New field
+  notes?: string // New field
   created_at?: string
   updated_at?: string
 }

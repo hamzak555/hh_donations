@@ -453,7 +453,7 @@ function Reporting() {
       <div className="flex-1 overflow-y-auto">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Analytics & Reporting</h1>
+          <h1 className="text-3xl font-bold">Reporting</h1>
           
           {/* Date Range Selector */}
           <div className="flex items-center gap-2">

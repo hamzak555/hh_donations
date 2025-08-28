@@ -13,7 +13,7 @@ export interface BinLocation {
   distance?: number;
   assignedDriver?: string; // Keep for backward compatibility (driver name)
   driverId?: string; // Foreign key to drivers table
-  partnerApplicationId?: string; // Foreign key to partner_applications table
+  partnerId?: string; // Foreign key to partners table (renamed from partnerApplicationId)
   createdDate?: string;
   fullSince?: string; // ISO timestamp of when bin was marked as Full
   // Sensor integration fields

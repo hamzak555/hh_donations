@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SupabaseService } from '@/services/supabaseService';
-import { isSupabaseConfigured, DatabasePartnerApplication } from '@/lib/supabase';
+import { isSupabaseConfigured, DatabasePartner } from '@/lib/supabase';
 
 export interface DocumentEntry {
   id: string;
@@ -34,7 +34,7 @@ export interface PartnerApplication {
 }
 
 // Convert between app format (nested address) and database format (flat fields with snake_case)
-const convertAppToDatabase = (app: PartnerApplication): DatabasePartnerApplication => ({
+const convertAppToDatabase = (app: PartnerApplication): DatabasePartner => ({
   id: app.id,
   organization_name: app.organizationName,
   contact_person: app.contactPerson,
@@ -54,7 +54,7 @@ const convertAppToDatabase = (app: PartnerApplication): DatabasePartnerApplicati
   documents: app.documents || []
 });
 
-const convertDatabaseToApp = (db: DatabasePartnerApplication): PartnerApplication => {
+const convertDatabaseToApp = (db: DatabasePartner): PartnerApplication => {
   // Try to parse notes timeline from review_notes if it's a JSON string
   let notesTimeline;
   if (db.review_notes) {
@@ -272,7 +272,7 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
           }
 
           // For updates, preserve the notes timeline
-          const dbUpdates: Partial<DatabasePartnerApplication> = {
+          const dbUpdates: Partial<DatabasePartner> = {
             status: updates.status,
             reviewed_at: updates.reviewedAt
           };
