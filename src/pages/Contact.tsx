@@ -50,8 +50,8 @@ const Contact = () => {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-gray-50 px-8">
-        <div className="max-w-4xl mx-auto pt-20 pb-24">
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto pt-20 pb-24 px-4 sm:px-8">
           <div className="text-center mb-12">
             <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-6" />
             <h1 className="text-3xl font-bold text-gray-900 mb-4">Message Sent!</h1>
@@ -87,8 +87,8 @@ const Contact = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-8">
-      <div className="max-w-6xl mx-auto pt-10 pb-12">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-6xl mx-auto pt-10 pb-12 px-4 sm:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Contact Information */}
           <div className="lg:col-span-1 space-y-6">

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { GoogleMapsLoader, GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
+import { GoogleMapsGuard } from '@/components/GoogleMapsGuard';
 import { SafeGoogleMap, SafeMarker, SafeInfoWindow } from '@/components/SafeGoogleMap';
 import { SafeAutocomplete } from '@/components/SafeAutocomplete';
 import { FallbackMap } from '@/components/FallbackMap';
@@ -297,6 +298,7 @@ const FindBin = () => {
             </div>
           }
         >
+        <GoogleMapsGuard>
         <div className="flex flex-col lg:h-screen">
           {/* Header */}
           <div className="px-8 pt-10 pb-6">
@@ -528,6 +530,7 @@ const FindBin = () => {
             </Card>
           </div>
         </div>
+        </GoogleMapsGuard>
       </div>
         </GoogleMapsLoader>
       </GoogleMapsErrorBoundary>
