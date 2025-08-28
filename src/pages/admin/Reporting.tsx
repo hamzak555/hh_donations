@@ -463,9 +463,8 @@ function Reporting() {
                 key={range.label}
                 variant="outline"
                 size="sm"
-                className={`${index > 2 ? 'hidden sm:inline-flex' : ''}`}
                 onClick={() => handleQuickRange(range)}
-                className={
+                className={`${index > 2 ? 'hidden sm:inline-flex' : ''} ${
                   dateRange?.from && dateRange?.to &&
                   ((range.days && 
                     Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) === range.days) ||
@@ -475,7 +474,7 @@ function Reporting() {
                     Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) === range.years * 365))
                   ? 'bg-primary text-primary-foreground'
                   : ''
-                }
+                }`}
               >
                 {range.label}
               </Button>
