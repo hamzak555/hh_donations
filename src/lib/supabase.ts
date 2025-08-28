@@ -50,7 +50,8 @@ export interface DatabaseBin {
   lat: number
   lng: number
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full'
-  assignedDriver?: string
+  assignedDriver?: string // Keep for backward compatibility (driver name)
+  driver_id?: string // Foreign key reference to drivers.id
   createdDate?: string
   fullSince?: string
   // Sensor fields

@@ -11,7 +11,8 @@ export interface BinLocation {
   lng: number;
   status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full';
   distance?: number;
-  assignedDriver?: string;
+  assignedDriver?: string; // Keep for backward compatibility (driver name)
+  driverId?: string; // Foreign key to drivers table
   createdDate?: string;
   fullSince?: string; // ISO timestamp of when bin was marked as Full
   // Sensor integration fields

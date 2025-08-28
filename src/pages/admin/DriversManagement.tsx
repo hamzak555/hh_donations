@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDrivers, Driver } from '@/contexts/DriversContextSupabase';
 import { useBins } from '@/contexts/BinsContextSupabase';
+import { usePickupRequests } from '@/contexts/PickupRequestsContextSupabase';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import {
   Table,
@@ -70,6 +71,8 @@ const COLUMN_IDS = {
   loginStatus: 'Login Status',
   password: 'Password',
   assignedBins: 'Assigned Bins',
+  binsCount: 'Bins',
+  pickupsCount: 'Pickups',
   status: 'Status'
 } as const;
 
@@ -79,6 +82,7 @@ function DriversManagement() {
   const [isLoading] = useState(false);
   const { drivers, setDrivers, addDriver: addDriverToContext, updateDriver: updateDriverInContext, deleteDriver: deleteDriverFromContext, generateCredentials, changePassword } = useDrivers();
   const { bins, updateBin } = useBins();
+  const { pickupRequests } = usePickupRequests();
   
   // Remove the problematic sync - we'll handle consistency in the action handlers instead
 
@@ -550,6 +554,30 @@ function DriversManagement() {
                     </div>
                   </TableHead>
                 )}
+                {visibleColumns.has('binsCount') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('assignedBins')}
+                    style={{width: '8%'}}
+                  >
+                    <div className="flex items-center gap-1">
+                      Bins
+                      {getSortIcon('assignedBins')}
+                    </div>
+                  </TableHead>
+                )}
+                {visibleColumns.has('pickupsCount') && (
+                  <TableHead 
+                    className="cursor-pointer select-none"
+                    onClick={() => handleSort('pickups')}
+                    style={{width: '10%'}}
+                  >
+                    <div className="flex items-center gap-1">
+                      Pickups
+                      {getSortIcon('pickups')}
+                    </div>
+                  </TableHead>
+                )}
                 {visibleColumns.has('status') && (
                   <TableHead 
                     className="cursor-pointer select-none"
@@ -567,6 +595,12 @@ function DriversManagement() {
             </TableHeader>
             <TableBody>
             {getSortedDrivers().map((driver, index) => {
+              // Get real pickup requests assigned to this driver
+              const driverPickupRequests = pickupRequests.filter(p => p.assignedDriver === driver.name);
+              const pendingPickups = driverPickupRequests.filter(p => p.status === 'Pending' || p.status === 'Overdue');
+              const pickedUpPickups = driverPickupRequests.filter(p => p.status === 'Picked Up');
+              
+              // For compatibility with expansion panel, keep using mock data there
               const driverPickupList = driverPickups[driver.id] || [];
               const upcomingPickups = driverPickupList.filter(p => p.status === 'Upcoming' || p.status === 'In Progress');
               const completedPickups = driverPickupList.filter(p => p.status === 'Completed');
@@ -687,6 +721,27 @@ function DriversManagement() {
                         ) : (
                           <span className="text-gray-400">None assigned</span>
                         )}
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('binsCount') && (
+                      <TableCell style={{width: '8%'}}>
+                        <div className="flex items-center justify-center">
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            {driver.assignedBins.length}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                    )}
+                    {visibleColumns.has('pickupsCount') && (
+                      <TableCell style={{width: '10%'}}>
+                        <div className="flex items-center justify-center gap-2">
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200" title="Pending/Overdue">
+                            {pendingPickups.length}
+                          </Badge>
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200" title="Picked Up">
+                            {pickedUpPickups.length}
+                          </Badge>
+                        </div>
                       </TableCell>
                     )}
                     {visibleColumns.has('status') && (

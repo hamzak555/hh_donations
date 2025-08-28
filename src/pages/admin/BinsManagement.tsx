@@ -1037,8 +1037,15 @@ function BinsManagement() {
                               const oldDriverName = bin.assignedDriver;
                               const newDriverName = value === 'unassigned' ? undefined : value;
                               
-                              // Update the bin
-                              updateBin(bin.id, { assignedDriver: newDriverName });
+                              // Find the new driver to get their ID
+                              const newDriver = newDriverName ? drivers.find(d => d.name === newDriverName) : null;
+                              const newDriverId = newDriver?.id || undefined;
+                              
+                              // Update the bin with both driver name and ID (relational connection)
+                              updateBin(bin.id, { 
+                                assignedDriver: newDriverName,
+                                driverId: newDriverId  // Set the foreign key reference
+                              });
                               
                               // Update driver assignments
                               if (oldDriverName && oldDriverName !== newDriverName) {
@@ -1050,13 +1057,10 @@ function BinsManagement() {
                                 }
                               }
                               
-                              if (newDriverName && newDriverName !== 'unassigned') {
+                              if (newDriver) {
                                 // Add bin to new driver's assignedBins
-                                const newDriver = drivers.find(d => d.name === newDriverName);
-                                if (newDriver) {
-                                  const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
-                                  updateDriver(newDriver.id, { assignedBins: updatedBins });
-                                }
+                                const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
+                                updateDriver(newDriver.id, { assignedBins: updatedBins });
                               }
                             }}
                           >

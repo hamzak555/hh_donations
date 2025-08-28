@@ -4,12 +4,16 @@ import { BinLocation } from '@/contexts/BinsContextSupabase'
 // Simplified utility functions - direct mapping after column rename
 const convertDatabaseBinToApp = (dbBin: DatabaseBin): BinLocation => ({
   // Direct mapping - all fields match after column rename
-  ...dbBin
+  ...dbBin,
+  driverId: dbBin.driver_id, // Map snake_case to camelCase
+  assignedDriver: dbBin.assignedDriver // Keep for backward compatibility
 })
 
 const convertAppBinToDatabase = (appBin: BinLocation): Omit<DatabaseBin, 'created_at' | 'updated_at'> => ({
   // Direct mapping - no field name conversion needed
-  ...appBin
+  ...appBin,
+  driver_id: appBin.driverId, // Map camelCase to snake_case
+  assignedDriver: appBin.assignedDriver // Keep for backward compatibility
 })
 
 // Admin Users field mapping
@@ -93,7 +97,7 @@ export class BinsService {
   static async getAllBins(): Promise<BinLocation[]> {
     const { data, error } = await supabase
       .from(TABLES.BINS)
-      .select('id, binNumber, locationName, address, lat, lng, status, assignedDriver, createdDate, fullSince, sensorId, containerId, fillLevel, lastSensorUpdate, batteryLevel, temperature, sensorEnabled, created_at, updated_at')
+      .select('id, binNumber, locationName, address, lat, lng, status, assignedDriver, driver_id, createdDate, fullSince, sensorId, containerId, fillLevel, lastSensorUpdate, batteryLevel, temperature, sensorEnabled, created_at, updated_at')
       .order('created_at', { ascending: true })
 
     if (error) {
