@@ -24,7 +24,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { MapPin, Truck, Navigation, Check } from 'lucide-react';
-import { useJsApiLoader, Autocomplete, GoogleMap, DirectionsRenderer, MarkerF } from '@react-google-maps/api';
+import { useJsApiLoader, Autocomplete, GoogleMap, DirectionsRenderer } from '@react-google-maps/api';
+import { SafeMarker } from '@/components/SafeGoogleMap';
 
 const libraries: ("places")[] = ['places'];
 
@@ -372,7 +373,7 @@ function RouteCreation() {
                       
                       {/* Starting point marker */}
                       {startingCoordinates && (
-                        <MarkerF
+                        <SafeMarker
                           position={startingCoordinates}
                           label={{
                             text: 'S',
@@ -403,7 +404,7 @@ function RouteCreation() {
                         const sortedBins = sortBinsByDistance(urgentBins);
                         
                         return sortedBins.map((bin, index) => (
-                          <MarkerF
+                          <SafeMarker
                             key={bin.id}
                             position={{ lat: bin.lat, lng: bin.lng }}
                             label={{

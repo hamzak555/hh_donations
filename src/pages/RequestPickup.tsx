@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Autocomplete } from '@react-google-maps/api';
+import { SafeMarker } from '@/components/SafeGoogleMap';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -525,7 +526,7 @@ const RequestPickup = () => {
                       zoom={location ? 15 : 10}
                     >
                     {location && (
-                      <Marker 
+                      <SafeMarker 
                         position={location}
                         title="Pickup Location"
                         icon={{

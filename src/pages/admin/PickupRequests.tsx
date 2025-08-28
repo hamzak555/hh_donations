@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { GoogleMap, LoadScript, Marker, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, useJsApiLoader, Autocomplete } from '@react-google-maps/api';
+import { SafeMarker } from '@/components/SafeGoogleMap';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContextSupabase';
 import { useDrivers } from '@/contexts/DriversContextSupabase';
@@ -1184,7 +1185,7 @@ function PickupRequests() {
                 zoom={15}
               >
                 {selectedRequest?.location && (
-                  <Marker 
+                  <SafeMarker 
                     position={selectedRequest.location}
                     title={`${selectedRequest.name} - Pickup Location`}
                     icon={{

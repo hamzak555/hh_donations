@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Autocomplete } from '@react-google-maps/api';
+import { SafeMarker } from '@/components/SafeGoogleMap';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
 import { useDrivers } from '@/contexts/DriversContextSupabase';
@@ -1535,7 +1536,7 @@ function BinsManagement() {
               zoom={15}
             >
               {selectedBin && (
-                <Marker 
+                <SafeMarker 
                   position={{ lat: selectedBin.lat, lng: selectedBin.lng }}
                   title={`${selectedBin.binNumber} - ${selectedBin.locationName}`}
                 />
