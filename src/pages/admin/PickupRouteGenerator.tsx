@@ -454,6 +454,10 @@ function PickupRouteGenerator() {
                   <Autocomplete
                     onLoad={onAutocompleteLoad}
                     onPlaceChanged={onPlaceChanged}
+                    options={{
+                      componentRestrictions: { country: 'ca' },
+                      fields: ['formatted_address', 'geometry']
+                    }}
                   >
                     <Input 
                       id="starting-address"

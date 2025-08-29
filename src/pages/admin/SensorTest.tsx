@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
-import { Wifi, WifiOff, Battery, Thermometer, Package, AlertCircle, CheckCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Wifi, WifiOff, Battery, Thermometer, Package, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 
 function SensorTest() {
@@ -20,9 +21,41 @@ function SensorTest() {
   const [measurementData, setMeasurementData] = useState<MeasurementResponse | null>(null);
   const [error, setError] = useState<string>('');
   const [testLog, setTestLog] = useState<string[]>([]);
+  
+  // Auto-refresh interval settings
+  const refreshIntervals = [
+    { value: '0', label: 'Manual Only' },
+    { value: '30', label: '30 minutes' },
+    { value: '60', label: '1 hour' },
+    { value: '120', label: '2 hours' },
+    { value: '360', label: '6 hours' },
+    { value: '720', label: '12 hours' },
+    { value: '1440', label: '24 hours' }
+  ];
+  
+  const savedInterval = localStorage.getItem('sensoneo_refresh_interval') || '0';
+  const [refreshInterval, setRefreshInterval] = useState(savedInterval);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [nextRefresh, setNextRefresh] = useState<Date | null>(null);
 
   const addLog = (message: string) => {
     setTestLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
+  
+  const handleIntervalChange = (value: string) => {
+    setRefreshInterval(value);
+    localStorage.setItem('sensoneo_refresh_interval', value);
+    
+    if (value === '0') {
+      setNextRefresh(null);
+      addLog('Auto-refresh disabled');
+    } else {
+      const minutes = parseInt(value);
+      const next = new Date(Date.now() + minutes * 60 * 1000);
+      setNextRefresh(next);
+      addLog(`Auto-refresh set to every ${refreshIntervals.find(i => i.value === value)?.label}`);
+      addLog(`Next refresh at: ${next.toLocaleTimeString()}`);
+    }
   };
 
   const testConnection = async () => {
@@ -172,6 +205,33 @@ function SensorTest() {
               <p className="text-sm text-gray-500 mt-1">
                 Enter a specific container ID to fetch its sensor data
               </p>
+            </div>
+
+            <div>
+              <Label htmlFor="refreshInterval" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Auto-Refresh Interval
+              </Label>
+              <Select value={refreshInterval} onValueChange={handleIntervalChange}>
+                <SelectTrigger id="refreshInterval" className="mt-1">
+                  <SelectValue placeholder="Select refresh interval" />
+                </SelectTrigger>
+                <SelectContent>
+                  {refreshIntervals.map(interval => (
+                    <SelectItem key={interval.value} value={interval.value}>
+                      {interval.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-gray-500 mt-1">
+                Controls automatic sensor data refresh across all pages
+              </p>
+              {nextRefresh && (
+                <p className="text-sm text-green-600 mt-1">
+                  Next refresh: {nextRefresh.toLocaleTimeString()}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2">

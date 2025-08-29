@@ -157,7 +157,7 @@ export interface DatabaseAdminUser {
   email: string
   passwordHash: string
   fullName: string
-  role: 'admin' | 'manager' | 'operator'
+  role: 'admin'
   isActive: boolean
   lastLogin?: string
   created_at?: string

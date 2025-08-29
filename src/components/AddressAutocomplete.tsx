@@ -31,10 +31,10 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
   useEffect(() => {
     if (!inputRef.current || !window.google) return;
 
-    // Initialize autocomplete
+    // Initialize autocomplete - Restrict to Canada only
     autocompleteRef.current = new google.maps.places.Autocomplete(inputRef.current, {
       types: ['address'],
-      componentRestrictions: { country: ['us', 'ca'] }
+      componentRestrictions: { country: 'ca' }
     });
 
     // Add listener for place selection

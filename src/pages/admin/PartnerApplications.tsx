@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { LoadScript, Autocomplete } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
 import { usePartnerApplications, DocumentEntry } from '@/contexts/PartnerApplicationsContextSupabase';
 import { useBins } from '@/contexts/BinsContextSupabase';
 import { Button } from '@/components/ui/button';
@@ -1688,12 +1688,7 @@ const PartnerApplications = () => {
             
             <div>
               <Label htmlFor="new-address">Address</Label>
-              <LoadScript 
-                googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-                libraries={libraries}
-                loadingElement={<div />}
-              >
-                <div className="relative">
+              <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
                   <Autocomplete
                     onLoad={(autocomplete) => {
@@ -1766,8 +1761,7 @@ const PartnerApplications = () => {
                       }}
                     />
                   </Autocomplete>
-                </div>
-              </LoadScript>
+              </div>
             </div>
           </div>
           

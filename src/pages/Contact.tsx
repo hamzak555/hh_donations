@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Mail, Phone, MapPin, Clock, Send, CheckCircle, ArrowRight, Heart, Building, AlertCircle } from 'lucide-react';
+import { Send, CheckCircle, ArrowRight, Heart, Building, AlertCircle, MapPin } from 'lucide-react';
 import Footer from '@/components/Footer';
 
 const Contact = () => {
@@ -88,62 +88,10 @@ const Contact = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto pt-10 pb-12 px-4 sm:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Contact Information */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Get in Touch</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-start gap-3">
-                  <Mail className="w-5 h-5 text-primary mt-1" />
-                  <div>
-                    <p className="font-semibold text-gray-900">Email</p>
-                    <p className="text-sm sm:text-base text-gray-600">info@hhdonations.org</p>
-                    <p className="text-sm sm:text-base text-gray-600">support@hhdonations.org</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Phone className="w-5 h-5 text-primary mt-1" />
-                  <div>
-                    <p className="font-semibold text-gray-900">Phone</p>
-                    <p className="text-sm sm:text-base text-gray-600">(416) 555-0123</p>
-                    <p className="text-sm text-gray-500">Mon-Fri, 9 AM - 5 PM</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-primary mt-1" />
-                  <div>
-                    <p className="font-semibold text-gray-900">Address</p>
-                    <p className="text-sm sm:text-base text-gray-600">
-                      123 Community Drive<br />
-                      Toronto, ON M5V 3A8<br />
-                      Canada
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-primary mt-1" />
-                  <div>
-                    <p className="font-semibold text-gray-900">Business Hours</p>
-                    <p className="text-sm sm:text-base text-gray-600">
-                      Monday - Friday: 9:00 AM - 5:00 PM<br />
-                      Saturday: 10:00 AM - 2:00 PM<br />
-                      Sunday: Closed
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+      <div className="max-w-4xl mx-auto pt-10 pb-12 px-4 sm:px-8">
+        <div>
           {/* Contact Form */}
-          <div className="lg:col-span-2">
+          <div>
             <Card className="h-full">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

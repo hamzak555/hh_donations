@@ -67,7 +67,7 @@ function UserManagement() {
     email: '',
     password: '',
     full_name: '',
-    role: 'admin' as 'admin' | 'manager' | 'operator'
+    role: 'admin' as 'admin'
   });
 
   const copyToClipboard = (text: string, label?: string) => {
@@ -151,7 +151,7 @@ function UserManagement() {
         email: formData.email,
         passwordHash: password_hash,
         fullName: formData.full_name,
-        role: formData.role as 'admin' | 'manager' | 'operator',
+        role: 'admin',
         isActive: true
       };
 
@@ -176,7 +176,7 @@ function UserManagement() {
       const updates: Partial<DatabaseAdminUser> = {
         email: formData.email,
         fullName: formData.full_name,
-        role: formData.role as 'admin' | 'manager' | 'operator'
+        role: 'admin'
       };
 
       // Only update password if provided
@@ -249,9 +249,7 @@ function UserManagement() {
 
   const getRoleBadge = (role: string) => {
     const variants = {
-      admin: 'bg-red-100 text-red-800 border-red-200',
-      manager: 'bg-blue-100 text-blue-800 border-blue-200',
-      operator: 'bg-green-100 text-green-800 border-green-200'
+      admin: 'bg-red-100 text-red-800 border-red-200'
     };
     
     return (
@@ -463,19 +461,6 @@ function UserManagement() {
                 </Button>
               </div>
             </div>
-            <div>
-              <Label htmlFor="add-role">Role</Label>
-              <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="operator">Operator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -538,19 +523,6 @@ function UserManagement() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </Button>
               </div>
-            </div>
-            <div>
-              <Label htmlFor="edit-role">Role</Label>
-              <Select value={formData.role} onValueChange={(value: any) => setFormData({...formData, role: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="operator">Operator</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

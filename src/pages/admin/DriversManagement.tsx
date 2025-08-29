@@ -450,8 +450,8 @@ function DriversManagement() {
   }
 
   return (
-    <div className="pt-10 pb-20 w-full min-w-full">
-      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
+    <div className="pt-10 pb-20 w-full">
+      <div className="flex justify-between items-center mb-6 px-8">
         <h1 className="text-3xl font-bold">Drivers</h1>
         <div className="flex gap-2">
           {/* Column Visibility Dropdown */}
@@ -504,25 +504,17 @@ function DriversManagement() {
       </div>
 
       {/* Drivers Table */}
-      <div className="overflow-x-auto mx-4 sm:mx-6 lg:mx-8">
-        <Card className="min-w-fit">
+      <div className="mx-8">
+        <Card>
           <div className="p-6">
-            <div className="inline-block min-w-full align-middle">
-              <Table 
-                className="w-full table-fixed" 
-                style={{
-                  tableLayout: 'fixed', 
-                  width: '100%', 
-                  minWidth: '1200px'
-                }}
-              >
+            <div className="w-full">
+              <Table className="w-full">
             <TableHeader>
-              <TableRow style={{width: '100%'}} className="hover:bg-transparent">
+              <TableRow className="hover:bg-transparent">
                 {visibleColumns.has('name') && (
                   <TableHead 
                     className="cursor-pointer select-none"
                     onClick={() => handleSort('name')}
-                    style={{width: '20%'}}
                   >
                     <div className="flex items-center gap-1">
                       Name
@@ -531,22 +523,21 @@ function DriversManagement() {
                   </TableHead>
                 )}
                 {visibleColumns.has('email') && (
-                  <TableHead style={{width: '20%'}}>Email</TableHead>
+                  <TableHead>Email</TableHead>
                 )}
                 {visibleColumns.has('phone') && (
-                  <TableHead style={{width: '15%'}}>Phone</TableHead>
+                  <TableHead>Phone</TableHead>
                 )}
                 {visibleColumns.has('loginStatus') && (
-                  <TableHead style={{width: '12%'}}>Login Status</TableHead>
+                  <TableHead>Login</TableHead>
                 )}
                 {visibleColumns.has('password') && (
-                  <TableHead style={{width: '15%'}}>Password</TableHead>
+                  <TableHead>Password</TableHead>
                 )}
                 {visibleColumns.has('assignedBins') && (
                   <TableHead 
                     className="cursor-pointer select-none"
                     onClick={() => handleSort('assignedBins')}
-                    style={{width: '18%'}}
                   >
                     <div className="flex items-center gap-1">
                       Assigned Bins
@@ -558,7 +549,6 @@ function DriversManagement() {
                   <TableHead 
                     className="cursor-pointer select-none"
                     onClick={() => handleSort('assignedBins')}
-                    style={{width: '8%'}}
                   >
                     <div className="flex items-center gap-1">
                       Bins
@@ -570,7 +560,6 @@ function DriversManagement() {
                   <TableHead 
                     className="cursor-pointer select-none"
                     onClick={() => handleSort('pickups')}
-                    style={{width: '10%'}}
                   >
                     <div className="flex items-center gap-1">
                       Pickups
@@ -582,7 +571,6 @@ function DriversManagement() {
                   <TableHead 
                     className="cursor-pointer select-none"
                     onClick={() => handleSort('status')}
-                    style={{width: '10%'}}
                   >
                     <div className="flex items-center gap-1">
                       Status
@@ -590,7 +578,7 @@ function DriversManagement() {
                     </div>
                   </TableHead>
                 )}
-                <TableHead className="text-right" style={{width: '5%'}}>Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -598,7 +586,6 @@ function DriversManagement() {
               // Get real pickup requests assigned to this driver
               const driverPickupRequests = pickupRequests.filter(p => p.assignedDriver === driver.name);
               const pendingPickups = driverPickupRequests.filter(p => p.status === 'Pending' || p.status === 'Overdue');
-              const pickedUpPickups = driverPickupRequests.filter(p => p.status === 'Picked Up');
               
               // For compatibility with expansion panel, keep using mock data there
               const driverPickupList = driverPickups[driver.id] || [];
@@ -609,8 +596,7 @@ function DriversManagement() {
               return (
                 <React.Fragment key={driver.id}>
                   <TableRow 
-                    className="cursor-pointer hover:bg-gray-50" 
-                    style={{width: '100%'}}
+                    className="cursor-pointer hover:bg-gray-50"
                     onClick={(e) => {
                       e.stopPropagation();
                       setExpandedDriver(prevExpanded => {
@@ -621,7 +607,7 @@ function DriversManagement() {
                     }}
                   >
                     {visibleColumns.has('name') && (
-                      <TableCell className="font-medium" style={{width: '20%'}}>
+                      <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           {isExpanded ? (
                             <ChevronUp className="w-4 h-4 text-gray-400" />
@@ -633,7 +619,7 @@ function DriversManagement() {
                       </TableCell>
                     )}
                     {visibleColumns.has('email') && (
-                      <TableCell style={{width: '20%'}}>
+                      <TableCell>
                         <div className="flex items-center gap-2 text-sm">
                           {driver.email && (
                             <Button
@@ -649,21 +635,21 @@ function DriversManagement() {
                               <Copy className="h-3 w-3" />
                             </Button>
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div>
                             {driver.email || <span className="text-red-500 italic">No email</span>}
                           </div>
                         </div>
                       </TableCell>
                     )}
                     {visibleColumns.has('phone') && (
-                      <TableCell style={{width: '15%'}}>
+                      <TableCell>
                         <div className="text-sm">
                           {driver.phone}
                         </div>
                       </TableCell>
                     )}
                     {visibleColumns.has('loginStatus') && (
-                      <TableCell style={{width: '12%'}}>
+                      <TableCell>
                         {driver.hasCredentials ? (
                           <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                             <Key className="w-3 h-3 mr-1" />
@@ -677,7 +663,7 @@ function DriversManagement() {
                       </TableCell>
                     )}
                     {visibleColumns.has('password') && (
-                      <TableCell style={{width: '15%'}}>
+                      <TableCell>
                         {driver.hasCredentials ? (
                           <div className="flex items-center gap-2">
                             <Button
@@ -706,14 +692,14 @@ function DriversManagement() {
                       </TableCell>
                     )}
                     {visibleColumns.has('assignedBins') && (
-                      <TableCell style={{width: '18%'}}>
+                      <TableCell>
                         {driver.assignedBins.length > 0 ? (
-                          <div className="flex flex-wrap gap-1 items-center">
+                          <div className="flex flex-nowrap gap-1 items-center">
                             {driver.assignedBins.slice(0, 2).map(bin => (
-                              <Badge key={bin} variant="outline">{bin}</Badge>
+                              <Badge key={bin} variant="outline" className="whitespace-nowrap">{bin}</Badge>
                             ))}
                             {driver.assignedBins.length > 2 && (
-                              <span className="text-sm text-gray-600 font-medium">
+                              <span className="text-sm text-gray-600 font-medium whitespace-nowrap">
                                 +{driver.assignedBins.length - 2}
                               </span>
                             )}
@@ -724,30 +710,23 @@ function DriversManagement() {
                       </TableCell>
                     )}
                     {visibleColumns.has('binsCount') && (
-                      <TableCell style={{width: '8%'}}>
-                        <div className="flex items-center justify-center">
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            {driver.assignedBins.length}
-                          </Badge>
-                        </div>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {driver.assignedBins.length}
+                        </Badge>
                       </TableCell>
                     )}
                     {visibleColumns.has('pickupsCount') && (
-                      <TableCell style={{width: '10%'}}>
-                        <div className="flex items-center justify-center gap-2">
-                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200" title="Pending/Overdue">
-                            {pendingPickups.length}
-                          </Badge>
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200" title="Picked Up">
-                            {pickedUpPickups.length}
-                          </Badge>
-                        </div>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200" title="Pending/Overdue">
+                          {pendingPickups.length} Pending
+                        </Badge>
                       </TableCell>
                     )}
                     {visibleColumns.has('status') && (
-                      <TableCell style={{width: '10%'}}>{getStatusBadge(driver.status)}</TableCell>
+                      <TableCell>{getStatusBadge(driver.status)}</TableCell>
                     )}
-                    <TableCell className="text-right" style={{width: '5%'}} onClick={(e) => e.stopPropagation()}>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -785,9 +764,12 @@ function DriversManagement() {
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow key={`expanded-${driver.id}`} style={{width: '100%'}}>
-                      <TableCell colSpan={8} className="p-0" style={{width: '100%'}}>
-                        <div className="bg-gray-50 p-4">
+                    <TableRow key={`expanded-${driver.id}`}>
+                      <TableCell 
+                        colSpan={visibleColumns.size + 1} // +1 for Actions column which is always visible
+                        className="bg-gray-50 p-4"
+                      >
+                        <div>
                           {driver.assignedBins.length > 0 ? (
                             <div>
                               <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">

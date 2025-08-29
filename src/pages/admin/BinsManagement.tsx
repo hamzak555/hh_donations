@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleMap, LoadScript, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, Autocomplete } from '@react-google-maps/api';
 import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { useBins, BinLocation } from '@/contexts/BinsContextSupabase';
@@ -163,6 +163,8 @@ function BinsManagement() {
   const [, setCurrentTime] = useState(new Date());
   const [sensorData, setSensorData] = useState<Map<number, MeasurementResponse>>(new Map());
   const [isLoadingSensorData, setIsLoadingSensorData] = useState(false);
+  const [lastSensorRefresh, setLastSensorRefresh] = useState<Date | null>(null);
+  const [nextSensorRefresh, setNextSensorRefresh] = useState<Date | null>(null);
 
   // Update current time every minute to refresh "time since full" display
   useEffect(() => {
@@ -174,7 +176,7 @@ function BinsManagement() {
   }, []);
 
   // Fetch sensor data for bins that have container IDs
-  const fetchSensorData = async () => {
+  const fetchSensorData = async (isAutoRefresh = false) => {
     const binsWithSensors = bins.filter(bin => bin.containerId);
     if (binsWithSensors.length === 0) {
       setIsLoadingSensorData(false);
@@ -244,6 +246,21 @@ function BinsManagement() {
     } finally {
       setIsLoadingSensorData(false);
     }
+    
+    // Update last refresh time
+    setLastSensorRefresh(new Date());
+    
+    // Calculate next refresh time if auto-refresh is enabled
+    const refreshInterval = localStorage.getItem('sensoneo_refresh_interval');
+    if (refreshInterval && refreshInterval !== '0') {
+      const minutes = parseInt(refreshInterval);
+      const next = new Date(Date.now() + minutes * 60 * 1000);
+      setNextSensorRefresh(next);
+      
+      if (!isAutoRefresh) {
+        console.log(`[BinsManagement] Next auto-refresh scheduled for: ${next.toLocaleTimeString()}`);
+      }
+    }
   };
 
   // Fetch sensor data on component mount and when bins with sensors change
@@ -260,6 +277,48 @@ function BinsManagement() {
       fetchSensorData();
     }
   }, [bins.map(bin => bin.containerId).join(',')]);
+  
+  // Set up automatic refresh interval based on user preference
+  useEffect(() => {
+    const refreshInterval = localStorage.getItem('sensoneo_refresh_interval');
+    
+    if (!refreshInterval || refreshInterval === '0') {
+      console.log('[BinsManagement] Auto-refresh is disabled');
+      return;
+    }
+    
+    const minutes = parseInt(refreshInterval);
+    const milliseconds = minutes * 60 * 1000;
+    
+    console.log(`[BinsManagement] Setting up auto-refresh every ${minutes} minutes`);
+    
+    const interval = setInterval(() => {
+      console.log(`[BinsManagement] Auto-refreshing sensor data at ${new Date().toLocaleTimeString()}`);
+      fetchSensorData(true);
+    }, milliseconds);
+    
+    // Calculate initial next refresh time
+    const next = new Date(Date.now() + milliseconds);
+    setNextSensorRefresh(next);
+    
+    return () => {
+      console.log('[BinsManagement] Clearing auto-refresh interval');
+      clearInterval(interval);
+    };
+  }, []); // Only run once on mount
+  
+  // Listen for storage changes (when interval is changed in another tab/page)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sensoneo_refresh_interval') {
+        console.log('[BinsManagement] Refresh interval changed, reloading page to apply new settings');
+        window.location.reload();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -362,7 +421,7 @@ function BinsManagement() {
     return (
       <div className="text-sm">
         <div>{new Date(lastUpdate).toLocaleDateString()}</div>
-        <div className="text-gray-500">{new Date(lastUpdate).toLocaleTimeString()}</div>
+        <div className="text-gray-500">{new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
       </div>
     );
   };
@@ -773,7 +832,7 @@ function BinsManagement() {
             </>
           )}
           <Button 
-            onClick={fetchSensorData}
+            onClick={() => fetchSensorData(false)}
             variant="outline"
             disabled={isLoadingSensorData}
           >
@@ -1203,11 +1262,6 @@ function BinsManagement() {
       </div>
 
       {/* Add Bin Dialog */}
-      <LoadScript 
-        googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-        libraries={['places']}
-        loadingElement={<div />}
-      >
       <Dialog 
         open={isAddDialogOpen} 
         onOpenChange={setIsAddDialogOpen}
@@ -1237,10 +1291,10 @@ function BinsManagement() {
           </DialogHeader>
           
           {/* Show the bin number that will be assigned */}
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <div className="flex items-center gap-2">
-              <Package className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">
+              <Package className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-green-800">
                 Bin Number: {generateBinNumber()}
               </span>
             </div>
@@ -1305,8 +1359,6 @@ function BinsManagement() {
                 </SelectTrigger>
                 <SelectContent className="z-[99999]">
                   <SelectItem value="Available">Available</SelectItem>
-                  <SelectItem value="Almost Full">Almost Full</SelectItem>
-                  <SelectItem value="Full">Full</SelectItem>
                   <SelectItem value="Unavailable">Unavailable</SelectItem>
                 </SelectContent>
               </Select>
@@ -1370,7 +1422,6 @@ function BinsManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </LoadScript>
 
       {/* Edit Bin Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

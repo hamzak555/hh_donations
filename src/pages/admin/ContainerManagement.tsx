@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { LoadScript, Autocomplete } from '@react-google-maps/api';
+import { Autocomplete } from '@react-google-maps/api';
 import { useContainers } from '@/contexts/ContainersContextSupabase';
 import { useBales } from '@/contexts/BalesContextSupabase';
 import { Card } from "@/components/ui/card";
@@ -399,11 +399,30 @@ function ContainerManagement() {
   // Handle Google Places Autocomplete for create dialog
   const onDestinationLoad = (autocomplete: google.maps.places.Autocomplete) => {
     destinationAutocompleteRef.current = autocomplete;
-    // Prevent dialog from closing when clicking on autocomplete suggestions
+    // Configure for cities only, no country restrictions
+    autocomplete.setOptions({
+      types: ['(cities)'],
+      // No componentRestrictions to allow international locations
+    });
+    
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        setFormData({...formData, destination: place.formatted_address});
+      if (place.address_components) {
+        // Extract city and country
+        let city = '';
+        let country = '';
+        
+        for (const component of place.address_components) {
+          if (component.types.includes('locality') || component.types.includes('administrative_area_level_1')) {
+            if (!city) city = component.long_name;
+          }
+          if (component.types.includes('country')) {
+            country = component.long_name;
+          }
+        }
+        
+        const formattedDestination = city && country ? `${city}, ${country}` : place.formatted_address || '';
+        setFormData(prev => ({...prev, destination: formattedDestination}));
       }
     });
   };
@@ -411,8 +430,22 @@ function ContainerManagement() {
   const onDestinationPlaceChanged = () => {
     if (destinationAutocompleteRef.current) {
       const place = destinationAutocompleteRef.current.getPlace();
-      if (place.formatted_address) {
-        setFormData({...formData, destination: place.formatted_address});
+      if (place.address_components) {
+        // Extract city and country
+        let city = '';
+        let country = '';
+        
+        for (const component of place.address_components) {
+          if (component.types.includes('locality') || component.types.includes('administrative_area_level_1')) {
+            if (!city) city = component.long_name;
+          }
+          if (component.types.includes('country')) {
+            country = component.long_name;
+          }
+        }
+        
+        const formattedDestination = city && country ? `${city}, ${country}` : place.formatted_address || '';
+        setFormData(prev => ({...prev, destination: formattedDestination}));
       }
     }
   };
@@ -420,11 +453,30 @@ function ContainerManagement() {
   // Handle Google Places Autocomplete for edit dialog
   const onEditDestinationLoad = (autocomplete: google.maps.places.Autocomplete) => {
     editDestinationAutocompleteRef.current = autocomplete;
-    // Prevent dialog from closing when clicking on autocomplete suggestions
+    // Configure for cities only, no country restrictions
+    autocomplete.setOptions({
+      types: ['(cities)'],
+      // No componentRestrictions to allow international locations
+    });
+    
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        setFormData({...formData, destination: place.formatted_address});
+      if (place.address_components) {
+        // Extract city and country
+        let city = '';
+        let country = '';
+        
+        for (const component of place.address_components) {
+          if (component.types.includes('locality') || component.types.includes('administrative_area_level_1')) {
+            if (!city) city = component.long_name;
+          }
+          if (component.types.includes('country')) {
+            country = component.long_name;
+          }
+        }
+        
+        const formattedDestination = city && country ? `${city}, ${country}` : place.formatted_address || '';
+        setFormData(prev => ({...prev, destination: formattedDestination}));
       }
     });
   };
@@ -432,8 +484,22 @@ function ContainerManagement() {
   const onEditDestinationPlaceChanged = () => {
     if (editDestinationAutocompleteRef.current) {
       const place = editDestinationAutocompleteRef.current.getPlace();
-      if (place.formatted_address) {
-        setFormData({...formData, destination: place.formatted_address});
+      if (place.address_components) {
+        // Extract city and country
+        let city = '';
+        let country = '';
+        
+        for (const component of place.address_components) {
+          if (component.types.includes('locality') || component.types.includes('administrative_area_level_1')) {
+            if (!city) city = component.long_name;
+          }
+          if (component.types.includes('country')) {
+            country = component.long_name;
+          }
+        }
+        
+        const formattedDestination = city && country ? `${city}, ${country}` : place.formatted_address || '';
+        setFormData(prev => ({...prev, destination: formattedDestination}));
       }
     }
   };
@@ -1372,7 +1438,6 @@ function ContainerManagement() {
       <Dialog 
         open={isCreateDialogOpen} 
         onOpenChange={(open) => {
-          // Prevent closing when interacting with Google autocomplete
           if (!open && destinationAutocompleteRef.current) {
             const container = document.querySelector('.pac-container') as HTMLElement;
             if (container && container.style.display !== 'none') {
@@ -1391,26 +1456,23 @@ function ContainerManagement() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div>
-              <Label htmlFor="destination">Destination</Label>
-              <LoadScript 
-                googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-                libraries={['places']}
-                loadingElement={<Input placeholder="Loading..." disabled />}
+              <Label htmlFor="destination">Destination (City, Country)</Label>
+              <Autocomplete
+                onLoad={onDestinationLoad}
+                onPlaceChanged={onDestinationPlaceChanged}
+                options={{
+                  types: ['(cities)'],
+                  // No componentRestrictions to allow international locations
+                }}
               >
-                <Autocomplete
-                  onLoad={onDestinationLoad}
-                  onPlaceChanged={onDestinationPlaceChanged}
-                >
-                  <Input
-                    id="destination"
-                    value={formData.destination}
-                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                    placeholder="Start typing a city name..."
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onFocus={(e) => e.stopPropagation()}
-                  />
-                </Autocomplete>
-              </LoadScript>
+                <Input
+                  id="destination"
+                  value={formData.destination}
+                  onChange={(e) => setFormData({...formData, destination: e.target.value})}
+                  placeholder="Start typing a city name (e.g., Mumbai, Lagos, Shanghai)"
+                />
+              </Autocomplete>
+              <p className="text-xs text-gray-500 mt-1">Search for any international city</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -1536,7 +1598,6 @@ function ContainerManagement() {
       <Dialog 
         open={isEditDialogOpen} 
         onOpenChange={(open) => {
-          // Prevent closing when interacting with Google autocomplete
           if (!open && editDestinationAutocompleteRef.current) {
             const container = document.querySelector('.pac-container') as HTMLElement;
             if (container && container.style.display !== 'none') {
@@ -1556,26 +1617,23 @@ function ContainerManagement() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="edit-destination">Destination</Label>
-                <LoadScript 
-                  googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
-                  libraries={['places']}
-                  loadingElement={<Input placeholder="Loading..." disabled />}
+                <Label htmlFor="edit-destination">Destination (City, Country)</Label>
+                <Autocomplete
+                  onLoad={onEditDestinationLoad}
+                  onPlaceChanged={onEditDestinationPlaceChanged}
+                  options={{
+                    types: ['(cities)'],
+                    // No componentRestrictions to allow international locations
+                  }}
                 >
-                  <Autocomplete
-                    onLoad={onEditDestinationLoad}
-                    onPlaceChanged={onEditDestinationPlaceChanged}
-                  >
-                    <Input
-                      id="edit-destination"
-                      value={formData.destination}
-                      onChange={(e) => setFormData({...formData, destination: e.target.value})}
-                      placeholder="Start typing a city name..."
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onFocus={(e) => e.stopPropagation()}
-                    />
-                  </Autocomplete>
-                </LoadScript>
+                  <Input
+                    id="edit-destination"
+                    value={formData.destination}
+                    onChange={(e) => setFormData({...formData, destination: e.target.value})}
+                    placeholder="Start typing a city name (e.g., Mumbai, Lagos, Shanghai)"
+                  />
+                </Autocomplete>
+                <p className="text-xs text-gray-500 mt-1">Search for any international city</p>
               </div>
               <div>
                 <Label htmlFor="edit-status">Status</Label>

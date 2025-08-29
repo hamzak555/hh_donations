@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleMap, Autocomplete } from '@react-google-maps/api';
 import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,32 @@ const RequestPickup = () => {
   };
 
   const center = location || { lat: 43.6532, lng: -79.3832 };
+
+  // Check if Google Maps is loaded
+  useEffect(() => {
+    const checkGoogleMaps = () => {
+      if (typeof window !== 'undefined' && 
+          window.google && 
+          window.google.maps &&
+          window.google.maps.places) {
+        setIsGoogleMapsLoaded(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Try immediately
+    if (checkGoogleMaps()) return;
+
+    // If not ready, keep checking
+    const interval = setInterval(() => {
+      if (checkGoogleMaps()) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
