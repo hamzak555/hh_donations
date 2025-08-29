@@ -151,7 +151,7 @@ function UserManagement() {
         email: formData.email,
         passwordHash: password_hash,
         fullName: formData.full_name,
-        role: 'admin',
+        role: 'admin' as const,
         isActive: true
       };
 
@@ -176,7 +176,7 @@ function UserManagement() {
       const updates: Partial<DatabaseAdminUser> = {
         email: formData.email,
         fullName: formData.full_name,
-        role: 'admin'
+        role: 'admin' as const
       };
 
       // Only update password if provided
@@ -242,7 +242,7 @@ function UserManagement() {
       email: '',
       password: '',
       full_name: '',
-      role: 'admin'
+      role: 'admin' as const
     });
     setShowPassword(false);
   };
