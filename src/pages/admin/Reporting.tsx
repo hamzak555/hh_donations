@@ -476,7 +476,7 @@ function Reporting() {
     const unsoldBales = bales.filter(bale => bale.status !== 'Sold');
 
     await exportFinancialReport(
-      dateRange,
+      { from: dateRange.from, to: dateRange.to },
       salesMetrics,
       soldBales,
       containerMetrics,
@@ -494,7 +494,7 @@ function Reporting() {
     const filteredPickupRequests = filterByDateRange(pickupRequests, 'date');
 
     await exportOperationalReport(
-      dateRange,
+      { from: dateRange.from, to: dateRange.to },
       binMetrics,
       pickupMetrics,
       driverBinAssignments,
