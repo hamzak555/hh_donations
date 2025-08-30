@@ -1,8 +1,9 @@
 import * as XLSX from 'xlsx-js-style';
-// @ts-ignore
-window.XLSX = XLSX;
 import { saveAs } from 'file-saver';
 import { format as formatDate } from 'date-fns';
+
+// @ts-ignore
+window.XLSX = XLSX;
 
 // Brand colors
 const brandColors = {
