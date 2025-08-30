@@ -25,7 +25,9 @@ import {
   Clock,
   Archive,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import { format, subDays, subMonths, subYears, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -65,6 +67,9 @@ import { useBales } from '@/contexts/BalesContextSupabase';
 import { useContainers } from '@/contexts/ContainersContextSupabase';
 import { usePartnerApplications } from '@/contexts/PartnerApplicationsContextSupabase';
 
+// Import Excel export utilities
+import { exportFinancialReport, exportOperationalReport } from '@/utils/excelExport';
+
 // Using CSS variables for consistent theming
 const chartColors = {
   danger: "hsl(var(--destructive))",
@@ -79,11 +84,11 @@ interface QuickRange {
 }
 
 const quickRanges: QuickRange[] = [
-  { label: '7d', days: 7 },
-  { label: '14d', days: 14 },
-  { label: '30d', days: 30 },
-  { label: '6m', months: 6 },
-  { label: '1y', years: 1 }
+  { label: '7D', days: 7 },
+  { label: '14D', days: 14 },
+  { label: '30D', days: 30 },
+  { label: '6M', months: 6 },
+  { label: '1Y', years: 1 }
 ];
 
 
@@ -116,6 +121,7 @@ function Reporting() {
     to: new Date()
   });
 
+  const [selectedRange, setSelectedRange] = useState<string>('30D');
   const [activeTab, setActiveTab] = useState('financial');
   const [isLocationExpanded, setIsLocationExpanded] = useState(false);
 
@@ -133,6 +139,7 @@ function Reporting() {
     }
     
     setDateRange({ from: startOfDay(from), to: endOfDay(to) });
+    setSelectedRange(range.label);
   };
 
   // Filter data based on date range
@@ -276,7 +283,7 @@ function Reporting() {
     const avgPricePerKg = totalWeight > 0 ? totalSales / totalWeight : 0;
     
     // Sales by location
-    const salesByLocation: { [key: string]: number } = {};
+    const salesByLocation: { [key: string]: { count: number; revenue: number } } = {};
     soldBales.forEach(bale => {
       let location = 'Warehouse';
       if (bale.containerNumber) {
@@ -285,7 +292,11 @@ function Reporting() {
           location = container.destination;
         }
       }
-      salesByLocation[location] = (salesByLocation[location] || 0) + (bale.salePrice || 0);
+      if (!salesByLocation[location]) {
+        salesByLocation[location] = { count: 0, revenue: 0 };
+      }
+      salesByLocation[location].count++;
+      salesByLocation[location].revenue += bale.salePrice || 0;
     });
     
     // Sales by quality
@@ -327,9 +338,10 @@ function Reporting() {
       totalWeight,
       unsoldWeight,
       avgPricePerKg,
-      byLocation: Object.entries(salesByLocation).map(([location, amount]) => ({
+      byLocation: Object.entries(salesByLocation).map(([location, data]) => ({
         location: location.split(',')[0].trim(),
-        amount
+        count: data.count,
+        amount: data.revenue
       })),
       byQuality: Object.entries(salesByQuality).map(([quality, data]) => ({
         quality,
@@ -448,6 +460,50 @@ function Reporting() {
     containers: { label: "Containers", color: greenColors.light },
   } satisfies ChartConfig;
 
+  // Export handlers
+  const handleExportFinancial = async () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      alert('Please select a date range');
+      return;
+    }
+
+    // Get filtered bales data
+    const soldBales = filterByDateRange(
+      bales.filter(bale => bale.status === 'Sold'),
+      'soldDate'
+    );
+    
+    const unsoldBales = bales.filter(bale => bale.status !== 'Sold');
+
+    await exportFinancialReport(
+      dateRange,
+      salesMetrics,
+      soldBales,
+      containerMetrics,
+      unsoldBales,
+      containers
+    );
+  };
+
+  const handleExportOperational = async () => {
+    if (!dateRange?.from || !dateRange?.to) {
+      alert('Please select a date range');
+      return;
+    }
+
+    const filteredPickupRequests = filterByDateRange(pickupRequests, 'date');
+
+    await exportOperationalReport(
+      dateRange,
+      binMetrics,
+      pickupMetrics,
+      driverBinAssignments,
+      pickupsPerDriver,
+      partnerMetrics,
+      filteredPickupRequests
+    );
+  };
+
   return (
     <div className="min-h-screen flex flex-col pt-10 pb-6 bg-gray-50">
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
@@ -456,25 +512,15 @@ function Reporting() {
           <h1 className="text-2xl sm:text-3xl font-bold">Reporting</h1>
           
           {/* Date Range Selector */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Quick Range Buttons - Hide some on mobile */}
-            {quickRanges.map((range, index) => (
+          <div className="flex items-center gap-2">
+            {/* Quick Range Buttons */}
+            {quickRanges.map((range) => (
               <Button
                 key={range.label}
-                variant="outline"
+                variant={selectedRange === range.label ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleQuickRange(range)}
-                className={`${index > 2 ? 'hidden sm:inline-flex' : ''} ${
-                  dateRange?.from && dateRange?.to &&
-                  ((range.days && 
-                    Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) === range.days) ||
-                   (range.months && 
-                    Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) === range.months * 30) ||
-                   (range.years && 
-                    Math.round((dateRange.to.getTime() - dateRange.from.getTime()) / (1000 * 60 * 60 * 24)) === range.years * 365))
-                  ? 'bg-primary text-primary-foreground'
-                  : ''
-                }`}
+                style={selectedRange === range.label ? { backgroundColor: '#0b503c', borderColor: '#0b503c' } : {}}
               >
                 {range.label}
               </Button>
@@ -483,7 +529,7 @@ function Reporting() {
             {/* Date Range Picker */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full sm:min-w-[240px] justify-start">
+                <Button variant="outline" size="sm" className="min-w-[240px] justify-start">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dateRange?.from && dateRange?.to ? (
                     <>
@@ -498,7 +544,10 @@ function Reporting() {
                 <Calendar
                   mode="range"
                   selected={dateRange}
-                  onSelect={setDateRange}
+                  onSelect={(range) => {
+                    setDateRange(range);
+                    setSelectedRange(''); // Clear quick range selection when using calendar
+                  }}
                   numberOfMonths={typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 2}
                   initialFocus
                 />
@@ -509,10 +558,24 @@ function Reporting() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full sm:max-w-md grid-cols-2">
-            <TabsTrigger value="financial">Financial</TabsTrigger>
-            <TabsTrigger value="operational">Operational</TabsTrigger>
-          </TabsList>
+          <div className="flex justify-between items-center">
+            <TabsList className="grid w-full sm:max-w-md grid-cols-2">
+              <TabsTrigger value="financial">Financial</TabsTrigger>
+              <TabsTrigger value="operational">Operational</TabsTrigger>
+            </TabsList>
+            
+            {/* Export Button */}
+            <Button
+              onClick={activeTab === 'financial' ? handleExportFinancial : handleExportOperational}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+              style={{ borderColor: '#0b503c', color: '#0b503c' }}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Export to Excel
+            </Button>
+          </div>
 
           {/* Operational Tab */}
           <TabsContent value="operational" className="space-y-6 mb-8">
@@ -906,13 +969,16 @@ function Reporting() {
                         cursor={false}
                         content={({ active, payload, label }) => {
                           if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const avgSalePrice = data.count > 0 ? data.revenue / data.count : 0;
                             return (
                               <div className="rounded-lg border bg-background p-2 shadow-sm">
                                 <div className="grid grid-cols-1 gap-2">
                                   <div className="flex items-start gap-2">
-                                    <div className="h-10 w-1 shrink-0 rounded-[2px] bg-[#0b503c]" />
+                                    <div className="h-14 w-1 shrink-0 rounded-[2px] bg-[#0b503c]" />
                                     <div className="grid gap-1">
                                       <span className="text-sm font-semibold text-foreground">{label}</span>
+                                      <span className="text-xs text-muted-foreground">Bales Sold: {data.count} (${avgSalePrice.toFixed(0)} avg)</span>
                                       <span className="text-xs text-muted-foreground">Revenue: ${Number(payload[0].value).toLocaleString()}</span>
                                     </div>
                                   </div>
@@ -1001,13 +1067,16 @@ function Reporting() {
                         cursor={false}
                         content={({ active, payload, label }) => {
                           if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const avgSalePrice = data.count > 0 ? data.amount / data.count : 0;
                             return (
                               <div className="rounded-lg border bg-background p-2 shadow-sm">
                                 <div className="grid grid-cols-1 gap-2">
                                   <div className="flex items-start gap-2">
-                                    <div className="h-10 w-1 shrink-0 rounded-[2px] bg-[#0b503c]" />
+                                    <div className="h-14 w-1 shrink-0 rounded-[2px] bg-[#0b503c]" />
                                     <div className="grid gap-1">
                                       <span className="text-sm font-semibold text-foreground">{label}</span>
+                                      <span className="text-xs text-muted-foreground">Bales Sold: {data.count} (${avgSalePrice.toFixed(0)} avg)</span>
                                       <span className="text-xs text-muted-foreground">Revenue: ${Number(payload[0].value).toLocaleString()}</span>
                                     </div>
                                   </div>
