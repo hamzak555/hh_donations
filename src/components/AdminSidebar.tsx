@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { usePickupRequests } from '@/contexts/PickupRequestsContextSupabase';
 import { 
   Package, 
   Truck, 
@@ -52,6 +53,7 @@ interface NavItem {
 const AdminSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { pickupRequests } = usePickupRequests();
   const [pendingCount, setPendingCount] = useState(0);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -88,39 +90,12 @@ const AdminSidebar = () => {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
   
-  // Load pickup requests from localStorage directly
+  // Update pending count from context data
   useEffect(() => {
-    const loadPendingCount = () => {
-      try {
-        const storedData = localStorage.getItem('pickupRequests');
-        
-        if (storedData) {
-          const requests = JSON.parse(storedData);
-          // Note: Status is capitalized 'Pending' not 'pending'
-          const count = requests.filter((request: any) => request.status === 'Pending').length;
-          setPendingCount(count);
-        }
-      } catch (error) {
-        console.error('Error loading pickup requests:', error);
-      }
-    };
-    
-    // Load initially
-    loadPendingCount();
-    
-    // Set up an interval to check for updates
-    const interval = setInterval(loadPendingCount, 2000); // Check every 2 seconds
-    
-    // Listen for storage events
-    const handleStorageChange = () => loadPendingCount();
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Also reload when navigating
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, [location.pathname]);
+    // Count pending requests from the context data
+    const count = pickupRequests.filter(request => request.status === 'Pending').length;
+    setPendingCount(count);
+  }, [pickupRequests]);
 
   // Close mobile menu when route changes
   useEffect(() => {

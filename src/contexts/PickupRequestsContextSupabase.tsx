@@ -163,7 +163,9 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
       if (USE_SUPABASE) {
         try {
           const dbRequests = await SupabaseService.pickupRequests.getAllPickupRequests();
-          if (dbRequests && dbRequests.length > 0) {
+          // Always update with Supabase data when available (even if empty)
+          // This ensures we don't show stale localStorage data
+          if (dbRequests !== null && dbRequests !== undefined) {
             const convertedRequests = dbRequests.map(convertFromDatabase);
             setPickupRequests(convertedRequests);
             // Also save to localStorage as backup
