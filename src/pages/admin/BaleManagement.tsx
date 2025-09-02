@@ -449,7 +449,7 @@ type SoldColumnId = keyof typeof SOLD_COLUMN_IDS;
 
 function BaleManagement() {
   const { bales, addBale, updateBale, deleteBale, markAsSold, revertToActive, addNoteToTimeline, addPhotos } = useBales();
-  const { containers } = useContainers();
+  const { containers, removeBaleFromContainer } = useContainers();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -626,7 +626,12 @@ function BaleManagement() {
 
   const handleEditBale = () => {
     if (selectedBale) {
-      updateBale(selectedBale.id, formData);
+      // Don't update status, only update contents and weight
+      updateBale(selectedBale.id, {
+        contents: formData.contents,
+        weight: formData.weight,
+        notes: formData.notes
+      });
       setIsEditDialogOpen(false);
       setSelectedBale(null);
       setFormData({ contents: 'A-Quality', weight: '', status: 'Warehouse', notes: '' });
@@ -647,17 +652,43 @@ function BaleManagement() {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDeleteBale = () => {
+  const confirmDeleteBale = async () => {
     if (baleToDelete) {
-      deleteBale(baleToDelete.id);
-      setIsDeleteDialogOpen(false);
-      setBaleToDelete(null);
+      try {
+        // First check if the bale is assigned to a container
+        if (baleToDelete.containerNumber) {
+          // Find the container
+          const container = containers.find(c => 
+            c.containerNumber?.trim().toLowerCase() === baleToDelete.containerNumber?.trim().toLowerCase()
+          );
+          
+          if (container) {
+            // Remove the bale from the container
+            removeBaleFromContainer(container.id, baleToDelete.id);
+          }
+        }
+        
+        // Then delete the bale
+        await deleteBale(baleToDelete.id);
+        setIsDeleteDialogOpen(false);
+        setBaleToDelete(null);
+      } catch (error) {
+        console.error('Failed to delete bale:', error);
+        alert(`Failed to delete bale: ${error.message || 'Unknown error occurred'}. Please try again.`);
+        setIsDeleteDialogOpen(false);
+        setBaleToDelete(null);
+      }
     }
   };
 
   // Helper function to get location for a bale
   const getBaleLocation = (bale: Bale) => {
-    // Check if bale has a container
+    // If status is Warehouse, always show "In Warehouse"
+    if (bale.status === 'Warehouse') {
+      return 'In Warehouse';
+    }
+    
+    // Check if bale has a container for other statuses
     if (bale.containerNumber) {
       // Case-insensitive container matching with trim
       const container = containers.find(c => 
@@ -700,7 +731,7 @@ function BaleManagement() {
     setFormData({
       contents: bale.contents,
       weight: bale.weight,
-      status: bale.status,
+      status: bale.status,  // Keep status in formData but don't allow editing
       notes: bale.notes || ''
     });
     setIsEditDialogOpen(true);
@@ -776,18 +807,32 @@ function BaleManagement() {
     const statusStyles = {
       'Warehouse': 'bg-blue-100 text-blue-800 border-blue-200',
       'Container': 'bg-orange-100 text-orange-800 border-orange-200',
-      'Shipped': 'bg-purple-100 text-purple-800 border-purple-200',
+      'Shipped': 'bg-green-100 text-green-800 border-green-200',
       'Sold': 'bg-green-100 text-green-800 border-green-200'
     };
     
     let displayText: string = status;
-    // Show container number for both Container and Shipped statuses
-    if ((status === 'Container' || status === 'Shipped') && containerNumber) {
+    let badgeStyle = statusStyles[status];
+    
+    // Check if bale is in a container
+    if (status === 'Container' && containerNumber) {
+      // Find the container to check if it's shipped
+      const container = containers.find(c => c.containerNumber === containerNumber);
+      
+      if (container && !container.shipped) {
+        // Container exists but not shipped - show as Warehouse
+        displayText = `Warehouse (${containerNumber})`;
+        badgeStyle = statusStyles['Warehouse']; // Use Warehouse styling
+      } else {
+        // Container is shipped or default behavior
+        displayText = `Container (${containerNumber})`;
+      }
+    } else if (status === 'Shipped' && containerNumber) {
       displayText = `${status} (${containerNumber})`;
     }
     
     return (
-      <Badge variant="outline" className={statusStyles[status]}>
+      <Badge variant="outline" className={badgeStyle}>
         {displayText}
       </Badge>
     );
@@ -1134,7 +1179,7 @@ function BaleManagement() {
                         onClick={() => handleSort('location')}
                       >
                         <div className="flex items-center gap-1">
-                          Location
+                          Destination
                           {getSortIcon('location')}
                         </div>
                       </TableHead>
@@ -1558,22 +1603,6 @@ function BaleManagement() {
                 value={formData.weight}
                 onChange={(e) => setFormData({...formData, weight: parseFloat(e.target.value) || 0})}
               />
-            </div>
-            <div>
-              <Label htmlFor="edit-status">Status</Label>
-              <Select 
-                value={formData.status}
-                onValueChange={(value) => setFormData({...formData, status: value as BaleStatus})}
-              >
-                <SelectTrigger id="edit-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Warehouse">Warehouse</SelectItem>
-                  <SelectItem value="Container">Container</SelectItem>
-                  <SelectItem value="Shipped">Shipped</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

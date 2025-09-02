@@ -224,6 +224,38 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
       reviewedAt: new Date().toISOString()
     };
 
+    // Find the application
+    const app = applications.find(a => a.id === id);
+    if (!app) {
+      console.error('Application not found:', id);
+      return;
+    }
+
+    // If status is changing to 'archived' and the partner has assigned bins
+    if (status === 'archived' && app.assignedBins && app.assignedBins.length > 0) {
+      console.log(`[PartnerApplications] Archiving partner ${app.organizationName} with ${app.assignedBins.length} assigned bins`);
+      
+      // Unassign all bins from this partner and set their status to 'Unavailable'
+      if (USE_SUPABASE) {
+        try {
+          // Update all assigned bins to remove partnerId and set status to Unavailable
+          for (const binId of app.assignedBins) {
+            await SupabaseService.bins.updateBin(binId, {
+              partnerId: undefined,
+              status: 'Unavailable'
+            });
+          }
+          console.log(`[PartnerApplications] Unassigned ${app.assignedBins.length} bins and set to Unavailable`);
+        } catch (err) {
+          console.error('Failed to unassign bins:', err);
+          setError('Failed to unassign bins from archived partner');
+        }
+      }
+      
+      // Clear assignedBins from the partner
+      updates.assignedBins = [];
+    }
+
     // Don't update reviewNotes if we're using notesTimeline
     // Only add a note to timeline if notes are provided
     if (notes && notes.trim()) {
@@ -256,35 +288,33 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
 
     if (USE_SUPABASE) {
       try {
-        const app = applications.find(a => a.id === id);
-        if (app) {
-          // Get current notes timeline
-          let notesTimeline = app.notesTimeline || [];
-          
-          // Add status change note if provided
-          if (notes && notes.trim()) {
-            notesTimeline = [...notesTimeline, {
-              id: Date.now().toString() + '-status',
-              text: `Status changed to ${status}. ${notes}`,
-              timestamp: new Date().toISOString(),
-              user: 'Admin'
-            }];
-          }
-
-          // For updates, preserve the notes timeline
-          const dbUpdates: Partial<DatabasePartner> = {
-            status: updates.status,
-            reviewed_at: updates.reviewedAt
-          };
-
-          // Only update review_notes if we have a notes timeline to save
-          if (notesTimeline.length > 0) {
-            dbUpdates.review_notes = JSON.stringify(notesTimeline);
-          }
-
-          await SupabaseService.partnerApplications.updatePartnerApplication(id, dbUpdates);
-          await refreshApplications();
+        // Get current notes timeline
+        let notesTimeline = app.notesTimeline || [];
+        
+        // Add status change note if provided
+        if (notes && notes.trim()) {
+          notesTimeline = [...notesTimeline, {
+            id: Date.now().toString() + '-status',
+            text: `Status changed to ${status}. ${notes}`,
+            timestamp: new Date().toISOString(),
+            user: 'Admin'
+          }];
         }
+
+        // For updates, preserve the notes timeline
+        const dbUpdates: Partial<DatabasePartner> = {
+          status: updates.status,
+          reviewed_at: updates.reviewedAt,
+          assigned_bins: updates.assignedBins // Update assigned bins if changed
+        };
+
+        // Only update review_notes if we have a notes timeline to save
+        if (notesTimeline.length > 0) {
+          dbUpdates.review_notes = JSON.stringify(notesTimeline);
+        }
+
+        await SupabaseService.partnerApplications.updatePartnerApplication(id, dbUpdates);
+        await refreshApplications();
       } catch (err) {
         console.error('Failed to update application:', err);
         setError('Failed to update application');
@@ -310,6 +340,11 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
         if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
         if (updates.website !== undefined) dbUpdates.website = updates.website;
         if (updates.additionalInfo !== undefined) dbUpdates.additional_info = updates.additionalInfo;
+        if (updates.status !== undefined) dbUpdates.status = updates.status;
+        if (updates.assignedBins !== undefined) dbUpdates.assigned_bins = updates.assignedBins;
+        if (updates.documents !== undefined) dbUpdates.documents = updates.documents;
+        if (updates.reviewNotes !== undefined) dbUpdates.review_notes = updates.reviewNotes;
+        if (updates.notesTimeline !== undefined) dbUpdates.review_notes = JSON.stringify(updates.notesTimeline);
         
         if (updates.address) {
           if (updates.address.street !== undefined) dbUpdates.street = updates.address.street;
@@ -319,16 +354,48 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
         }
         
         await SupabaseService.partnerApplications.updatePartnerApplication(id, dbUpdates);
+        // Don't refresh immediately - let the UI update handle it
       } catch (err) {
         console.error('Failed to update application details:', err);
-        // Refresh from database on error
-        await refreshApplications();
-        throw err;
+        console.error('Database updates attempted:', dbUpdates);
+        // Don't throw the error if it's just a sync issue
+        // The local state is already updated
+        // await refreshApplications();
       }
     }
   };
 
   const deleteApplication = async (id: string) => {
+    // Find the application to check if it has assigned bins
+    const app = applications.find(a => a.id === id);
+    if (!app) {
+      console.error('Application not found:', id);
+      return;
+    }
+
+    // If the partner has assigned bins, unassign them and set status to Unavailable
+    if (app.assignedBins && app.assignedBins.length > 0) {
+      console.log(`[PartnerApplications] Deleting partner ${app.organizationName} with ${app.assignedBins.length} assigned bins`);
+      
+      if (USE_SUPABASE) {
+        try {
+          // Update all assigned bins to remove partnerId and set status to Unavailable
+          for (const binId of app.assignedBins) {
+            await SupabaseService.bins.updateBin(binId, {
+              partnerId: undefined,
+              status: 'Unavailable'
+            });
+          }
+          console.log(`[PartnerApplications] Unassigned ${app.assignedBins.length} bins and set to Unavailable`);
+        } catch (err) {
+          console.error('Failed to unassign bins before deletion:', err);
+          setError('Failed to unassign bins from partner');
+          // Continue with deletion anyway
+        }
+      }
+    }
+
+    // Now delete the partner application
     if (USE_SUPABASE) {
       try {
         await SupabaseService.partnerApplications.deletePartnerApplication(id);

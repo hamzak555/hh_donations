@@ -144,8 +144,34 @@ export class BinsService {
   }
 
   static async updateBin(id: string, updates: Partial<BinLocation>): Promise<BinLocation> {
-    // Direct mapping - no field name conversion needed after column rename
-    const dbUpdates: Partial<DatabaseBin> = { ...updates }
+    console.log('[BinsService] Updating bin:', id, 'with updates:', updates)
+    
+    // Convert field names properly
+    const dbUpdates: Partial<DatabaseBin> = {}
+    
+    // Map each field individually to ensure proper conversion
+    if (updates.binNumber !== undefined) dbUpdates.binNumber = updates.binNumber
+    if (updates.locationName !== undefined) dbUpdates.locationName = updates.locationName
+    if (updates.address !== undefined) dbUpdates.address = updates.address
+    if (updates.lat !== undefined) dbUpdates.lat = updates.lat
+    if (updates.lng !== undefined) dbUpdates.lng = updates.lng
+    if (updates.status !== undefined) dbUpdates.status = updates.status
+    // distance is a calculated field, not stored in database
+    if (updates.assignedDriver !== undefined) dbUpdates.assignedDriver = updates.assignedDriver
+    if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId
+    if ('partnerId' in updates) dbUpdates.partner_id = updates.partnerId
+    if (updates.createdDate !== undefined) dbUpdates.createdDate = updates.createdDate
+    if (updates.fullSince !== undefined) dbUpdates.fullSince = updates.fullSince
+    if (updates.sensorId !== undefined) dbUpdates.sensorId = updates.sensorId
+    if (updates.containerId !== undefined) dbUpdates.containerId = updates.containerId
+    if (updates.fillLevel !== undefined) dbUpdates.fillLevel = updates.fillLevel
+    if (updates.lastSensorUpdate !== undefined) dbUpdates.lastSensorUpdate = updates.lastSensorUpdate
+    if (updates.batteryLevel !== undefined) dbUpdates.batteryLevel = updates.batteryLevel
+    if (updates.temperature !== undefined) dbUpdates.temperature = updates.temperature
+    if (updates.sensorEnabled !== undefined) dbUpdates.sensorEnabled = updates.sensorEnabled
+
+    console.log('[BinsService] Database updates:', dbUpdates)
+    console.log('[BinsService] Updating bin ID:', id)
 
     const { data, error } = await supabase
       .from(TABLES.BINS)
@@ -155,7 +181,13 @@ export class BinsService {
       .single()
 
     if (error) {
-      console.error('Error updating bin:', error)
+      console.error('[BinsService] Error updating bin:', error)
+      console.error('[BinsService] Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      })
       throw error
     }
 
@@ -430,7 +462,7 @@ export class PickupRequestsService {
   static async getAllPickupRequests() {
     const { data, error } = await supabase
       .from(TABLES.PICKUP_REQUESTS)
-      .select('id, name, phone, email, address, date, time, additionalNotes, location, status, assignedDriver, adminNotes, submittedAt, created_at, updated_at')
+      .select('*')  // Select all fields to include email tracking fields
       .order('created_at', { ascending: false })
 
     if (error) {

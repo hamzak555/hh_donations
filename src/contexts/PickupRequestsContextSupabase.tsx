@@ -19,6 +19,18 @@ export interface PickupRequest {
   status: 'Pending' | 'Overdue' | 'Picked Up' | 'Cancelled';
   assignedDriver?: string;
   adminNotes?: string;
+  // Email tracking fields
+  confirmationSent?: boolean;
+  confirmationSentAt?: string;
+  reminderSent?: boolean;
+  reminderSentAt?: string;
+  completionEmailSent?: boolean;
+  completionEmailSentAt?: string;
+  emailPreferences?: {
+    sendConfirmation?: boolean;
+    sendReminder?: boolean;
+    sendCompletion?: boolean;
+  };
 }
 
 interface PickupRequestsContextType {
@@ -27,11 +39,10 @@ interface PickupRequestsContextType {
   updatePickupRequest: (id: string, updates: Partial<PickupRequest>) => Promise<void>;
   deletePickupRequest: (id: string) => Promise<void>;
   getPickupRequestById: (id: string) => PickupRequest | undefined;
+  refreshPickupRequests: () => Promise<void>;
 }
 
 const PickupRequestsContext = createContext<PickupRequestsContextType | undefined>(undefined);
-
-const STORAGE_KEY = 'pickupRequests';
 
 // Check if Supabase is configured
 const USE_SUPABASE = isSupabaseConfigured;
@@ -53,7 +64,15 @@ const convertFromDatabase = (dbRequest: any): PickupRequest => {
     submittedAt: dbRequest.submittedAt || dbRequest.created_at,
     status: dbRequest.status as 'Pending' | 'Picked Up' | 'Cancelled',
     assignedDriver: dbRequest.assignedDriver || undefined,
-    adminNotes: dbRequest.adminNotes || undefined
+    adminNotes: dbRequest.adminNotes || undefined,
+    // Email tracking fields - handle booleans correctly (don't use || for booleans)
+    confirmationSent: dbRequest.confirmationSent === true,
+    confirmationSentAt: dbRequest.confirmationSentAt || undefined,
+    reminderSent: dbRequest.reminderSent === true,
+    reminderSentAt: dbRequest.reminderSentAt || undefined,
+    completionEmailSent: dbRequest.completionEmailSent === true,
+    completionEmailSentAt: dbRequest.completionEmailSentAt || undefined,
+    emailPreferences: dbRequest.emailPreferences || undefined
   };
 };
 
@@ -86,108 +105,111 @@ const convertToDatabase = (request: Partial<PickupRequest>): any => {
     dbRequest.location = request.location; // Also store as JSONB
   }
   
+  // Email tracking fields
+  if (request.confirmationSent !== undefined) dbRequest.confirmationSent = request.confirmationSent;
+  if (request.confirmationSentAt !== undefined) dbRequest.confirmationSentAt = request.confirmationSentAt;
+  if (request.reminderSent !== undefined) dbRequest.reminderSent = request.reminderSent;
+  if (request.reminderSentAt !== undefined) dbRequest.reminderSentAt = request.reminderSentAt;
+  if (request.completionEmailSent !== undefined) dbRequest.completionEmailSent = request.completionEmailSent;
+  if (request.completionEmailSentAt !== undefined) dbRequest.completionEmailSentAt = request.completionEmailSentAt;
+  if (request.emailPreferences !== undefined) dbRequest.emailPreferences = request.emailPreferences;
+  
   return dbRequest;
 };
 
 export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>(() => {
-    // Initialize state directly from localStorage
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      
-      if (stored && stored !== 'undefined' && stored !== 'null') {
-        const parsedRequests = JSON.parse(stored);
-        if (Array.isArray(parsedRequests)) {
-          return parsedRequests;
-        }
-      }
-      
-      return [];
-        // Optionally add sample data only for development
-        // Commenting out to prevent overwriting user submissions
-        /*
-        const sampleRequests: PickupRequest[] = [
-          {
-            id: '1',
-            name: 'John Smith',
-            email: 'john.smith@email.com',
-            phone: '(416) 555-0123',
-            address: '123 Main Street, Toronto, ON M5V 3A8',
-            date: '2024-01-15',
-            time: '10:00 AM - 2:00 PM',
-            additionalNotes: 'Large furniture items, please bring extra help',
-            location: { lat: 43.6426, lng: -79.3871 },
-            submittedAt: '2024-01-10T09:00:00.000Z',
-            status: 'Pending'
-          },
-          {
-            id: '2',
-            name: 'Sarah Johnson',
-            email: 'sarah.j@email.com',
-            phone: '(647) 555-0456',
-            address: '456 Oak Avenue, Toronto, ON M4E 2B7',
-            date: '2024-01-18',
-            time: '9:00 AM - 12:00 PM',
-            additionalNotes: 'Mostly clothing and household items',
-            location: { lat: 43.6532, lng: -79.3832 },
-            submittedAt: '2024-01-12T14:30:00.000Z',
-            status: 'Confirmed',
-            assignedDriver: 'Michael Brown'
-          },
-          {
-            id: '3',
-            name: 'David Wilson',
-            email: 'david.wilson@email.com',
-            phone: '(416) 555-0789',
-            address: '789 Pine Street, Mississauga, ON L5M 1G4',
-            date: '2024-01-20',
-            time: '1:00 PM - 5:00 PM',
-            location: { lat: 43.5890, lng: -79.6441 },
-            submittedAt: '2024-01-13T16:45:00.000Z',
-            status: 'In Progress',
-            assignedDriver: 'Emily Davis'
+  // Always start with empty array - data will be loaded from Supabase only
+  const [pickupRequests, setPickupRequests] = useState<PickupRequest[]>([]);
+
+  // Refresh function to load pickup requests from Supabase
+  const refreshPickupRequests = async () => {
+    if (USE_SUPABASE) {
+      try {
+        console.log('[PickupRequestsContext] Refreshing pickup requests...');
+        const dbRequests = await SupabaseService.pickupRequests.getAllPickupRequests();
+        // Always update with Supabase data when available (even if empty)
+        if (dbRequests !== null && dbRequests !== undefined) {
+          const convertedRequests = dbRequests.map(convertFromDatabase);
+          // Log the most recent request to see email status
+          const recentRequest = dbRequests.find((r: any) => r.email === 'hk11345@gmail.com');
+          if (recentRequest) {
+            console.log('[PickupRequestsContext] Recent request email status:', {
+              raw: {
+                confirmationSent: recentRequest.confirmationSent,
+                confirmationSentAt: recentRequest.confirmationSentAt
+              },
+              converted: convertedRequests.find(r => r.email === 'hk11345@gmail.com')
+            });
           }
-        ];
-        setPickupRequests(sampleRequests);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleRequests));
-        */
-    } catch (error) {
-      console.error('[PickupRequestsContext] Error loading pickup requests:', error);
-      return [];
+          setPickupRequests(convertedRequests);
+          console.log('[PickupRequestsContext] Refreshed with', convertedRequests.length, 'requests from Supabase');
+        } else {
+          console.log('[PickupRequestsContext] No data received from Supabase');
+        }
+      } catch (error) {
+        console.error('[PickupRequestsContext] Failed to refresh from Supabase:', error);
+        // Continue with current data
+      }
+    } else {
+      console.log('[PickupRequestsContext] Supabase not configured');
     }
-  });
+  };
 
   // Load pickup requests from Supabase on mount if configured
   useEffect(() => {
-    const loadPickupRequests = async () => {
-      if (USE_SUPABASE) {
-        try {
-          const dbRequests = await SupabaseService.pickupRequests.getAllPickupRequests();
-          // Always update with Supabase data when available (even if empty)
-          // This ensures we don't show stale localStorage data
-          if (dbRequests !== null && dbRequests !== undefined) {
-            const convertedRequests = dbRequests.map(convertFromDatabase);
-            setPickupRequests(convertedRequests);
-            // Also save to localStorage as backup
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(convertedRequests));
+    // Load data initially from Supabase only
+    refreshPickupRequests();
+
+    // Set up real-time subscription for pickup request updates
+    let subscription: any;
+    let intervalId: NodeJS.Timeout;
+    
+    if (USE_SUPABASE) {
+      const { supabase } = require('@/lib/supabase');
+      subscription = supabase
+        .channel('pickup-requests-changes')
+        .on('postgres_changes', 
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'pickup_requests' 
+          }, 
+          (payload: any) => {
+            console.log('[PickupRequestsContext] Real-time update received:', payload);
+            
+            if (payload.eventType === 'INSERT') {
+              const newRequest = convertFromDatabase(payload.new);
+              setPickupRequests(prev => [...prev, newRequest]);
+            } else if (payload.eventType === 'UPDATE') {
+              const updatedRequest = convertFromDatabase(payload.new);
+              setPickupRequests(prev => prev.map(req => 
+                req.id === updatedRequest.id ? updatedRequest : req
+              ));
+            } else if (payload.eventType === 'DELETE') {
+              setPickupRequests(prev => prev.filter(req => req.id !== payload.old.id));
+            }
           }
-        } catch (error) {
-          console.error('[PickupRequestsContext] Failed to load from Supabase:', error);
-          // Continue with localStorage data
-        }
+        )
+        .subscribe();
+
+      // Also set up periodic refresh every 30 seconds as a backup
+      intervalId = setInterval(() => {
+        refreshPickupRequests();
+      }, 30000);
+    }
+
+    // Cleanup subscription and interval on unmount
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+      }
+      if (intervalId) {
+        clearInterval(intervalId);
       }
     };
-    loadPickupRequests();
   }, []);
 
-  // Save to localStorage whenever pickupRequests change
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pickupRequests));
-    } catch (error) {
-      console.error('[PickupRequestsContext] Error saving pickup requests:', error);
-    }
-  }, [pickupRequests]);
+  // No localStorage saving - Supabase is the single source of truth
 
   // Generate a proper UUID for Supabase
   const generateUUID = () => {
@@ -279,7 +301,8 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     addPickupRequest,
     updatePickupRequest,
     deletePickupRequest,
-    getPickupRequestById
+    getPickupRequestById,
+    refreshPickupRequests
   };
 
   return (

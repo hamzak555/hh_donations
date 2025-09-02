@@ -82,7 +82,7 @@ function BinsManagement() {
   const [isLoading] = useState(false);
   const { bins, addBin, updateBin, deleteBin } = useBins();
   const { drivers, updateDriver, getActiveDrivers } = useDrivers();
-  const { applications } = usePartnerApplications();
+  const { applications, updateApplication } = usePartnerApplications();
   
   // Check if current user is a driver
   const userRole = localStorage.getItem('userRole');
@@ -141,12 +141,14 @@ function BinsManagement() {
     status: Bin['status'];
     assignedDriver: string;
     containerId?: number;
+    partnerId?: string;
   }>({
     locationName: '',
     address: '',
     status: 'Available',
     assignedDriver: 'none',
-    containerId: undefined
+    containerId: undefined,
+    partnerId: undefined
   });
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -156,6 +158,7 @@ function BinsManagement() {
   const addAddressRef = useRef<HTMLInputElement>(null);
   const editAddressRef = useRef<HTMLInputElement>(null);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [editSelectedLocation, setEditSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [selectedBins, setSelectedBins] = useState<Set<string>>(new Set());
   const [isBulkAssignDialogOpen, setIsBulkAssignDialogOpen] = useState(false);
   const [bulkDriverName, setBulkDriverName] = useState('');
@@ -323,6 +326,7 @@ function BinsManagement() {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
 
   // Calculate dynamic bin status based on fill level
   const calculateDynamicStatus = (fillLevel: number, currentStatus: BinLocation['status']): BinLocation['status'] => {
@@ -496,21 +500,28 @@ function BinsManagement() {
   };
 
   // Handle place selection for edit dialog
-  const onEditPlaceChanged = (e?: Event) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    
+  const onEditPlaceChanged = () => {
+    // Prevent any default behaviors that might close the dialog
     if (editAutocomplete) {
       const place = editAutocomplete.getPlace();
       console.log('Edit place selected:', place);
       
-      if (place && place.formatted_address) {
-        console.log('Setting edit address to:', place.formatted_address);
+      if (place && place.formatted_address && place.geometry && place.geometry.location) {
+        const newLocation = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng()
+        };
+        
+        console.log('Setting edit address and location:', place.formatted_address, newLocation);
         setFormData(prev => ({ ...prev, address: place.formatted_address || '' }));
+        setEditSelectedLocation(newLocation);
+        
+        // Force input to update
+        if (editAddressRef.current) {
+          editAddressRef.current.value = place.formatted_address || '';
+        }
       } else {
-        console.log('No formatted address found in edit');
+        console.log('No complete address data found in edit');
       }
     }
   };
@@ -697,15 +708,28 @@ function BinsManagement() {
     setSelectedLocation(null);
   };
 
-  const handleEditBin = () => {
+  const handleEditBin = async () => {
     if (selectedBin) {
       const oldDriverName = selectedBin.assignedDriver;
       const newDriverName = formData.assignedDriver === 'none' ? undefined : formData.assignedDriver;
       
-      let updatedBin = { 
-        ...selectedBin, 
-        ...formData,
-        assignedDriver: newDriverName
+      // Get old and new partner assignments
+      const oldPartner = getPartnerForBin(selectedBin.id);
+      const newPartnerId = formData.partnerId === 'none' ? undefined : formData.partnerId;
+      
+      // Only pass the fields that are being updated
+      const updates: Partial<BinLocation> = {
+        locationName: formData.locationName,
+        address: formData.address,
+        status: formData.status,
+        assignedDriver: newDriverName,
+        containerId: formData.containerId,
+        partnerId: newPartnerId,
+        // Update lat/lng if a new location was selected via autocomplete
+        ...(editSelectedLocation && {
+          lat: editSelectedLocation.lat,
+          lng: editSelectedLocation.lng
+        })
       };
       
       // Update driver assignments if driver has changed
@@ -729,11 +753,52 @@ function BinsManagement() {
         }
       }
       
+      // Update partner assignments if partner has changed
+      if (oldPartner?.id !== newPartnerId) {
+        try {
+          // Remove bin from old partner's assignedBins
+          if (oldPartner) {
+            const updatedBins = (oldPartner.assignedBins || []).filter(binId => binId !== selectedBin.id);
+            await updateApplication(oldPartner.id, { assignedBins: updatedBins });
+          }
+          
+          // Add bin to new partner's assignedBins
+          if (newPartnerId) {
+            const newPartner = applications.find(p => p.id === newPartnerId);
+            if (newPartner) {
+              const updatedBins = Array.from(new Set([...(newPartner.assignedBins || []), selectedBin.id]));
+              await updateApplication(newPartner.id, { assignedBins: updatedBins });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to update partner assignments. Full error:', error);
+          console.error('Error details:', {
+            errorMessage: error?.message,
+            errorStack: error?.stack,
+            errorObject: error
+          });
+          // Don't throw the error, just log it
+          // The bin update should still proceed
+        }
+      }
       
-      updateBin(selectedBin.id, updatedBin);
-      setIsEditDialogOpen(false);
-      setSelectedBin(null);
-      setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
+      // Update the bin
+      try {
+        console.log('Updating bin with:', updates);
+        await updateBin(selectedBin.id, updates);
+        setIsEditDialogOpen(false);
+        setSelectedBin(null);
+        setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined, partnerId: undefined });
+        setEditSelectedLocation(null);
+      } catch (error) {
+        console.error('Failed to update bin. Full error:', error);
+        console.error('Error details:', {
+          errorMessage: error?.message,
+          errorStack: error?.stack,
+          updates: updates
+        });
+        alert(`Failed to update bin: ${error?.message || 'Unknown error'}. Please check the console for details.`);
+      }
     }
   };
 
@@ -762,13 +827,17 @@ function BinsManagement() {
 
   const openEditDialog = (bin: Bin) => {
     setSelectedBin(bin);
+    // Find the partner assigned to this bin
+    const assignedPartner = getPartnerForBin(bin.id);
     setFormData({
       locationName: bin.locationName,
       address: bin.address,
       status: bin.status,
       assignedDriver: bin.assignedDriver || 'none',
-      containerId: bin.containerId
+      containerId: bin.containerId,
+      partnerId: assignedPartner?.id || 'none'
     });
+    setEditSelectedLocation(null); // Clear any previously selected location
     setIsEditDialogOpen(true);
   };
 
@@ -1413,7 +1482,7 @@ function BinsManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddDialogOpen(false);
-              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
+              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined, partnerId: undefined });
               setSelectedLocation(null);
             }}>
               Cancel
@@ -1425,7 +1494,23 @@ function BinsManagement() {
 
       {/* Edit Bin Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
+        <DialogContent 
+          className="max-w-md max-h-[90vh] flex flex-col z-[9999]"
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on autocomplete dropdown
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // Prevent closing when interacting with autocomplete
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>Edit Bin</DialogTitle>
             <DialogDescription>
@@ -1444,25 +1529,41 @@ function BinsManagement() {
             </div>
             <div>
               <Label htmlFor="edit-address">Address *</Label>
-              <div className="relative">
+              <div 
+                className="relative" 
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onMouseUp={(e) => e.stopPropagation()}
+              >
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
-                <Input
-                  ref={editAddressRef}
-                  id="edit-address"
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }
+                <Autocomplete
+                  onLoad={onEditAutocompleteLoad}
+                  onPlaceChanged={onEditPlaceChanged}
+                  options={{
+                    componentRestrictions: { country: 'ca' },
+                    fields: ['formatted_address', 'geometry']
                   }}
-                  onClick={(e) => e.stopPropagation()}
-                  placeholder="Enter bin location address"
-                  className="pl-10"
-                  required
-                />
+                >
+                  <Input
+                    ref={editAddressRef}
+                    id="edit-address"
+                    type="text"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    placeholder="Enter bin location address"
+                    className="pl-10"
+                    required
+                  />
+                </Autocomplete>
               </div>
             </div>
             <div>
@@ -1543,23 +1644,29 @@ function BinsManagement() {
                 </SelectContent>
               </Select>
             </div>
-            {/* Show assigned partner if any */}
-            {selectedBin && (() => {
-              const partner = getPartnerForBin(selectedBin.id);
-              return partner ? (
-                <div>
-                  <Label>Assigned Partner</Label>
-                  <div className="px-3 py-2 border rounded-md bg-green-50 border-green-200">
-                    <div>
-                      <p className="text-sm font-medium text-green-900">{partner.organizationName}</p>
-                      {partner.contactPerson && (
-                        <p className="text-xs text-green-700 mt-0.5">Contact: {partner.contactPerson}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : null;
-            })()}
+            <div>
+              <Label htmlFor="edit-partner">Assigned Partner</Label>
+              <Select 
+                value={formData.partnerId || 'none'}
+                onValueChange={(value) => setFormData({...formData, partnerId: value === 'none' ? undefined : value})}
+              >
+                <SelectTrigger id="edit-partner">
+                  <SelectValue placeholder="Select a partner" />
+                </SelectTrigger>
+                <SelectContent className="z-[99999]">
+                  <SelectItem value="none">No partner assigned</SelectItem>
+                  {applications
+                    .filter(app => app.status === 'approved')
+                    .map(partner => (
+                      <SelectItem key={partner.id} value={partner.id}>
+                        {partner.organizationName}
+                        {partner.contactPerson && ` (${partner.contactPerson})`}
+                      </SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter className="flex-shrink-0 border-t pt-4 mt-4">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>

@@ -55,6 +55,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { 
@@ -76,7 +82,12 @@ import {
   Settings2,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Send,
+  MailCheck,
+  MailWarning,
+  MailX,
+  Info
 } from 'lucide-react';
 
 const libraries: ("places")[] = ['places'];
@@ -89,7 +100,8 @@ const COLUMN_IDS = {
   address: 'Address',
   preferredDate: 'Preferred Date',
   status: 'Status',
-  assignedDriver: 'Assigned Driver'
+  assignedDriver: 'Assigned Driver',
+  emailStatus: 'Email Status'
 } as const;
 
 type ColumnId = keyof typeof COLUMN_IDS;
@@ -200,9 +212,6 @@ function PickupRequests() {
   }, [defaultDriver, pickupRequests, updatePickupRequest]);
   
   
-  const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<PickupRequest | null>(null);
   const [openDatePicker, setOpenDatePicker] = useState<string | null>(null);
@@ -479,35 +488,85 @@ function PickupRequests() {
     const statusConfig: Record<string, { className: string; icon: React.ReactElement }> = {
       'Pending': { 
         className: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        icon: <Clock className="h-3 w-3" />
+        icon: <Clock className="w-3.5 h-3.5 flex-shrink-0" />
       },
       'Overdue': { 
         className: 'bg-red-100 text-red-800 border-red-200',
-        icon: <AlertCircle className="h-3 w-3" />
+        icon: <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
       },
       'Picked Up': { 
         className: 'bg-green-100 text-green-800 border-green-200',
-        icon: <CheckCircle className="h-3 w-3" />
+        icon: <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
       },
       'Cancelled': { 
         className: 'bg-purple-100 text-purple-800 border-purple-200',
-        icon: <XCircle className="h-3 w-3" />
+        icon: <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
       }
     };
     
     const config = statusConfig[status] || { 
       className: 'bg-gray-100 text-gray-800 border-gray-200',
-      icon: <Clock className="h-3 w-3" />
+      icon: <Clock className="w-3.5 h-3.5 flex-shrink-0" />
     };
     
     return (
       <Badge 
         variant="outline" 
-        className={`flex items-center gap-1 ${config.className}`}
+        className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium ${config.className}`}
       >
         {config.icon}
-        {status}
+        <span className="whitespace-nowrap">{status}</span>
       </Badge>
+    );
+  };
+
+  const getEmailStatusIcon = (request: PickupRequest) => {
+    // Brand green color (matching your logo)
+    const brandGreen = "#14532d";
+    
+    // No email provided - gray X icon
+    if (!request.email) {
+      return (
+        <div className="flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <XCircle className="h-4 w-4 text-gray-400" />
+          </div>
+        </div>
+      );
+    }
+    
+    // Both emails sent - green checkmark with badge
+    if (request.confirmationSent && request.reminderSent) {
+      return (
+        <div className="flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+            <CheckCircle className="h-5 w-5 text-green-700" />
+          </div>
+        </div>
+      );
+    }
+    
+    // Only confirmation sent - half progress indicator
+    if (request.confirmationSent && !request.reminderSent) {
+      return (
+        <div className="flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-yellow-50 border-2 border-yellow-300 flex items-center justify-center">
+            <div className="flex flex-col items-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-600 mb-0.5"></div>
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-300"></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // No emails sent yet - pending state
+    return (
+      <div className="flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-gray-50 border-2 border-gray-200 flex items-center justify-center">
+          <Clock className="h-4 w-4 text-gray-400" />
+        </div>
+      </div>
     );
   };
 
@@ -810,6 +869,11 @@ function PickupRequests() {
                     </div>
                   </TableHead>
                 )}
+                {visibleColumns.has('emailStatus') && (
+                  <TableHead className="text-center">
+                    Email Status
+                  </TableHead>
+                )}
                 {visibleColumns.has('preferredDate') && (
                   <TableHead 
                     className="cursor-pointer select-none"
@@ -913,9 +977,98 @@ function PickupRequests() {
                   )}
                   {visibleColumns.has('address') && (
                     <TableCell className="max-w-xs">
-                      <div className="truncate" title={request.address}>
-                        {request.address}
-                      </div>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="truncate cursor-help max-w-[200px]">
+                              {request.address}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-sm">
+                            <p className="whitespace-normal">{request.address}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
+                  )}
+                  {visibleColumns.has('emailStatus') && (
+                    <TableCell className="text-center">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="inline-flex items-center justify-center cursor-help">
+                              {getEmailStatusIcon(request)}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-sm p-3 text-left">
+                            <div className="space-y-2">
+                              {/* Current Status */}
+                              <div className="space-y-2">
+                                {!request.email ? (
+                                  <div className="text-sm text-gray-500">No email address provided</div>
+                                ) : (
+                                  <>
+                                    <div className="text-sm">
+                                      {request.confirmationSent ? (
+                                        <div className="flex items-center gap-2 text-green-600">
+                                          <CheckCircle className="h-3 w-3 flex-shrink-0" />
+                                          <span>Confirmation sent</span>
+                                          {request.confirmationSentAt && (
+                                            <span className="text-xs text-gray-500 ml-1">
+                                              ({new Date(request.confirmationSentAt).toLocaleDateString()})
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2 text-yellow-600">
+                                          <Clock className="h-3 w-3 flex-shrink-0" />
+                                          <span>Confirmation pending</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-sm">
+                                      {request.reminderSent ? (
+                                        <div className="flex items-center gap-2 text-green-600">
+                                          <CheckCircle className="h-3 w-3 flex-shrink-0" />
+                                          <span>Reminder sent</span>
+                                          {request.reminderSentAt && (
+                                            <span className="text-xs text-gray-500 ml-1">
+                                              ({new Date(request.reminderSentAt).toLocaleDateString()})
+                                            </span>
+                                          )}
+                                        </div>
+                                      ) : request.date ? (
+                                        <div className="flex items-start gap-2 text-gray-500">
+                                          <Clock className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                                          <div className="flex-1">
+                                            <div>Reminder will be sent on</div>
+                                            <div className="font-medium">
+                                              {(() => {
+                                                const pickupDate = new Date(request.date + 'T10:00:00');
+                                                const reminderDate = new Date(pickupDate);
+                                                reminderDate.setDate(reminderDate.getDate() - 1);
+                                                return reminderDate.toLocaleDateString('en-US', {
+                                                  month: 'short',
+                                                  day: 'numeric'
+                                                }) + ' at 10:00 AM';
+                                              })()}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-1 text-gray-500">
+                                          <Clock className="h-3 w-3" />
+                                          <span>Reminder pending</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </TableCell>
                   )}
                   {visibleColumns.has('preferredDate') && (
@@ -933,7 +1086,7 @@ function PickupRequests() {
                           )}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          <CalendarIcon className="mr-1 h-4 w-4" />
                           <span className="text-sm font-medium">{formatDate(request.date)}</span>
                         </Button>
                       </PopoverTrigger>
@@ -962,34 +1115,34 @@ function PickupRequests() {
                         });
                       }}
                     >
-                      <SelectTrigger className="w-32 h-8">
+                      <SelectTrigger className="w-36 h-8">
                         <SelectValue>
                           {getStatusBadge(request.status)}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="Pending">
-                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Pending
+                          <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                            <Clock className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Pending</span>
                           </Badge>
                         </SelectItem>
                         <SelectItem value="Overdue">
-                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            Overdue
+                          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Overdue</span>
                           </Badge>
                         </SelectItem>
                         <SelectItem value="Picked Up">
-                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" />
-                            Picked Up
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                            <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Picked Up</span>
                           </Badge>
                         </SelectItem>
                         <SelectItem value="Cancelled">
-                          <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200 flex items-center gap-1">
-                            <XCircle className="h-3 w-3" />
-                            Cancelled
+                          <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
+                            <XCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Cancelled</span>
                           </Badge>
                         </SelectItem>
                       </SelectContent>
@@ -1039,16 +1192,6 @@ function PickupRequests() {
                           align="end" 
                           className="z-50"
                         >
-                          <DropdownMenuItem onClick={() => openViewDialog(request)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          {request.location && (
-                            <DropdownMenuItem onClick={() => handleViewOnMap(request)}>
-                              <MapPin className="mr-2 h-4 w-4" />
-                              View on Map
-                            </DropdownMenuItem>
-                          )}
                           <DropdownMenuItem 
                             onClick={() => handleDeleteRequest(request)}
                             className="text-red-600"
@@ -1069,152 +1212,6 @@ function PickupRequests() {
         </Card>
       </div>
 
-      {/* View Details Dialog */}
-      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Pickup Request Details</DialogTitle>
-            <DialogDescription>
-              Request submitted on {selectedRequest && formatDate(selectedRequest.submittedAt)}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedRequest && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4" />
-                      Contact Information
-                    </h4>
-                    <div className="space-y-1 text-sm">
-                      <div><strong>Name:</strong> {selectedRequest.name}</div>
-                      <div className="flex items-center gap-1">
-                        <Mail className="w-3 h-3" />
-                        {selectedRequest.email}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        {selectedRequest.phone}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold flex items-center gap-2 mb-2">
-                      <Calendar className="w-4 h-4" />
-                      Pickup Schedule
-                    </h4>
-                    <div className="space-y-1 text-sm">
-                      <div><strong>Date:</strong> {formatDate(selectedRequest.date)}</div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {selectedRequest.time}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4" />
-                      Location
-                    </h4>
-                    <div className="text-sm">
-                      {selectedRequest.address}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-2">Status</h4>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(selectedRequest.status)}
-                      {selectedRequest.assignedDriver && (
-                        <span className="text-sm text-gray-600">
-                          Assigned to: {selectedRequest.assignedDriver}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {selectedRequest.additionalNotes && (
-                <div>
-                  <h4 className="font-semibold mb-2">Additional Notes</h4>
-                  <div className="text-sm bg-gray-50 p-3 rounded">
-                    {selectedRequest.additionalNotes}
-                  </div>
-                </div>
-              )}
-              
-              {selectedRequest.adminNotes && (
-                <div>
-                  <h4 className="font-semibold mb-2">Admin Notes</h4>
-                  <div className="text-sm bg-blue-50 p-3 rounded">
-                    {selectedRequest.adminNotes}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-
-      {/* View on Map Dialog */}
-      <Dialog open={isMapDialogOpen} onOpenChange={setIsMapDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Pickup Location</DialogTitle>
-            <DialogDescription>
-              {selectedRequest?.name} - {selectedRequest?.address}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="h-96 w-full">
-            <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''} loadingElement={<div />}>
-              <GoogleMap
-                mapContainerStyle={{ width: '100%', height: '100%' }}
-                center={selectedRequest?.location || { lat: 43.6532, lng: -79.3832 }}
-                zoom={15}
-              >
-                {selectedRequest?.location && (
-                  <SafeMarker 
-                    position={selectedRequest.location}
-                    title={`${selectedRequest.name} - Pickup Location`}
-                    icon={{
-                      url: '/images/hh map pin icon.png',
-                      scaledSize: new google.maps.Size(30, 30),
-                      origin: new google.maps.Point(0, 0),
-                      anchor: new google.maps.Point(15, 30)
-                    }}
-                  />
-                )}
-              </GoogleMap>
-            </LoadScript>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline"
-              onClick={() => {
-                if (selectedRequest?.location) {
-                  const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${selectedRequest.location.lat},${selectedRequest.location.lng}&destination_place_id=${encodeURIComponent(selectedRequest.address)}`;
-                  window.open(googleMapsUrl, '_blank');
-                }
-              }}
-            >
-              Get Directions
-            </Button>
-            <Button onClick={() => setIsMapDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Bulk Assign Driver Dialog */}
       <Dialog open={isBulkAssignDialogOpen} onOpenChange={setIsBulkAssignDialogOpen}>

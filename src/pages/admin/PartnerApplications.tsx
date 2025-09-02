@@ -181,6 +181,11 @@ const PartnerApplications = () => {
     currentStatus: string;
     newStatus: string;
   } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [partnerToDelete, setPartnerToDelete] = useState<any>(null);
+  const [editAutocomplete, setEditAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const editAddressRef = useRef<HTMLInputElement>(null);
+  const [editFullAddress, setEditFullAddress] = useState<string>('');
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -879,11 +884,24 @@ const PartnerApplications = () => {
                           <DropdownMenuItem 
                             onClick={() => {
                               setEditingApplication(app);
+                              // Format the full address for display
+                              const fullAddr = `${app.address.street}, ${app.address.city}, ${app.address.state} ${app.address.zipCode}`;
+                              setEditFullAddress(fullAddr);
                               setIsEditDialogOpen(true);
                             }}
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setPartnerToDelete(app);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Partner
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1399,7 +1417,7 @@ const PartnerApplications = () => {
               {statusChangeConfirm?.newStatus === 'archived' && (
                 <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700">
                   <Package className="inline h-3 w-3 mr-1" />
-                  Archiving this application will mark it as inactive but preserve all assigned bins.
+                  Archiving this partner will unassign all associated bins and mark those bins as unavailable.
                 </div>
               )}
             </AlertDialogDescription>
@@ -1424,8 +1442,31 @@ const PartnerApplications = () => {
       </AlertDialog>
 
       {/* Edit Partner Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+        setIsEditDialogOpen(open);
+        if (!open) {
+          // Reset edit form when dialog closes
+          setEditingApplication(null);
+          setEditFullAddress('');
+        }
+      }}>
+        <DialogContent 
+          className="max-w-2xl"
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on autocomplete dropdown
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // Prevent closing when interacting with autocomplete
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Edit Partner Details</DialogTitle>
             <DialogDescription>
@@ -1495,59 +1536,81 @@ const PartnerApplications = () => {
                 </div>
               </div>
               
-              <div className="space-y-2">
-                <Label>Address</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Input
-                      placeholder="Street"
-                      value={editingApplication.address.street}
-                      onChange={(e) => setEditingApplication({
-                        ...editingApplication,
-                        address: {
-                          ...editingApplication.address,
-                          street: e.target.value
+              <div>
+                <Label htmlFor="edit-address">Address</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 z-10" />
+                  <Autocomplete
+                    onLoad={(autocomplete) => {
+                      setEditAutocomplete(autocomplete);
+                      autocomplete.addListener('place_changed', () => {
+                        const place = autocomplete.getPlace();
+                        if (place && place.formatted_address) {
+                          // Parse address components
+                          let street = '';
+                          let city = '';
+                          let state = '';
+                          let zipCode = '';
+                          
+                          // Extract street number and route for street address
+                          const streetNumber = place.address_components?.find(c => 
+                            c.types.includes('street_number')
+                          )?.long_name || '';
+                          const route = place.address_components?.find(c => 
+                            c.types.includes('route')
+                          )?.long_name || '';
+                          street = `${streetNumber} ${route}`.trim();
+                          
+                          // Extract city
+                          city = place.address_components?.find(c => 
+                            c.types.includes('locality')
+                          )?.long_name || '';
+                          
+                          // Extract state
+                          state = place.address_components?.find(c => 
+                            c.types.includes('administrative_area_level_1')
+                          )?.short_name || '';
+                          
+                          // Extract ZIP code
+                          zipCode = place.address_components?.find(c => 
+                            c.types.includes('postal_code')
+                          )?.long_name || '';
+                          
+                          setEditingApplication(prev => ({
+                            ...prev,
+                            address: {
+                              street,
+                              city,
+                              state,
+                              zipCode
+                            }
+                          }));
+                          
+                          // Update the state for the full address to show in input
+                          setEditFullAddress(place.formatted_address);
                         }
-                      })}
-                    />
-                  </div>
-                  <Input
-                    placeholder="City"
-                    value={editingApplication.address.city}
-                    onChange={(e) => setEditingApplication({
-                      ...editingApplication,
-                      address: {
-                        ...editingApplication.address,
-                        city: e.target.value
-                      }
-                    })}
-                  />
-                  <div className="flex gap-2">
+                      });
+                    }}
+                    options={{
+                      componentRestrictions: { country: 'ca' },
+                      fields: ['formatted_address', 'address_components', 'geometry']
+                    }}
+                  >
                     <Input
-                      placeholder="State"
-                      className="w-1/3"
-                      value={editingApplication.address.state}
-                      onChange={(e) => setEditingApplication({
-                        ...editingApplication,
-                        address: {
-                          ...editingApplication.address,
-                          state: e.target.value
+                      ref={editAddressRef}
+                      id="edit-address"
+                      type="text"
+                      value={editFullAddress}
+                      onChange={(e) => setEditFullAddress(e.target.value)}
+                      placeholder="Search and select address..."
+                      className="pl-10"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
                         }
-                      })}
+                      }}
                     />
-                    <Input
-                      placeholder="Zip Code"
-                      className="w-2/3"
-                      value={editingApplication.address.zipCode}
-                      onChange={(e) => setEditingApplication({
-                        ...editingApplication,
-                        address: {
-                          ...editingApplication.address,
-                          zipCode: e.target.value
-                        }
-                      })}
-                    />
-                  </div>
+                  </Autocomplete>
                 </div>
               </div>
               
@@ -1802,6 +1865,55 @@ const PartnerApplications = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Partner Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Partner</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-semibold">"{partnerToDelete?.organizationName}"</span>?
+              {partnerToDelete?.assignedBins && partnerToDelete.assignedBins.length > 0 && (
+                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <div className="text-sm text-yellow-800">
+                      <p className="font-semibold mb-1">This partner has {partnerToDelete.assignedBins.length} assigned bin(s)</p>
+                      <p>All bins will be unassigned and their status will be changed to "Unavailable".</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <p className="mt-3 text-sm text-gray-600">This action cannot be undone. All assigned bins will be unassigned and marked as unavailable. All partner data including documents and notes will be permanently removed.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setPartnerToDelete(null);
+              setIsDeleteDialogOpen(false);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (partnerToDelete) {
+                  try {
+                    await deleteApplication(partnerToDelete.id);
+                    setIsDeleteDialogOpen(false);
+                    setPartnerToDelete(null);
+                  } catch (error) {
+                    console.error('Failed to delete partner:', error);
+                    alert('Failed to delete partner. Please try again.');
+                  }
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Delete Partner
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

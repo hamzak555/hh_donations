@@ -258,12 +258,17 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
     if (USE_SUPABASE) {
       try {
         await supabaseService.deleteBale(id);
+        // Only remove from local state if Supabase deletion succeeded
+        setBales(prev => prev.filter(bale => bale.id !== id));
       } catch (error) {
         console.error('Failed to delete bale from Supabase:', error);
+        // Re-throw the error so the UI can handle it
+        throw new Error(`Failed to delete bale: ${error.message || 'Unknown error'}`);
       }
+    } else {
+      // If not using Supabase, just remove from local state
+      setBales(prev => prev.filter(bale => bale.id !== id));
     }
-    
-    setBales(prev => prev.filter(bale => bale.id !== id));
   };
 
   const markAsSold = (id: string, salePrice: number, paymentMethod: PaymentMethod) => {

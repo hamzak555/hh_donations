@@ -547,15 +547,29 @@ export const exportFinancialReport = async (
           { header: 'Quality', key: 'contents', width: 15 },
           { header: 'Weight (kg)', key: 'weight', width: 15, dataFormat: 'weight_no_decimal' },
           { header: 'Date Created', key: 'dateCreated', width: 20, dataFormat: 'date' },
-          { header: 'Container', key: 'containerDisplay', width: 20 }
+          { header: 'Container', key: 'containerDisplay', width: 20 },
+          { header: 'Destination', key: 'destination', width: 25 }
         ],
         data: (() => {
-          const mappedData = unsoldBalesData.map(bale => ({
-            ...bale,
-            baleNumber: bale.number || bale.baleNumber || '',
-            dateCreated: bale.createdDate ? new Date(bale.createdDate) : (bale.dateCreated ? new Date(bale.dateCreated) : (bale.createdAt ? new Date(bale.createdAt) : (bale.date ? new Date(bale.date) : null))),
-            containerDisplay: bale.containerNumber || 'Warehouse'
-          }));
+          const mappedData = unsoldBalesData.map(bale => {
+            // Determine destination based on container's destination
+            let destination = 'In Warehouse';
+            if (bale.containerNumber && containers.length > 0) {
+              const container = containers.find(c => c.containerNumber === bale.containerNumber);
+              if (container && container.destination) {
+                // Show the container's destination regardless of shipped status
+                destination = container.destination;
+              }
+            }
+            
+            return {
+              ...bale,
+              baleNumber: bale.number || bale.baleNumber || '',
+              dateCreated: bale.createdDate ? new Date(bale.createdDate) : (bale.dateCreated ? new Date(bale.dateCreated) : (bale.createdAt ? new Date(bale.createdAt) : (bale.date ? new Date(bale.date) : null))),
+              containerDisplay: bale.containerNumber || 'Warehouse',
+              destination: destination
+            };
+          });
           
           // Add totals row
           const totalWeight = mappedData.reduce((sum, bale) => sum + (bale.weight || 0), 0);
@@ -565,7 +579,8 @@ export const exportFinancialReport = async (
             contents: '',
             weight: totalWeight,
             dateCreated: null,
-            containerDisplay: ''
+            containerDisplay: '',
+            destination: ''
           });
           
           return mappedData;

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -273,10 +274,40 @@ function Reporting() {
     const unsoldBales = bales.filter(bale => bale.status !== 'Sold');
     const unsoldWeight = unsoldBales.reduce((sum, bale) => sum + (bale.weight || 0), 0);
     
-    // Unsold by status
-    const warehouseBales = unsoldBales.filter(b => b.status === 'Warehouse');
-    // Combine Container and Shipped status into single "Shipped" category
-    const shippedBales = unsoldBales.filter(b => b.status === 'Container' || b.status === 'Shipped');
+    // Unsold by location with details
+    const unsoldByLocationDetails: { [key: string]: { 
+      count: number; 
+      weight: number; 
+      byQuality: { [key: string]: number } 
+    }} = {};
+    
+    unsoldBales.forEach(bale => {
+      let location = 'Warehouse';
+      if (bale.containerNumber) {
+        const container = containers.find(c => c.containerNumber === bale.containerNumber);
+        if (container?.destination) {
+          location = container.destination;
+        }
+      }
+      
+      if (!unsoldByLocationDetails[location]) {
+        unsoldByLocationDetails[location] = {
+          count: 0,
+          weight: 0,
+          byQuality: {}
+        };
+      }
+      
+      unsoldByLocationDetails[location].count++;
+      unsoldByLocationDetails[location].weight += bale.weight || 0;
+      
+      // Track quality breakdown
+      const quality = bale.contents || 'Unknown';
+      if (!unsoldByLocationDetails[location].byQuality[quality]) {
+        unsoldByLocationDetails[location].byQuality[quality] = 0;
+      }
+      unsoldByLocationDetails[location].byQuality[quality]++;
+    });
     
     const totalSales = soldBales.reduce((sum, bale) => sum + (bale.salePrice || 0), 0);
     const totalWeight = soldBales.reduce((sum, bale) => sum + (bale.weight || 0), 0);
@@ -332,8 +363,6 @@ function Reporting() {
     return {
       count: soldBales.length,
       unsoldCount: unsoldBales.length,
-      warehouseCount: warehouseBales.length,
-      shippedCount: shippedBales.length,
       totalSales,
       totalWeight,
       unsoldWeight,
@@ -351,6 +380,15 @@ function Reporting() {
       unsoldByQuality: Object.entries(unsoldByQuality).map(([quality, count]) => ({
         quality,
         count
+      })),
+      unsoldByLocation: Object.entries(unsoldByLocationDetails).map(([location, details]) => ({
+        location,
+        count: details.count,
+        weight: details.weight,
+        byQuality: Object.entries(details.byQuality).map(([quality, count]) => ({
+          quality,
+          count
+        }))
       }))
     };
   }, [bales, containers, dateRange]);
@@ -1131,36 +1169,66 @@ function Reporting() {
               </Card>
               </div>
 
-              {/* Unsold Bales by Quality */}
+              {/* Unsold Bales by Location */}
               <Card className="border-l-4 border-l-[#0b503c]">
                 <CardHeader>
                   <CardTitle className="text-lg">Unsold Bales</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3 mb-4">
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                      <span className="text-sm text-gray-700">In Warehouse</span>
-                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.warehouseCount}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50">
-                      <span className="text-sm text-gray-700">Shipped</span>
-                      <span className="font-bold" style={{ color: '#0b503c' }}>{salesMetrics.shippedCount}</span>
-                    </div>
-                  </div>
-                  {salesMetrics.unsoldByQuality.length > 0 ? (
-                    <div className="mt-4 flex flex-wrap gap-1">
-                      {salesMetrics.unsoldByQuality.map((item, index) => (
-                        <div key={index} className="flex items-center gap-1">
-                          <span className="text-xs text-gray-700">{item.quality}</span>
-                          <span className="inline-flex items-center justify-center w-4 h-4 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                            {item.count}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  {salesMetrics.unsoldByLocation && salesMetrics.unsoldByLocation.length > 0 ? (
+                    <TooltipProvider>
+                      <div className="space-y-3">
+                        {salesMetrics.unsoldByLocation.map((item, index) => (
+                          <Tooltip key={index}>
+                            <TooltipTrigger asChild>
+                              <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-help transition-colors">
+                                <span className="text-sm text-gray-700">{item.location}</span>
+                                <span className="font-bold" style={{ color: '#0b503c' }}>{item.count}</span>
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <div className="space-y-2">
+                                <div className="font-semibold text-sm">{item.location}</div>
+                                <div className="text-xs text-gray-600">
+                                  Total Weight: {item.weight.toFixed(0)} kg
+                                </div>
+                                {item.byQuality && item.byQuality.length > 0 && (
+                                  <div className="border-t pt-2 mt-2">
+                                    <div className="text-xs font-medium mb-1">Quality Breakdown:</div>
+                                    <div className="space-y-1">
+                                      {item.byQuality.map((q, idx) => (
+                                        <div key={idx} className="flex justify-between text-xs">
+                                          <span className="text-gray-600">{q.quality}:</span>
+                                          <span className="font-medium">{q.count} bales</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </TooltipProvider>
                   ) : (
                     <div className="mt-4">
                       <p className="text-sm text-gray-400">No unsold inventory</p>
+                    </div>
+                  )}
+                  {salesMetrics.unsoldByQuality && salesMetrics.unsoldByQuality.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs text-gray-600 mb-2">By Quality</p>
+                      <div className="flex flex-wrap gap-1">
+                        {salesMetrics.unsoldByQuality.map((item, index) => (
+                          <div key={index} className="flex items-center gap-1">
+                            <span className="text-xs text-gray-700">{item.quality}</span>
+                            <span className="inline-flex items-center justify-center w-4 h-4 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
+                              {item.count}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>

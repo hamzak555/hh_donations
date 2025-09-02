@@ -131,8 +131,38 @@ const RequestPickup = () => {
         status: 'Pending' as const
       };
 
+      // Add the pickup request
       await addPickupRequest(pickupRequest);
       console.log('Pickup request submitted:', pickupRequest);
+      
+      // Send confirmation email in the background (don't block submission)
+      if (formData.email) {
+        // Send email in background - don't await
+        fetch('http://localhost:5001/api/send-pickup-confirmation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId: new Date().getTime().toString(), // Generate a temporary ID
+            email: formData.email,
+            name: formData.name,
+            address: formData.address,
+            pickupDate: formattedDate,
+            specialInstructions: formData.additionalNotes
+          })
+        })
+        .then(response => response.json())
+        .then(result => {
+          if (result.success) {
+            console.log('Confirmation email sent successfully');
+          } else {
+            console.error('Failed to send email:', result.error);
+          }
+        })
+        .catch(error => {
+          console.error('Error sending email:', error);
+          // Don't show error to user - email failure shouldn't block submission
+        });
+      }
       
       // Scroll to top of page
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -417,8 +447,8 @@ const RequestPickup = () => {
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);
                                 const dayOfWeek = date.getDay();
-                                // Only allow Tuesday (2) and Thursday (4), and must be in the future
-                                return date < today || (dayOfWeek !== 2 && dayOfWeek !== 4);
+                                // Only allow Tuesday (2) and Thursday (4), and must be after today (not including today)
+                                return date <= today || (dayOfWeek !== 2 && dayOfWeek !== 4);
                               }}
                               initialFocus
                             />

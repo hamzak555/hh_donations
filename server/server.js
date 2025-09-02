@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
+const { sendPickupConfirmation, sendPickupCompleted } = require('./services/emailService');
+const reminderScheduler = require('./services/reminderScheduler');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -81,11 +83,25 @@ const pickupRequestSchema = new mongoose.Schema({
   address: String,
   items: String,
   preferredDate: Date,
+  pickupDate: Date, // Actual scheduled pickup date
   preferredTime: String,
-  status: { type: String, enum: ['Pending', 'Scheduled', 'Completed', 'Cancelled'] },
+  status: { type: String, enum: ['pending', 'confirmed', 'completed', 'cancelled'] },
   notes: String,
+  specialInstructions: String,
   assignedDriver: String,
-  completedDate: Date
+  completedDate: Date,
+  // Email tracking fields
+  confirmationSent: { type: Boolean, default: false },
+  confirmationSentAt: Date,
+  reminderSent: { type: Boolean, default: false },
+  reminderSentAt: Date,
+  completionEmailSent: { type: Boolean, default: false },
+  completionEmailSentAt: Date,
+  emailPreferences: {
+    sendConfirmation: { type: Boolean, default: true },
+    sendReminder: { type: Boolean, default: true },
+    sendCompletion: { type: Boolean, default: true }
+  }
 }, { timestamps: true });
 
 // Models
@@ -94,6 +110,9 @@ const Container = mongoose.model('Container', containerSchema);
 const Bin = mongoose.model('Bin', binSchema);
 const Bale = mongoose.model('Bale', baleSchema);
 const PickupRequest = mongoose.model('PickupRequest', pickupRequestSchema);
+
+// Initialize reminder scheduler with PickupRequest model
+reminderScheduler.setPickupRequestModel(PickupRequest);
 
 // Routes
 
@@ -283,7 +302,32 @@ app.get('/api/pickup-requests', async (req, res) => {
 app.post('/api/pickup-requests', async (req, res) => {
   try {
     const request = new PickupRequest(req.body);
+    
+    // Set pickupDate if not provided
+    if (!request.pickupDate && request.preferredDate) {
+      request.pickupDate = request.preferredDate;
+    }
+    
     await request.save();
+    
+    // Send confirmation email if email is provided and preferences allow
+    if (request.email && request.emailPreferences?.sendConfirmation !== false) {
+      const emailResult = await sendPickupConfirmation(request);
+      if (emailResult.success) {
+        request.confirmationSent = true;
+        request.confirmationSentAt = new Date();
+        await request.save();
+        console.log(`Confirmation email sent to ${request.email}`);
+      } else {
+        console.error(`Failed to send confirmation email to ${request.email}:`, emailResult.error);
+      }
+      
+      // Schedule reminder if preferences allow
+      if (request.emailPreferences?.sendReminder !== false && request.pickupDate) {
+        reminderScheduler.scheduleReminder(request._id, request.pickupDate);
+      }
+    }
+    
     res.status(201).json(request);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -292,11 +336,41 @@ app.post('/api/pickup-requests', async (req, res) => {
 
 app.put('/api/pickup-requests/:id', async (req, res) => {
   try {
+    const oldRequest = await PickupRequest.findOne({ id: req.params.id });
     const request = await PickupRequest.findOneAndUpdate(
       { id: req.params.id },
       req.body,
       { new: true }
     );
+    
+    // Check if status changed to completed
+    if (oldRequest && oldRequest.status !== 'completed' && request.status === 'completed') {
+      // Send completion email
+      if (request.email && request.emailPreferences?.sendCompletion !== false && !request.completionEmailSent) {
+        const emailResult = await sendPickupCompleted(request);
+        if (emailResult.success) {
+          request.completionEmailSent = true;
+          request.completionEmailSentAt = new Date();
+          request.completedDate = new Date();
+          await request.save();
+          console.log(`Completion email sent to ${request.email}`);
+        }
+      }
+    }
+    
+    // Check if pickup date changed and reschedule reminder
+    if (oldRequest && oldRequest.pickupDate !== request.pickupDate && request.pickupDate) {
+      reminderScheduler.cancelReminder(request._id);
+      if (request.email && request.emailPreferences?.sendReminder !== false && request.status !== 'completed' && request.status !== 'cancelled') {
+        reminderScheduler.scheduleReminder(request._id, request.pickupDate);
+      }
+    }
+    
+    // Cancel reminder if status changed to cancelled
+    if (oldRequest && oldRequest.status !== 'cancelled' && request.status === 'cancelled') {
+      reminderScheduler.cancelReminder(request._id);
+    }
+    
     res.json(request);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -347,6 +421,163 @@ app.post('/api/sync', async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Send pickup confirmation and update status
+app.post('/api/send-pickup-confirmation', async (req, res) => {
+  try {
+    const { requestId, email, name, address, pickupDate, specialInstructions } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const { sendPickupConfirmation } = require('./services/emailService');
+    const { updatePickupRequestEmailStatus, updatePickupRequestByEmail } = require('./services/supabaseService');
+    
+    const emailData = {
+      email,
+      name: name || 'Customer',
+      address: address || 'Address not provided',
+      pickupDate: pickupDate || new Date().toISOString(),
+      specialInstructions: specialInstructions || ''
+    };
+    
+    const result = await sendPickupConfirmation(emailData);
+    
+    if (result.success) {
+      // Update the status in Supabase
+      const emailStatusUpdate = {
+        confirmationSent: true,
+        confirmationSentAt: new Date().toISOString()
+      };
+      
+      // Always update by email since it's more reliable
+      const updateResult = await updatePickupRequestByEmail(email, emailStatusUpdate);
+      
+      // If update by email failed, try by requestId as fallback
+      if (!updateResult && requestId) {
+        await updatePickupRequestEmailStatus(requestId, emailStatusUpdate);
+      }
+      
+      // Also try to update MongoDB if available
+      if (PickupRequest) {
+        try {
+          await PickupRequest.findOneAndUpdate(
+            { id: requestId },
+            emailStatusUpdate
+          );
+        } catch (dbError) {
+          console.log('Could not update MongoDB:', dbError.message);
+        }
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Confirmation email sent successfully to ${email}`,
+        data: result.data 
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        error: result.error 
+      });
+    }
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Send confirmation email endpoint (for manual sending)
+app.post('/api/send-confirmation-email', async (req, res) => {
+  try {
+    const { email, name, address, pickupDate, specialInstructions } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const { sendPickupConfirmation } = require('./services/emailService');
+    
+    const emailData = {
+      email,
+      name: name || 'Customer',
+      address: address || 'Address not provided',
+      pickupDate: pickupDate || new Date().toISOString(),
+      specialInstructions: specialInstructions || ''
+    };
+    
+    const result = await sendPickupConfirmation(emailData);
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: `Confirmation email sent successfully to ${email}`,
+        data: result.data 
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        error: result.error 
+      });
+    }
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test email endpoint
+app.post('/api/test-email', async (req, res) => {
+  try {
+    const { email, type = 'confirmation' } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const testData = {
+      name: 'Test User',
+      email: email,
+      phone: '555-1234',
+      address: '123 Test Street, Test City, TC 12345',
+      items: 'Clothes, Toys, Books',
+      pickupDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
+      specialInstructions: 'Please ring the doorbell twice'
+    };
+    
+    let result;
+    const { sendPickupConfirmation, sendPickupReminder, sendPickupCompleted } = require('./services/emailService');
+    
+    switch(type) {
+      case 'reminder':
+        result = await sendPickupReminder(testData);
+        break;
+      case 'completed':
+        result = await sendPickupCompleted(testData);
+        break;
+      case 'confirmation':
+      default:
+        result = await sendPickupConfirmation(testData);
+        break;
+    }
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: `Test ${type} email sent successfully to ${email}`,
+        data: result.data 
+      });
+    } else {
+      res.status(500).json({ 
+        success: false, 
+        error: result.error 
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

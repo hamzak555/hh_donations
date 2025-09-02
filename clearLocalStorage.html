@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear LocalStorage</title>
+</head>
+<body>
+    <h2>Clear HH Donations LocalStorage</h2>
+    <button onclick="clearBinsData()">Clear Bins Data</button>
+    <button onclick="clearAllData()">Clear All LocalStorage</button>
+    <div id="status"></div>
+    
+    <script>
+        function clearBinsData() {
+            localStorage.removeItem('bins');
+            document.getElementById('status').innerHTML = 'Bins data cleared! Refresh your app.';
+        }
+        
+        function clearAllData() {
+            const keys = Object.keys(localStorage);
+            keys.forEach(key => localStorage.removeItem(key));
+            document.getElementById('status').innerHTML = 'All localStorage cleared! Refresh your app.';
+        }
+    </script>
+</body>
+</html>
