@@ -773,8 +773,8 @@ function BinsManagement() {
         } catch (error) {
           console.error('Failed to update partner assignments. Full error:', error);
           console.error('Error details:', {
-            errorMessage: error?.message,
-            errorStack: error?.stack,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            errorStack: error instanceof Error ? error.stack : undefined,
             errorObject: error
           });
           // Don't throw the error, just log it
@@ -793,11 +793,12 @@ function BinsManagement() {
       } catch (error) {
         console.error('Failed to update bin. Full error:', error);
         console.error('Error details:', {
-          errorMessage: error?.message,
-          errorStack: error?.stack,
+          errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          errorStack: error instanceof Error ? error.stack : undefined,
           updates: updates
         });
-        alert(`Failed to update bin: ${error?.message || 'Unknown error'}. Please check the console for details.`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        alert(`Failed to update bin: ${errorMessage}. Please check the console for details.`);
       }
     }
   };

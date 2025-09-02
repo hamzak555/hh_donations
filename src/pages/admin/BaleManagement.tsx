@@ -674,7 +674,8 @@ function BaleManagement() {
         setBaleToDelete(null);
       } catch (error) {
         console.error('Failed to delete bale:', error);
-        alert(`Failed to delete bale: ${error.message || 'Unknown error occurred'}. Please try again.`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        alert(`Failed to delete bale: ${errorMessage}. Please try again.`);
         setIsDeleteDialogOpen(false);
         setBaleToDelete(null);
       }
@@ -819,7 +820,7 @@ function BaleManagement() {
       // Find the container to check if it's shipped
       const container = containers.find(c => c.containerNumber === containerNumber);
       
-      if (container && !container.shipped) {
+      if (container && container.status !== 'Shipped') {
         // Container exists but not shipped - show as Warehouse
         displayText = `Warehouse (${containerNumber})`;
         badgeStyle = statusStyles['Warehouse']; // Use Warehouse styling

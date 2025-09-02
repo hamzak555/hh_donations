@@ -1576,7 +1576,7 @@ const PartnerApplications = () => {
                             c.types.includes('postal_code')
                           )?.long_name || '';
                           
-                          setEditingApplication(prev => ({
+                          setEditingApplication((prev: any) => ({
                             ...prev,
                             address: {
                               street,

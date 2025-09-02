@@ -357,7 +357,6 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
         // Don't refresh immediately - let the UI update handle it
       } catch (err) {
         console.error('Failed to update application details:', err);
-        console.error('Database updates attempted:', dbUpdates);
         // Don't throw the error if it's just a sync issue
         // The local state is already updated
         // await refreshApplications();

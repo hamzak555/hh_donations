@@ -263,7 +263,8 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
       } catch (error) {
         console.error('Failed to delete bale from Supabase:', error);
         // Re-throw the error so the UI can handle it
-        throw new Error(`Failed to delete bale: ${error.message || 'Unknown error'}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Failed to delete bale: ${errorMessage}`);
       }
     } else {
       // If not using Supabase, just remove from local state

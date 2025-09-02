@@ -165,6 +165,11 @@ function PickupRequests() {
   const [defaultDriver, setDefaultDriver] = useState<string>('');
   const [tempDefaultDriver, setTempDefaultDriver] = useState<string>('');
   
+  // View dialog states
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<PickupRequest | null>(null);
+  const [isMapDialogOpen, setIsMapDialogOpen] = useState(false);
+  
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
     libraries
