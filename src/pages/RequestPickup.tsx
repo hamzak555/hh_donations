@@ -137,10 +137,21 @@ const RequestPickup = () => {
       
       // Send confirmation email in the background (don't block submission)
       if (formData.email) {
+        // Determine the email endpoint based on environment
+        const emailEndpoint = window.location.hostname === 'localhost' 
+          ? 'http://localhost:5001/api/send-pickup-confirmation'
+          : 'https://kbdhzmlcomthrhxkifbf.supabase.co/functions/v1/send-pickup-confirmation';
+        
         // Send email in background - don't await
-        fetch('http://localhost:5001/api/send-pickup-confirmation', {
+        fetch(emailEndpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            // Add Supabase anon key for production
+            ...(window.location.hostname !== 'localhost' && {
+              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiZGh6bWxjb210aHJoeGtpZmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MzQ2MTAsImV4cCI6MjA3MTExMDYxMH0.7-FTUxN0pHn-ZMNUoPJ9RTGZMRxNTdyAFT6HOcJtDeg'
+            })
+          },
           body: JSON.stringify({
             requestId: new Date().getTime().toString(), // Generate a temporary ID
             email: formData.email,
@@ -241,9 +252,9 @@ const RequestPickup = () => {
       </div>
       
       {/* Main Content Area - Full Height */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 px-8 pb-6 lg:overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 px-8 pb-6">
         {/* Left Column - Info Section and Form */}
-        <div className="h-auto lg:h-full flex flex-col gap-4 lg:overflow-y-auto lg:pr-2">
+        <div className="h-auto lg:h-full flex flex-col gap-4">
           {/* Info Section - Redesigned */}
           <div>
             {/* Important Alert Banner */}
@@ -269,7 +280,7 @@ const RequestPickup = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Fill Out Form</h3>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 text-xs">
                       Complete the pickup request form below with your contact details and preferred pickup date.
                     </p>
                   </div>
@@ -283,7 +294,7 @@ const RequestPickup = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Pickup Day</h3>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 text-xs">
                       Leave your donation on your front porch. We will collect it during scheduled hours.
                     </p>
                   </div>
@@ -293,7 +304,7 @@ const RequestPickup = () => {
           </div>
           
           {/* Form */}
-          <Card className="flex-1 flex flex-col overflow-hidden">
+          <Card className="flex-1 flex flex-col">
             <CardHeader className="pb-4 flex-shrink-0">
               <CardTitle className="flex items-center gap-2">
                 <CalendarDays className="w-5 h-5" />
@@ -317,8 +328,8 @@ const RequestPickup = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-2 flex-1 lg:overflow-y-auto">
-              <form onSubmit={handleSubmit} className="space-y-5 h-auto lg:h-full flex flex-col">
+            <CardContent className="pt-2 flex-1">
+              <form onSubmit={handleSubmit} className="space-y-5 flex flex-col">
                 <div className="flex-1">
                   {/* Step 1: Contact Information */}
                   {currentStep === 1 && (
@@ -562,16 +573,16 @@ const RequestPickup = () => {
         </div>
 
         {/* Right Column - Map */}
-        <div className="h-auto lg:h-full lg:overflow-hidden">
+        <div className="h-auto lg:h-full">
           <Card className="h-auto lg:h-full flex flex-col">
             <CardHeader className="flex-shrink-0">
               <CardTitle>Pickup Location Preview</CardTitle>
             </CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col">
-              <div className="flex-1 min-h-[300px]">
+              <div className="flex-1 min-h-[300px] h-[300px] lg:h-full">
                 {!isSubmitted && ( // Only render map when not in submitted state
                     <GoogleMap
-                      mapContainerStyle={{ width: '100%', height: '100%' }}
+                      mapContainerStyle={{ width: '100%', height: '100%', minHeight: '300px' }}
                       center={center}
                       zoom={location ? 15 : 10}
                     >

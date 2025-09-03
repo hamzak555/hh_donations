@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Send, CheckCircle, ArrowRight, Heart, Building, AlertCircle, MapPin } from 'lucide-react';
 import Footer from '@/components/Footer';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
-const Contact = () => {
+const ContactForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -18,6 +20,8 @@ const Contact = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [validationError, setValidationError] = useState<string>('');
+  
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -31,19 +35,68 @@ const Contact = () => {
       return;
     }
 
+    if (!executeRecaptcha) {
+      setValidationError('reCAPTCHA not ready. Please try again.');
+      return;
+    }
+
+    if (!isSupabaseConfigured) {
+      setValidationError('Email service is not configured. Please try again later.');
+      return;
+    }
+
     setIsSubmitting(true);
     setValidationError('');
 
     try {
-      // Simulate form submission
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Submitting contact form with data:', formData);
+      console.log('Supabase configured:', !!supabase);
+      console.log('Supabase URL:', process.env.REACT_APP_SUPABASE_URL);
       
-      console.log('Contact form submitted:', formData);
+      // Execute reCAPTCHA v3
+      const recaptchaToken = await executeRecaptcha('contact_form');
+      console.log('reCAPTCHA token obtained:', !!recaptchaToken);
+      if (!recaptchaToken) {
+        setValidationError('reCAPTCHA verification failed. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('Invoking Supabase function: send-contact-email');
+      // Call Supabase edge function to send contact email
+      const { data, error } = await supabase.functions.invoke('send-contact-email', {
+        body: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          subject: formData.subject,
+          message: formData.message,
+          recaptchaToken: recaptchaToken
+        }
+      });
+
+      console.log('Supabase response:', { data, error });
+
+      if (error) {
+        console.error('Error calling edge function:', error);
+        setValidationError('There was an error sending your message. Please try again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (!data?.success) {
+        console.error('Edge function returned error:', data);
+        setValidationError(data?.error || 'Failed to send email');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      console.log('Contact form submitted successfully:', data);
+      setIsSubmitting(false);
       setIsSubmitted(true);
     } catch (error) {
       console.error('Error submitting form:', error);
       setValidationError('There was an error sending your message. Please try again.');
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -174,6 +227,12 @@ const Contact = () => {
                     </Alert>
                   )}
 
+                  <div className="text-sm text-gray-600 mb-4">
+                    This site is protected by reCAPTCHA and the Google{' '}
+                    <a href="https://policies.google.com/privacy" className="text-blue-600 hover:underline">Privacy Policy</a> and{' '}
+                    <a href="https://policies.google.com/terms" className="text-blue-600 hover:underline">Terms of Service</a> apply.
+                  </div>
+
                   <Button 
                     type="submit" 
                     className="w-full md:w-auto" 
@@ -259,6 +318,14 @@ const Contact = () => {
       </div>
       <Footer />
     </div>
+  );
+};
+
+const Contact = () => {
+  return (
+    <GoogleReCaptchaProvider reCaptchaKey={process.env.REACT_APP_RECAPTCHA_SITE_KEY || ''}>
+      <ContactForm />
+    </GoogleReCaptchaProvider>
   );
 };
 

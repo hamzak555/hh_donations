@@ -541,16 +541,11 @@ export const exportFinancialReport = async (
       },
       {
         name: 'Unsold Bales',
-        title: 'UNSOLD BALES',
-        columns: [
-          { header: 'Bale #', key: 'baleNumber', width: 15 },
-          { header: 'Quality', key: 'contents', width: 15 },
-          { header: 'Weight (kg)', key: 'weight', width: 15, dataFormat: 'weight_no_decimal' },
-          { header: 'Date Created', key: 'dateCreated', width: 20, dataFormat: 'date' },
-          { header: 'Container', key: 'containerDisplay', width: 20 },
-          { header: 'Destination', key: 'destination', width: 25 }
-        ],
-        data: (() => {
+        title: 'UNSOLD BALES BY DESTINATION',
+        columns: [],
+        data: [],
+        additionalTables: (() => {
+          // First, map all unsold bales with their destinations
           const mappedData = unsoldBalesData.map(bale => {
             // Determine destination based on container's destination
             let destination = 'In Warehouse';
@@ -571,19 +566,50 @@ export const exportFinancialReport = async (
             };
           });
           
-          // Add totals row
-          const totalWeight = mappedData.reduce((sum, bale) => sum + (bale.weight || 0), 0);
-          
-          mappedData.push({
-            baleNumber: 'TOTAL',
-            contents: '',
-            weight: totalWeight,
-            dateCreated: null,
-            containerDisplay: '',
-            destination: ''
+          // Group bales by destination
+          const balesByDestination: { [key: string]: any[] } = {};
+          mappedData.forEach(bale => {
+            const dest = bale.destination || 'In Warehouse';
+            if (!balesByDestination[dest]) {
+              balesByDestination[dest] = [];
+            }
+            balesByDestination[dest].push(bale);
           });
           
-          return mappedData;
+          // Create a table for each destination
+          const tables: any[] = [];
+          const sortedDestinations = Object.keys(balesByDestination).sort();
+          
+          sortedDestinations.forEach(destination => {
+            const destinationBales = balesByDestination[destination];
+            
+            // Calculate total for this destination
+            const totalWeight = destinationBales.reduce((sum, bale) => sum + (bale.weight || 0), 0);
+            
+            // Add totals row
+            const balesWithTotal = [...destinationBales, {
+              baleNumber: 'TOTAL',
+              contents: '',
+              weight: totalWeight,
+              dateCreated: null,
+              containerDisplay: '',
+              destination: ''
+            }];
+            
+            tables.push({
+              title: `Unsold Bales - ${destination}`,
+              columns: [
+                { header: 'Bale #', key: 'baleNumber', width: 15 },
+                { header: 'Quality', key: 'contents', width: 15 },
+                { header: 'Weight (kg)', key: 'weight', width: 15, dataFormat: 'weight_no_decimal' },
+                { header: 'Date Created', key: 'dateCreated', width: 20, dataFormat: 'date' },
+                { header: 'Container', key: 'containerDisplay', width: 20 }
+              ],
+              data: balesWithTotal
+            });
+          });
+          
+          return tables;
         })()
       },
       {

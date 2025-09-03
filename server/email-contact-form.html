@@ -1,0 +1,412 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" style="background-color: rgb(240, 240, 240);">
+
+<head>
+  <!-- Preheader text -->
+  <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    New contact form submission from {{NAME}}. {{SUBJECT}}
+  </div>
+  <title>New Contact Form Message</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <style type="text/css">
+    /* FONTS */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+    /* CLIENT-SPECIFIC RESET */
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; }
+    .im { color: inherit !important; }
+
+    /* DEVICE-SPECIFIC RESET */
+    a[x-apple-data-detectors] {
+      color: inherit !important;
+      text-decoration: none !important;
+      font-size: inherit !important;
+      font-family: inherit !important;
+      font-weight: inherit !important;
+      line-height: inherit !important;
+    }
+
+    /* RESET */
+    img {
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+      display: block;
+    }
+    table { border-collapse: collapse; }
+    table td { border-collapse: collapse; display: table-cell; }
+    body {
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+    }
+
+    /* BG COLORS */
+    .mainTable { background-color: #F0F0F0; }
+    html { background-color: #F0F0F0; }
+
+    /* VARIABLES */
+    .bg-white { background-color: white; }
+    .hr {
+      background-color: #14532d;
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+      mso-line-height-rule: exactly;
+      line-height: 1px;
+    }
+    .textAlignLeft { text-align: left !important; }
+    .textAlignRight { text-align: right !important; }
+    .textAlignCenter { text-align: center !important; }
+    .mt1 { margin-top: 6px; }
+
+    /* TYPOGRAPHY */
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      color: #4f4f65;
+      -webkit-font-smoothing: antialiased;
+      -ms-text-size-adjust: 100%;
+      -moz-osx-font-smoothing: grayscale;
+      font-smoothing: always;
+      text-rendering: optimizeLegibility;
+    }
+    .h1 {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 700;
+      vertical-align: middle;
+      font-size: 36px;
+      line-height: 42px;
+    }
+    .h2 {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 600;
+      vertical-align: middle;
+      font-size: 16px;
+      line-height: 24px;
+    }
+    .text {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 21px;
+    }
+    .text-list {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 25px;
+    }
+    .textSmall {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+    }
+    .text-xsmall {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      line-height: 22px;
+      letter-spacing: 1px;
+    }
+    .text-bold { font-weight: 600; }
+    .text-link { text-decoration: underline; }
+
+    /* FONT COLORS */
+    .textColorDark { color: #0a0e27; }
+    .textColorNormal { color: #4f4f65; }
+    .textColorGreen { color: #14532d; }
+    .textColorGrayDark { color: #7B7B8B; }
+    .textColorGray { color: #A5A8AD; }
+    .textColorWhite { color: #FFFFFF; }
+
+    /* BUTTON */
+    .Button-primary-wrapper {
+      border-radius: 6px;
+      background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+    }
+    .Button-primary {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      border-radius: 6px;
+      border: 1px solid #14532d;
+      color: #ffffff;
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 18px;
+      text-decoration: none;
+    }
+    .Button-secondary-wrapper {
+      border-radius: 6px;
+      background-color: #ffffff;
+    }
+    .Button-secondary {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      border-radius: 6px;
+      border: 1px solid #14532d;
+      color: #14532d;
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 18px;
+      text-decoration: none;
+    }
+
+    /* LAYOUT */
+    .Content-container {
+      padding-left: 60px;
+      padding-right: 60px;
+    }
+    .Content-container--main {
+      padding-top: 54px;
+      padding-bottom: 60px;
+    }
+    .Content {
+      width: 580px;
+      margin: 0 auto;
+    }
+    .wrapper { max-width: 600px; }
+    .section {
+      padding: 24px 0px;
+      border-bottom: 1px solid #d3d3d8;
+    }
+    .message {
+      background-color: #f0fdf4;
+      padding: 18px;
+      border-left: 4px solid #14532d;
+      border-radius: 4px;
+    }
+    .message-content {
+      background-color: #fef3c7;
+      padding: 18px;
+      border-radius: 4px;
+    }
+    .card {
+      border: 1px solid #d3d3d8;
+      padding: 18px;
+    }
+
+    /* HEADER */
+    .header-logoImage {
+      display: block;
+      color: #F0F0F0;
+    }
+
+    /* MOBILE STYLES */
+    @media screen and (max-width: 648px) {
+      .wrapper { width: 100% !important; max-width: 100% !important; }
+      .Content { width: 90% !important; }
+      .Content-container {
+        padding-left: 36px !important;
+        padding-right: 36px !important;
+      }
+      .Content-container--main {
+        padding-top: 30px !important;
+        padding-bottom: 42px !important;
+      }
+    }
+
+    @media screen and (max-width: 480px) {
+      .h1 { font-size: 30px !important; line-height: 30px !important; }
+      .text { font-size: 16px !important; line-height: 22px !important; }
+      .Content { width: 100% !important; }
+      .Content-container {
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+      }
+      .Content-container--main {
+        padding-top: 24px !important;
+        padding-bottom: 30px !important;
+      }
+    }
+  </style>
+</head>
+
+<body style="margin: 0; padding: 0; width: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;">
+  
+  <!-- MAIN TABLE -->
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" class="mainTable" style="background-color: #F0F0F0;">
+    
+    <!-- SPACER ABOVE CONTENT -->
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <!-- CONTENT WITH ROUNDED CORNERS -->
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="Content bg-white" style="background-color: white; width: 580px; margin: 0 auto; border-radius: 12px; overflow: hidden;">
+          <tr>
+            <td class="Content-container Content-container--main text textColorNormal" style="padding: 36px 60px 36px 60px;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                
+                <!-- LOGO AND TITLE SECTION -->
+                <tr>
+                  <td valign="top" align="left">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="left" valign="middle">
+                          <img src="https://raw.githubusercontent.com/hamzak555/hh_donations/main/public/images/HH%20Logo%20Green.png" width="100" height="auto" alt="H&H Donations" border="0" />
+                        </td>
+                        <td align="right" valign="middle">
+                          <a href="https://hhdonations.com" class="textSmall textColorGreen" style="font-size: 14px; color: #14532d; text-decoration: none; font-weight: 500;">Visit Website →</a>
+                        </td>
+                      </tr>
+                      <tr class="spacer">
+                        <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td align="left">
+                          <span class="h1 textColorDark" style="font-weight: 700; font-size: 28px; line-height: 34px; color: #0a0e27;">New Contact Message</span>
+                        </td>
+                      </tr>
+                      <tr class="spacer">
+                        <td height="18px" style="font-size: 18px; line-height:18px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- SENDER INFO -->
+                <tr class="spacer">
+                  <td height="12px" style="font-size: 12px; line-height:12px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td align="left" class="message" valign="top" style="background-color: #f0fdf4; padding: 18px; border-left: 4px solid #14532d; border-radius: 4px;">
+                    <div class="textSmall textColorNormal" style="font-size: 14px; line-height: 20px; color: #4f4f65;">
+                      <span class="text-bold textColorDark" style="font-weight: 600; color: #0a0e27;">Contact Information</span>
+                      <br /><br />
+                      <span style="color: #14532d; display: inline-block; width: 20px;">👤</span> <strong>Name:</strong> {{NAME}}
+                      <br />
+                      <span style="color: #14532d; display: inline-block; width: 20px;">📧</span> <strong>Email:</strong> <a href="mailto:{{EMAIL}}" style="color: #14532d; text-decoration: underline;">{{EMAIL}}</a>
+                      {{PHONE_HTML}}
+                      {{SUBJECT_HTML}}
+                    </div>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                </tr>
+                
+                <!-- MESSAGE CONTENT -->
+                <tr>
+                  <td valign="top">
+                    <table align="left" border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="left" valign="middle" width="468">
+                          <div class="textSmall text-bold textColorDark" style="font-weight: 600; font-size: 14px; color: #0a0e27;">
+                            Message Content
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left" class="message-content" valign="top" style="background-color: #fef3c7; padding: 18px; border-radius: 4px; margin-top: 12px;">
+                          <div class="textSmall textColorNormal" style="font-size: 14px; line-height: 22px; color: #4f4f65; white-space: pre-wrap;">{{MESSAGE}}</div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- DIVIDER -->
+                <tr>
+                  <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr class="spacer">
+                        <td height="30px" style="font-size: 30px; line-height:30px;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td align="left" colspan="2" valign="top" width="100%" height="1" class="hr" style="background-color: #14532d; line-height: 1px;">
+                          <!--[if gte mso 15]>&nbsp;<![endif]-->
+                        </td>
+                      </tr>
+                      <tr class="spacer">
+                        <td height="30px" style="font-size: 30px; line-height:30px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- ACTION BUTTONS -->
+                <tr>
+                  <td valign="top" align="center">
+                    <table border="0" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td align="center" class="Button-primary-wrapper" style="border-radius: 6px; background: linear-gradient(135deg, #14532d 0%, #166534 100%);">
+                          <a href="mailto:{{EMAIL}}" class="Button-primary" style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif; border-radius: 6px; border: 1px solid #14532d; color: #ffffff; display: block; font-size: 16px; font-weight: 600; padding: 18px 36px; text-decoration: none;">
+                            Reply to {{NAME_FIRST}}
+                          </a>
+                        </td>
+                        {{PHONE_BUTTON}}
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr class="spacer">
+                  <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                </tr>
+                
+                <!-- META INFO -->
+                <tr>
+                  <td valign="top">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="center">
+                          <div class="textSmall textColorGray" style="font-size: 12px; line-height: 18px; color: #A5A8AD;">
+                            Received on {{TIMESTAMP}}<br />
+                            Form submitted from website contact page
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                
+                <!-- FOOTER INSIDE CONTENT -->
+                <tr class="spacer">
+                  <td height="30px" style="font-size: 30px; line-height:30px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td align="left" colspan="2" valign="top" width="100%" height="1" class="hr" style="background-color: #d3d3d8; line-height: 1px;">
+                    <!--[if gte mso 15]>&nbsp;<![endif]-->
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td>
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="left" valign="middle">
+                          <img src="https://raw.githubusercontent.com/hamzak555/hh_donations/main/public/images/HH%20Logo%20Green.png" width="40" height="auto" alt="H&H Donations" border="0" />
+                        </td>
+                        <td align="right" valign="middle">
+                          <div class="text-xsmall textColorNormal" style="font-size: 11px; text-transform: uppercase; line-height: 22px; letter-spacing: 1px; color: #7B7B8B;">
+                            © 2025 H&H Donations
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="0px" style="font-size: 0px; line-height:0px;">&nbsp;</td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

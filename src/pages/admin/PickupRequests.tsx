@@ -1055,7 +1055,7 @@ function PickupRequests() {
                                                 return reminderDate.toLocaleDateString('en-US', {
                                                   month: 'short',
                                                   day: 'numeric'
-                                                }) + ' at 10:00 AM';
+                                                }) + ' at 9:00 PM';
                                               })()}
                                             </div>
                                           </div>

@@ -46,8 +46,8 @@ const ResponsiveSidebar = () => {
     { path: '/contact', label: 'Contact', icon: Phone },
   ];
   
-  // Remove 'Request a Pickup' from mobile menu
-  const mobileNavItems = allNavItems.filter(item => item.path !== '/request-pickup');
+  // Use all nav items for both mobile and desktop
+  const mobileNavItems = allNavItems;
   const desktopNavItems = allNavItems;
 
   return (

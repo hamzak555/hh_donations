@@ -16,9 +16,9 @@ class ReminderScheduler {
   }
 
   initializeScheduler() {
-    // Run every day at 10:00 AM to check for tomorrow's pickups
-    cron.schedule('0 10 * * *', async () => {
-      console.log('Running daily reminder check...');
+    // Run every day at 9:00 PM to check for tomorrow's pickups (12 hours before 9 AM pickup)
+    cron.schedule('0 21 * * *', async () => {
+      console.log('Running daily reminder check for tomorrow\'s pickups...');
       await this.sendDailyReminders();
     });
 
@@ -114,7 +114,7 @@ class ReminderScheduler {
     try {
       const reminderDate = new Date(date);
       reminderDate.setDate(reminderDate.getDate() - 1); // Day before pickup
-      reminderDate.setHours(10, 0, 0, 0); // 10 AM
+      reminderDate.setHours(21, 0, 0, 0); // 9 PM (12 hours before 9 AM pickup)
 
       // If reminder date is in the past, don't schedule
       if (reminderDate <= new Date()) {

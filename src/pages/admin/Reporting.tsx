@@ -278,7 +278,8 @@ function Reporting() {
     const unsoldByLocationDetails: { [key: string]: { 
       count: number; 
       weight: number; 
-      byQuality: { [key: string]: number } 
+      byQuality: { [key: string]: number };
+      byType: { [key: string]: { count: number; weight: number } } 
     }} = {};
     
     unsoldBales.forEach(bale => {
@@ -294,7 +295,8 @@ function Reporting() {
         unsoldByLocationDetails[location] = {
           count: 0,
           weight: 0,
-          byQuality: {}
+          byQuality: {},
+          byType: {}
         };
       }
       
@@ -307,6 +309,14 @@ function Reporting() {
         unsoldByLocationDetails[location].byQuality[quality] = 0;
       }
       unsoldByLocationDetails[location].byQuality[quality]++;
+      
+      // Track type breakdown with weights
+      const type = bale.contents || 'Unknown';
+      if (!unsoldByLocationDetails[location].byType[type]) {
+        unsoldByLocationDetails[location].byType[type] = { count: 0, weight: 0 };
+      }
+      unsoldByLocationDetails[location].byType[type].count++;
+      unsoldByLocationDetails[location].byType[type].weight += bale.weight || 0;
     });
     
     const totalSales = soldBales.reduce((sum, bale) => sum + (bale.salePrice || 0), 0);
@@ -388,6 +398,11 @@ function Reporting() {
         byQuality: Object.entries(details.byQuality).map(([quality, count]) => ({
           quality,
           count
+        })),
+        byType: Object.entries(details.byType).map(([type, data]) => ({
+          type,
+          count: data.count,
+          weight: data.weight
         }))
       }))
     };
@@ -1190,16 +1205,16 @@ function Reporting() {
                               <div className="space-y-2">
                                 <div className="font-semibold text-sm">{item.location}</div>
                                 <div className="text-xs text-gray-600">
-                                  Total Weight: {item.weight.toFixed(0)} kg
+                                  Total: {item.count} bales ({item.weight.toFixed(0)} kg)
                                 </div>
-                                {item.byQuality && item.byQuality.length > 0 && (
+                                {item.byType && item.byType.length > 0 && (
                                   <div className="border-t pt-2 mt-2">
-                                    <div className="text-xs font-medium mb-1">Quality Breakdown:</div>
+                                    <div className="text-xs font-medium mb-1">By Type:</div>
                                     <div className="space-y-1">
-                                      {item.byQuality.map((q, idx) => (
-                                        <div key={idx} className="flex justify-between text-xs">
-                                          <span className="text-gray-600">{q.quality}:</span>
-                                          <span className="font-medium">{q.count} bales</span>
+                                      {item.byType.map((t, idx) => (
+                                        <div key={idx} className="flex justify-between text-xs gap-4">
+                                          <span className="text-gray-600">{t.type}:</span>
+                                          <span className="font-medium">{t.count} bales ({t.weight.toFixed(0)} kg)</span>
                                         </div>
                                       ))}
                                     </div>

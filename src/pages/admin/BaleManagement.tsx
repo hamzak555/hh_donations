@@ -575,12 +575,27 @@ function BaleManagement() {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filteredBales = filteredBales.filter(bale => 
-        bale.baleNumber.toLowerCase().includes(query) ||
-        bale.contents.toLowerCase().includes(query) ||
-        bale.status.toLowerCase().includes(query) ||
-        (bale.notes && bale.notes.toLowerCase().includes(query))
-      );
+      filteredBales = filteredBales.filter(bale => {
+        // Check standard fields
+        const standardMatch = 
+          bale.baleNumber.toLowerCase().includes(query) ||
+          bale.contents.toLowerCase().includes(query) ||
+          bale.status.toLowerCase().includes(query) ||
+          (bale.notes && bale.notes.toLowerCase().includes(query));
+        
+        // Check destination via container
+        let destinationMatch = false;
+        if (bale.containerNumber) {
+          const container = containers.find(c => 
+            c.containerNumber?.trim().toLowerCase() === bale.containerNumber?.trim().toLowerCase()
+          );
+          if (container && container.destination) {
+            destinationMatch = container.destination.toLowerCase().includes(query);
+          }
+        }
+        
+        return standardMatch || destinationMatch;
+      });
     }
     
     // Sort the filtered results
