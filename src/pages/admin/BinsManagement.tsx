@@ -330,9 +330,9 @@ function BinsManagement() {
 
   // Calculate dynamic bin status based on fill level
   const calculateDynamicStatus = (fillLevel: number, currentStatus: BinLocation['status']): BinLocation['status'] => {
-    // If bin is manually marked as unavailable, keep it unavailable
-    if (currentStatus === 'Unavailable') {
-      return 'Unavailable';
+    // If bin is manually marked as unavailable or warehouse, keep that status
+    if (currentStatus === 'Unavailable' || currentStatus === 'Warehouse') {
+      return currentStatus;
     }
     
     // Dynamic status based on fill level: 0-49% Available, 50-79% Almost Full, 80-100% Full
@@ -848,11 +848,12 @@ function BinsManagement() {
   };
 
   const getStatusBadge = (status: Bin['status'], fullSince?: string) => {
-    const statusStyles = {
+    const statusStyles: Record<BinLocation['status'], string> = {
       'Available': 'bg-green-100 text-green-800 border-green-200',
       'Almost Full': 'bg-yellow-100 text-yellow-800 border-yellow-200',
       'Full': 'bg-red-100 text-red-800 border-red-200',
-      'Unavailable': 'bg-gray-100 text-gray-800 border-gray-200'
+      'Unavailable': 'bg-gray-100 text-gray-800 border-gray-200',
+      'Warehouse': 'bg-blue-100 text-blue-800 border-blue-200'
     };
     
     const timeSinceFull = status === 'Full' ? getTimeSinceFull(fullSince) : null;
@@ -1430,6 +1431,7 @@ function BinsManagement() {
                 <SelectContent className="z-[99999]">
                   <SelectItem value="Available">Available</SelectItem>
                   <SelectItem value="Unavailable">Unavailable</SelectItem>
+                  <SelectItem value="Warehouse">Warehouse</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1581,6 +1583,7 @@ function BinsManagement() {
                   <SelectItem value="Almost Full">Almost Full</SelectItem>
                   <SelectItem value="Full">Full</SelectItem>
                   <SelectItem value="Unavailable">Unavailable</SelectItem>
+                  <SelectItem value="Warehouse">Warehouse</SelectItem>
                 </SelectContent>
               </Select>
             </div>
