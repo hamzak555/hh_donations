@@ -322,8 +322,12 @@ const ContactForm = () => {
 };
 
 const Contact = () => {
+  // Use Google's test key if no production key is set
+  const recaptchaKey = process.env.REACT_APP_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+  console.log('reCAPTCHA Site Key:', recaptchaKey ? 'Configured' : 'Missing');
+  
   return (
-    <GoogleReCaptchaProvider reCaptchaKey={process.env.REACT_APP_RECAPTCHA_SITE_KEY || ''}>
+    <GoogleReCaptchaProvider reCaptchaKey={recaptchaKey}>
       <ContactForm />
     </GoogleReCaptchaProvider>
   );
