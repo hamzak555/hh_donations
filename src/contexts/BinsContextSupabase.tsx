@@ -9,7 +9,7 @@ export interface BinLocation {
   address: string;
   lat: number;
   lng: number;
-  status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full';
+  status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full' | 'Warehouse';
   distance?: number;
   assignedDriver?: string; // Keep for backward compatibility (driver name)
   driverId?: string; // Foreign key to drivers table
