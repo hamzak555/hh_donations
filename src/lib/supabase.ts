@@ -49,7 +49,7 @@ export interface DatabaseBin {
   address: string
   lat: number
   lng: number
-  status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full'
+  status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full' | 'Warehouse'
   assignedDriver?: string // Keep for backward compatibility (driver name)
   driver_id?: string // Foreign key reference to drivers.id
   partner_id?: string // Foreign key reference to partners.id (renamed from partner_application_id)

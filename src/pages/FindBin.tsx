@@ -31,8 +31,18 @@ const FindBin = () => {
   const binRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  // Use bins from shared context
-  const { bins } = useBins();
+  // Use bins from shared context and filter out Warehouse bins
+  const { bins: allBins } = useBins();
+  const bins = allBins.filter(bin => {
+    // Filter out Warehouse bins and ensure valid coordinates
+    return bin.status !== 'Warehouse' && 
+           bin.lat !== undefined && 
+           bin.lat !== null && 
+           bin.lng !== undefined && 
+           bin.lng !== null &&
+           !isNaN(bin.lat) &&
+           !isNaN(bin.lng);
+  });
 
   const mapContainerStyle = {
     width: '100%',
@@ -135,7 +145,7 @@ const FindBin = () => {
   };
 
   // Scroll to selected bin in the list
-  const scrollToBin = (binId: string) => {
+  const scrollToBin = useCallback((binId: string) => {
     const binElement = binRefs.current[binId];
     if (binElement && scrollAreaRef.current) {
       // Find the scroll container within ScrollArea
@@ -148,11 +158,13 @@ const FindBin = () => {
         });
       }
     }
-  };
+  }, []);
 
 
-  // Update nearby bins when user location changes
+  // Calculate nearby bins with distance
   useEffect(() => {
+    if (!bins || bins.length === 0) return;
+    
     if (userLocation) {
       const binsWithDistance = bins.map(bin => ({
         ...bin,
@@ -161,16 +173,25 @@ const FindBin = () => {
       binsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
       setNearbyBins(binsWithDistance);
     } else {
-      setNearbyBins(bins);
+      // Only update if bins have actually changed
+      setNearbyBins(prevBins => {
+        const binsChanged = prevBins.length !== bins.length || 
+          bins.some((bin, index) => bin.id !== prevBins[index]?.id);
+        return binsChanged ? bins : prevBins;
+      });
     }
   }, [userLocation, bins]);
 
   // Scroll to selected bin when it changes
   useEffect(() => {
     if (selectedBin) {
-      scrollToBin(selectedBin.id);
+      // Delay scroll to avoid conflicts with render
+      const timer = setTimeout(() => {
+        scrollToBin(selectedBin.id);
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [selectedBin]);
+  }, [selectedBin, scrollToBin]);
 
   // Get user's current location
   const getUserLocation = () => {
@@ -290,6 +311,7 @@ const FindBin = () => {
       case 'Almost Full': return 'text-yellow-600';
       case 'Full': return 'text-red-600';
       case 'Unavailable': return 'text-gray-600';
+      case 'Warehouse': return 'text-blue-600';
       default: return 'text-gray-600';
     }
   };
@@ -391,18 +413,25 @@ const FindBin = () => {
                   )}
 
                   {/* Bin Markers */}
-                  {mapLoaded && googleMapsReady && bins.map((bin) => (
-                    <SafeMarker
-                      key={bin.id}
-                      position={{ lat: bin.lat, lng: bin.lng }}
-                      onClick={() => {
-                        setSelectedBin(bin);
-                        scrollToBin(bin.id);
-                      }}
-                      icon={binIcon}
-                      opacity={bin.status === 'Unavailable' ? 0.4 : 1}
-                    />
-                  ))}
+                  {mapLoaded && googleMapsReady && bins.map((bin) => {
+                    // Double-check coordinates are valid before rendering marker
+                    if (!bin.lat || !bin.lng || isNaN(bin.lat) || isNaN(bin.lng)) {
+                      console.warn(`Invalid coordinates for bin ${bin.id}:`, bin);
+                      return null;
+                    }
+                    return (
+                      <SafeMarker
+                        key={bin.id}
+                        position={{ lat: bin.lat, lng: bin.lng }}
+                        onClick={() => {
+                          setSelectedBin(bin);
+                          scrollToBin(bin.id);
+                        }}
+                        icon={binIcon}
+                        opacity={bin.status === 'Unavailable' ? 0.4 : 1}
+                      />
+                    );
+                  })}
 
                   {/* Info Window */}
                   {mapLoaded && googleMapsReady && selectedBin && (
@@ -444,7 +473,9 @@ const FindBin = () => {
                       return (
                         <div 
                           key={bin.id}
-                          ref={(el) => { binRefs.current[bin.id] = el; }}
+                          ref={(el) => {
+                            if (el) binRefs.current[bin.id] = el;
+                          }}
                           className={`p-4 border rounded-lg transition-all duration-300 ${
                             isUnavailable
                               ? 'bg-gray-100 border-gray-300 opacity-60'

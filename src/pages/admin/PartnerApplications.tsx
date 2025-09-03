@@ -1417,7 +1417,7 @@ const PartnerApplications = () => {
               {statusChangeConfirm?.newStatus === 'archived' && (
                 <div className="mt-2 p-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700">
                   <Package className="inline h-3 w-3 mr-1" />
-                  Archiving this partner will unassign all associated bins and mark those bins as unavailable.
+                  Archiving this partner will unassign all associated bins and return them to the warehouse.
                 </div>
               )}
             </AlertDialogDescription>

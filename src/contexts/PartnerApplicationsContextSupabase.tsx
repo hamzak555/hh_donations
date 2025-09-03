@@ -235,21 +235,28 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
     if (status === 'archived' && app.assignedBins && app.assignedBins.length > 0) {
       console.log(`[PartnerApplications] Archiving partner ${app.organizationName} with ${app.assignedBins.length} assigned bins`);
       
-      // Unassign all bins from this partner and set their status to 'Unavailable'
+      // Unassign all bins from this partner and move them to Warehouse
       if (USE_SUPABASE) {
         try {
-          // Update all assigned bins to remove partnerId and set status to Unavailable
+          // Update all assigned bins to remove partnerId, set status to Warehouse, 
+          // change location name to Warehouse, and clear address
           for (const binId of app.assignedBins) {
             await SupabaseService.bins.updateBin(binId, {
               partnerId: undefined,
-              status: 'Unavailable'
+              status: 'Warehouse',
+              locationName: 'Warehouse',
+              address: ''
             });
           }
-          console.log(`[PartnerApplications] Unassigned ${app.assignedBins.length} bins and set to Unavailable`);
+          console.log(`[PartnerApplications] Unassigned ${app.assignedBins.length} bins and moved to Warehouse`);
         } catch (err) {
           console.error('Failed to unassign bins:', err);
           setError('Failed to unassign bins from archived partner');
         }
+      } else {
+        // Handle localStorage case - update bins in BinsContext
+        // This will be handled by the BinsContext when it detects partner changes
+        console.log(`[PartnerApplications] Partner archived - bins will be moved to Warehouse`);
       }
       
       // Clear assignedBins from the partner
