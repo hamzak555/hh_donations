@@ -5,7 +5,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY_HH_FORM') || 
                        Deno.env.get('RESEND_API_KEY')
 
-const RECAPTCHA_SECRET_KEY = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe' // Google's test secret key
+// Use production key if available, otherwise fall back to test key
+const RECAPTCHA_SECRET_KEY = Deno.env.get('RECAPTCHA_SECRET_KEY_PROD') || 
+                             '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe' // Google's test secret key
 
 console.log('Environment check - API key exists:', !!RESEND_API_KEY)
 
@@ -90,7 +92,7 @@ Deno.serve(async (req) => {
 
     console.log('Processing contact form submission from:', email)
 
-    // Format timestamp
+    // Format timestamp in Eastern timezone
     const timestamp = new Date().toLocaleString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -98,7 +100,8 @@ Deno.serve(async (req) => {
       day: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
+      timeZone: 'America/New_York'
     })
 
     // Email HTML template - matching the professional pickup confirmation design

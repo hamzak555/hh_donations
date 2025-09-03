@@ -235,10 +235,10 @@ const ContactForm = () => {
                     </Alert>
                   )}
 
-                  <div className="text-sm text-gray-600 mb-4">
+                  <div className="text-xs text-gray-400 mb-4">
                     This site is protected by reCAPTCHA and the Google{' '}
-                    <a href="https://policies.google.com/privacy" className="text-blue-600 hover:underline">Privacy Policy</a> and{' '}
-                    <a href="https://policies.google.com/terms" className="text-blue-600 hover:underline">Terms of Service</a> apply.
+                    <a href="https://policies.google.com/privacy" className="text-gray-400 underline hover:text-gray-500">Privacy Policy</a> and{' '}
+                    <a href="https://policies.google.com/terms" className="text-gray-400 underline hover:text-gray-500">Terms of Service</a> apply.
                   </div>
 
                   <Button 
