@@ -44,7 +44,6 @@ import { NetworkStatus } from './components/NetworkStatus';
 import ScrollToTop from './components/ScrollToTop';
 import ScrollToTopButton from './components/ScrollToTopButton';
 import { Toaster } from './components/ui/sonner';
-import './utils/seedData';
 import './utils/dataExportImport';
 import './utils/fixContainerNumbers';
 import './utils/clearStaleData';
