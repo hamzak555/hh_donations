@@ -1,18 +1,43 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { BinLocation } from '../types';
-import { SupabaseService } from '../services/supabaseService';
+import { SupabaseService } from '@/services/supabaseService';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
-// Use Supabase as primary data source, with localStorage as fallback
-const USE_SUPABASE = true;
+export interface BinLocation {
+  id: string;
+  binNumber: string;
+  locationName: string;
+  address: string;
+  lat: number;
+  lng: number;
+  status: 'Available' | 'Unavailable' | 'Full' | 'Almost Full' | 'Warehouse';
+  distance?: number;
+  assignedDriver?: string; // Keep for backward compatibility (driver name)
+  driverId?: string; // Foreign key to drivers table
+  partnerId?: string; // Foreign key to partners table (renamed from partnerApplicationId)
+  createdDate?: string;
+  fullSince?: string; // ISO timestamp of when bin was marked as Full
+  // Sensor integration fields
+  sensorId?: string; // Sensoneo sensor identifier
+  containerId?: number; // Sensoneo container ID
+  fillLevel?: number; // Current fill percentage (0-100)
+  lastSensorUpdate?: string; // Timestamp of last sensor reading
+  batteryLevel?: number; // Sensor battery voltage
+  temperature?: number; // Current temperature reading
+  sensorEnabled?: boolean; // Whether sensor tracking is enabled for this bin
+}
+
+// Use environment variable to determine if Supabase is enabled
+const USE_SUPABASE = isSupabaseConfigured;
 
 interface BinsContextType {
   bins: BinLocation[];
-  isLoading: boolean;
-  error: string | null;
-  addBin: (bin: Omit<BinLocation, 'id' | 'createdDate'>) => Promise<void>;
+  setBins: React.Dispatch<React.SetStateAction<BinLocation[]>>;
+  addBin: (bin: BinLocation) => Promise<void>;
   updateBin: (id: string, updates: Partial<BinLocation>) => Promise<void>;
   deleteBin: (id: string) => Promise<void>;
   refreshBins: () => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
 }
 
 const BinsContext = createContext<BinsContextType | undefined>(undefined);
@@ -102,29 +127,30 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initializeBins();
   }, []);
 
-  const addBin = async (binData: Omit<BinLocation, 'id' | 'createdDate'>) => {
-    setError(null);
-    try {
-      const newBin: BinLocation = {
-        ...binData,
-        id: generateUUID(),
-        createdDate: new Date().toISOString().split('T')[0], // Format: YYYY-MM-DD
-      };
-
-      if (USE_SUPABASE) {
-        const supabaseBin = await SupabaseService.bins.createBin(newBin);
-        setBins(prev => [...prev, supabaseBin]);
-      } else {
-        setBins(prev => {
-          const updated = [...prev, newBin];
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-          return updated;
+  const addBin = async (newBin: BinLocation) => {
+    if (USE_SUPABASE) {
+      try {
+        console.log('[BinsProvider] Creating bin in Supabase:', newBin);
+        const createdBin = await SupabaseService.bins.createBin(newBin);
+        setBins(prevBins => [...prevBins, createdBin]);
+        console.log(`[BinsProvider] Created bin ${createdBin.binNumber} in Supabase`);
+      } catch (error) {
+        console.error('[BinsProvider] Error creating bin:', error);
+        console.error('[BinsProvider] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : 'No stack trace',
+          fullError: error
         });
+        setError(`Failed to create bin: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
       }
-    } catch (error) {
-      console.error('[BinsProvider] Failed to add bin:', error);
-      setError(error instanceof Error ? error.message : 'Failed to add bin');
-      throw error;
+    } else {
+      const newBinWithId = { ...newBin, id: newBin.id || generateUUID() };
+      setBins(prevBins => {
+        const updated = [...prevBins, newBinWithId];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
     }
   };
 
@@ -193,6 +219,7 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value: BinsContextType = {
     bins,
+    setBins,
     isLoading,
     error,
     addBin,
