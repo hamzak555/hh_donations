@@ -140,15 +140,17 @@ function BinsManagement() {
     address: string;
     status: Bin['status'];
     assignedDriver: string;
-    containerId?: number;
+    sensorId?: string;
     partnerId?: string;
+    binNumber?: string;
   }>({
     locationName: '',
     address: '',
     status: 'Available',
     assignedDriver: 'none',
-    containerId: undefined,
-    partnerId: undefined
+    sensorId: undefined,
+    partnerId: undefined,
+    binNumber: undefined
   });
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -164,7 +166,7 @@ function BinsManagement() {
   const [bulkDriverName, setBulkDriverName] = useState('');
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
   const [, setCurrentTime] = useState(new Date());
-  const [sensorData, setSensorData] = useState<Map<number, MeasurementResponse>>(new Map());
+  const [sensorData, setSensorData] = useState<Map<string, MeasurementResponse>>(new Map());
   const [isLoadingSensorData, setIsLoadingSensorData] = useState(false);
   const [lastSensorRefresh, setLastSensorRefresh] = useState<Date | null>(null);
   const [nextSensorRefresh, setNextSensorRefresh] = useState<Date | null>(null);
@@ -178,9 +180,9 @@ function BinsManagement() {
     return () => clearInterval(interval);
   }, []);
 
-  // Fetch sensor data for bins that have container IDs
+  // Fetch sensor data for bins that have sensor IDs
   const fetchSensorData = async (isAutoRefresh = false) => {
-    const binsWithSensors = bins.filter(bin => bin.containerId);
+    const binsWithSensors = bins.filter(bin => bin.sensorId);
     if (binsWithSensors.length === 0) {
       setIsLoadingSensorData(false);
       return;
@@ -189,33 +191,33 @@ function BinsManagement() {
     setIsLoadingSensorData(true);
     try {
       // Get API key from localStorage (same as SensorTest page)
-      const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || '0c5d7f2757f740489dca16d6c5745a11';
+      const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || 'd9db69094ce140729a4f64c09355935f';
       const savedApiKey = localStorage.getItem('sensoneo_api_key') || demoApiKey;
       
       console.log('[BinsManagement] Using Sensoneo API key from localStorage');
-      console.log('[BinsManagement] Bins with container IDs:', binsWithSensors.map(b => `${b.binNumber}: ${b.containerId}`));
+      console.log('[BinsManagement] Bins with sensor IDs:', binsWithSensors.map(b => `${b.binNumber}: ${b.sensorId}`));
       const api = new SensoneoAPI({ apiKey: savedApiKey });
-      const containerIds = binsWithSensors.map(bin => bin.containerId!);
+      const sensorIds = binsWithSensors.map(bin => bin.sensorId!);
       
-      console.log('[BinsManagement] Fetching sensor data for container IDs:', containerIds);
-      const measurements = await api.fetchBulkMeasurements(containerIds);
+      console.log('[BinsManagement] Fetching sensor data for sensor IDs:', sensorIds);
+      const measurements = await api.fetchBulkSensorMeasurements(sensorIds);
       setSensorData(measurements);
       
       console.log('Sensor data fetched:', measurements.size, 'measurements');
       
       // Update bin statuses based on sensor data
-      measurements.forEach((measurement, containerId) => {
-        // Find ALL bins with this container ID (not just the first one)
-        const matchingBins = bins.filter(b => b.containerId === containerId);
+      measurements.forEach((measurement, sensorId) => {
+        // Find ALL bins with this sensor ID (not just the first one)
+        const matchingBins = bins.filter(b => b.sensorId === sensorId);
         
         if (matchingBins.length > 0) {
-          console.log(`Container ID ${containerId} matches ${matchingBins.length} bin(s): ${matchingBins.map(b => b.binNumber).join(', ')}`);
+          console.log(`Sensor ID ${sensorId} matches ${matchingBins.length} bin(s): ${matchingBins.map(b => b.binNumber).join(', ')}`);
           
           matchingBins.forEach(bin => {
             const fillLevel = measurement.percentCalculated;
             const newStatus = calculateDynamicStatus(fillLevel, bin.status);
             
-            console.log(`BIN ${bin.binNumber} (ID: ${containerId}): Current status: ${bin.status}, Fill level: ${fillLevel}%, Calculated status: ${newStatus}`);
+            console.log(`BIN ${bin.binNumber} (ID: ${sensorId}): Current status: ${bin.status}, Fill level: ${fillLevel}%, Calculated status: ${newStatus}`);
             
             // Only update if status has changed to avoid unnecessary re-renders
             if (newStatus !== bin.status) {
@@ -241,7 +243,7 @@ function BinsManagement() {
             }
           });
         } else {
-          console.log(`⚠️  No bin found for container ID: ${containerId}`);
+          console.log(`⚠️  No bin found for sensor ID: ${sensorId}`);
         }
       });
     } catch (error) {
@@ -272,14 +274,14 @@ function BinsManagement() {
     fetchSensorData();
   }, []);
 
-  // Re-fetch sensor data when bins with container IDs change
+  // Re-fetch sensor data when bins with sensor IDs change
   useEffect(() => {
-    const binsWithSensors = bins.filter(bin => bin.containerId);
+    const binsWithSensors = bins.filter(bin => bin.sensorId);
     if (binsWithSensors.length > 0) {
       console.log('Bins with sensors changed, re-fetching sensor data');
       fetchSensorData();
     }
-  }, [bins.map(bin => bin.containerId).join(',')]);
+  }, [bins.map(bin => bin.sensorId).join(',')]);
   
   // Set up automatic refresh interval based on user preference
   useEffect(() => {
@@ -343,7 +345,7 @@ function BinsManagement() {
 
   // Helper functions for sensor data display
   const getSensorMeasurement = (bin: BinLocation) => {
-    return bin.containerId ? sensorData.get(bin.containerId) : null;
+    return bin.sensorId ? sensorData.get(bin.sensorId) : null;
   };
 
   const renderFillLevel = (bin: BinLocation) => {
@@ -389,27 +391,39 @@ function BinsManagement() {
     const batteryLevel = measurement?.batteryStatus;
     
     if (batteryLevel === undefined) {
-      return <span className="text-gray-400 text-sm">-</span>;
+      return (
+        <div className="flex flex-col">
+          <span className="text-gray-400 text-sm">-</span>
+          {bin.sensorId && (
+            <span className="text-xs text-gray-500 mt-1">{bin.sensorId}</span>
+          )}
+        </div>
+      );
     }
 
     return (
-      <div className="flex items-center justify-start gap-1">
-        <span className={`text-sm ${
-          batteryLevel >= 3.7 ? 'text-green-600' :
-          batteryLevel >= 3.4 ? 'text-yellow-600' :
-          batteryLevel >= 3.0 ? 'text-orange-600' :
-          'text-red-600'
-        }`}>
-          {batteryLevel.toFixed(2)}V
-        </span>
-        <span className={`text-xs px-1 py-0.5 rounded ${
-          batteryLevel >= 3.7 ? 'bg-green-100 text-green-800' :
-          batteryLevel >= 3.4 ? 'bg-yellow-100 text-yellow-800' :
-          batteryLevel >= 3.0 ? 'bg-orange-100 text-orange-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          {SensoneoAPI.formatBatteryStatus(batteryLevel)}
-        </span>
+      <div className="flex flex-col">
+        <div className="flex items-center justify-start gap-1">
+          <span className={`text-sm ${
+            batteryLevel >= 3.7 ? 'text-green-600' :
+            batteryLevel >= 3.4 ? 'text-yellow-600' :
+            batteryLevel >= 3.0 ? 'text-orange-600' :
+            'text-red-600'
+          }`}>
+            {batteryLevel.toFixed(2)}V
+          </span>
+          <span className={`text-xs px-1 py-0.5 rounded ${
+            batteryLevel >= 3.7 ? 'bg-green-100 text-green-800' :
+            batteryLevel >= 3.4 ? 'bg-yellow-100 text-yellow-800' :
+            batteryLevel >= 3.0 ? 'bg-orange-100 text-orange-800' :
+            'bg-red-100 text-red-800'
+          }`}>
+            {SensoneoAPI.formatBatteryStatus(batteryLevel)}
+          </span>
+        </div>
+        {bin.sensorId && (
+          <span className="text-xs text-gray-500">{bin.sensorId}</span>
+        )}
       </div>
     );
   };
@@ -425,7 +439,7 @@ function BinsManagement() {
     return (
       <div className="text-sm">
         <div>{new Date(lastUpdate).toLocaleDateString()}</div>
-        <div className="text-gray-500">{new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div className="text-xs text-gray-500">{new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
       </div>
     );
   };
@@ -704,12 +718,24 @@ function BinsManagement() {
 
     addBin(newBin);
     setIsAddDialogOpen(false);
-    setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined });
+    setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', sensorId: undefined, binNumber: undefined });
     setSelectedLocation(null);
   };
 
   const handleEditBin = async () => {
     if (selectedBin) {
+      // Check for duplicate bin number if bin number is being changed
+      if (formData.binNumber && formData.binNumber.length > 0) {
+        const newBinNumber = `BIN${formData.binNumber.padStart(3, '0')}`;
+        const duplicateBin = bins.find(
+          bin => bin.binNumber === newBinNumber && bin.id !== selectedBin.id
+        );
+        if (duplicateBin) {
+          alert(`This bin number (${newBinNumber}) is already in use. Please choose a different number.`);
+          return;
+        }
+      }
+      
       const oldDriverName = selectedBin.assignedDriver;
       const newDriverName = formData.assignedDriver === 'none' ? undefined : formData.assignedDriver;
       
@@ -723,8 +749,12 @@ function BinsManagement() {
         address: formData.address,
         status: formData.status,
         assignedDriver: newDriverName,
-        containerId: formData.containerId,
+        sensorId: formData.sensorId,
         partnerId: newPartnerId,
+        // Update bin number if provided
+        ...(formData.binNumber && {
+          binNumber: `BIN${formData.binNumber.padStart(3, '0')}`
+        }),
         // Update lat/lng if a new location was selected via autocomplete
         ...(editSelectedLocation && {
           lat: editSelectedLocation.lat,
@@ -788,7 +818,7 @@ function BinsManagement() {
         await updateBin(selectedBin.id, updates);
         setIsEditDialogOpen(false);
         setSelectedBin(null);
-        setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined, partnerId: undefined });
+        setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', sensorId: undefined, partnerId: undefined, binNumber: undefined });
         setEditSelectedLocation(null);
       } catch (error) {
         console.error('Failed to update bin. Full error:', error);
@@ -797,8 +827,16 @@ function BinsManagement() {
           errorStack: error instanceof Error ? error.stack : undefined,
           updates: updates
         });
+        
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        alert(`Failed to update bin: ${errorMessage}. Please check the console for details.`);
+        
+        // Check for specific error types and provide user-friendly messages
+        if (errorMessage.toLowerCase().includes('duplicate') || errorMessage.toLowerCase().includes('unique')) {
+          const newBinNumber = formData.binNumber ? `BIN${formData.binNumber.padStart(3, '0')}` : 'the selected';
+          alert(`This bin number (${newBinNumber}) is already in use. Please choose a different number.`);
+        } else {
+          alert(`Failed to update bin: ${errorMessage}. Please try again or contact support if the problem persists.`);
+        }
       }
     }
   };
@@ -830,13 +868,18 @@ function BinsManagement() {
     setSelectedBin(bin);
     // Find the partner assigned to this bin
     const assignedPartner = getPartnerForBin(bin.id);
+    // Extract the numeric part from the bin number (e.g., "BIN001" -> "001")
+    const binNumberMatch = bin.binNumber.match(/BIN(\d+)/);
+    const binNumericPart = binNumberMatch ? binNumberMatch[1] : '';
+    
     setFormData({
       locationName: bin.locationName,
       address: bin.address,
       status: bin.status,
       assignedDriver: bin.assignedDriver || 'none',
-      containerId: bin.containerId,
-      partnerId: assignedPartner?.id || 'none'
+      sensorId: bin.sensorId,
+      partnerId: assignedPartner?.id || 'none',
+      binNumber: binNumericPart
     });
     setEditSelectedLocation(null); // Clear any previously selected location
     setIsEditDialogOpen(true);
@@ -1453,23 +1496,23 @@ function BinsManagement() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="add-container-id">Sensoneo Container ID (Optional)</Label>
+              <Label htmlFor="add-sensor-id">Sensoneo Sensor ID (Optional)</Label>
               <Input
-                id="add-container-id"
-                type="number"
-                value={formData.containerId || ''}
-                onChange={(e) => setFormData({...formData, containerId: e.target.value ? parseInt(e.target.value) : undefined})}
-                placeholder="Enter Sensoneo container ID"
+                id="add-sensor-id"
+                type="text"
+                value={formData.sensorId || ''}
+                onChange={(e) => setFormData({...formData, sensorId: e.target.value || undefined})}
+                placeholder="Enter Sensoneo sensor ID (e.g., SS7000F0CC)"
               />
               {(() => {
-                if (formData.containerId) {
+                if (formData.sensorId) {
                   const duplicateBin = bins.find(
-                    bin => bin.containerId === formData.containerId
+                    bin => bin.sensorId === formData.sensorId
                   );
                   if (duplicateBin) {
                     return (
                       <p className="text-sm text-red-600 mt-1">
-                        ⚠️ This container ID is already being used by bin <strong>{duplicateBin.binNumber}</strong>
+                        ⚠️ This sensor ID is already being used by bin <strong>{duplicateBin.binNumber}</strong>
                       </p>
                     );
                   }
@@ -1485,7 +1528,7 @@ function BinsManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setIsAddDialogOpen(false);
-              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', containerId: undefined, partnerId: undefined });
+              setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', sensorId: undefined, partnerId: undefined, binNumber: undefined });
               setSelectedLocation(null);
             }}>
               Cancel
@@ -1529,6 +1572,53 @@ function BinsManagement() {
                 onChange={(e) => setFormData({...formData, locationName: e.target.value})}
                 placeholder="e.g., Community Center"
               />
+            </div>
+            <div>
+              <Label htmlFor="edit-bin-number">Bin Number</Label>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-gray-700 bg-gray-100 px-3 py-2 rounded-md">BIN</span>
+                <Input
+                  id="edit-bin-number"
+                  type="text"
+                  value={formData.binNumber || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Only allow numeric input and limit to 3 digits
+                    if (/^\d{0,3}$/.test(value)) {
+                      setFormData({...formData, binNumber: value});
+                    }
+                  }}
+                  placeholder="001"
+                  maxLength={3}
+                  className="w-20 text-center"
+                />
+              </div>
+              {(() => {
+                if (formData.binNumber && formData.binNumber.length > 0) {
+                  const newBinNumber = `BIN${formData.binNumber.padStart(3, '0')}`;
+                  const duplicateBin = bins.find(
+                    bin => bin.binNumber === newBinNumber && bin.id !== selectedBin?.id
+                  );
+                  if (duplicateBin) {
+                    return (
+                      <p className="text-sm text-red-600 mt-1">
+                        ⚠️ Bin number {newBinNumber} is already in use
+                      </p>
+                    );
+                  } else {
+                    return (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Preview: {newBinNumber}
+                      </p>
+                    );
+                  }
+                }
+                return (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Enter a 3-digit number (e.g., 001, 002, 100)
+                  </p>
+                );
+              })()}
             </div>
             <div>
               <Label htmlFor="edit-address">Address *</Label>
@@ -1588,23 +1678,23 @@ function BinsManagement() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="edit-container-id">Sensoneo Container ID</Label>
+              <Label htmlFor="edit-sensor-id">Sensoneo Sensor ID</Label>
               <Input
-                id="edit-container-id"
-                type="number"
-                value={formData.containerId || ''}
-                onChange={(e) => setFormData({...formData, containerId: e.target.value ? parseInt(e.target.value) : undefined})}
-                placeholder="Enter Sensoneo container ID (optional)"
+                id="edit-sensor-id"
+                type="text"
+                value={formData.sensorId || ''}
+                onChange={(e) => setFormData({...formData, sensorId: e.target.value || undefined})}
+                placeholder="Enter Sensoneo sensor ID (e.g., SS7000F0CC)"
               />
               {(() => {
-                if (formData.containerId) {
+                if (formData.sensorId) {
                   const duplicateBin = bins.find(
-                    bin => bin.containerId === formData.containerId && bin.id !== selectedBin?.id
+                    bin => bin.sensorId === formData.sensorId && bin.id !== selectedBin?.id
                   );
                   if (duplicateBin) {
                     return (
                       <p className="text-sm text-red-600 mt-1">
-                        ⚠️ This container ID is already being used by bin <strong>{duplicateBin.binNumber}</strong>
+                        ⚠️ This sensor ID is already being used by bin <strong>{duplicateBin.binNumber}</strong>
                       </p>
                     );
                   }

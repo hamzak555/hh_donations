@@ -10,12 +10,13 @@ import { Wifi, WifiOff, Battery, Thermometer, Package, AlertCircle, CheckCircle,
 import SensoneoAPI, { MeasurementResponse } from '@/services/sensoneoApi';
 
 function SensorTest() {
-  // Use demo API key from environment or localStorage
-  const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || '0c5d7f2757f740489dca16d6c5745a11';
+  // Use production API key from environment or localStorage
+  const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || 'd9db69094ce140729a4f64c09355935f';
   const savedApiKey = localStorage.getItem('sensoneo_api_key') || demoApiKey;
   
   const [apiKey, setApiKey] = useState(savedApiKey);
   const [containerId, setContainerId] = useState('');
+  const [sensorId, setSensorId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [measurementData, setMeasurementData] = useState<MeasurementResponse | null>(null);
@@ -109,8 +110,8 @@ function SensorTest() {
   };
 
   const fetchSensorData = async () => {
-    if (!apiKey || !containerId) {
-      setError('Please enter both API key and Container ID');
+    if (!apiKey || (!containerId && !sensorId)) {
+      setError('Please enter API key and either Container ID or Sensor ID');
       return;
     }
 
@@ -119,24 +120,44 @@ function SensorTest() {
     setMeasurementData(null);
 
     try {
-      addLog(`Fetching data for container ID: ${containerId}`);
       const api = new SensoneoAPI({ apiKey });
       
-      const measurement = await api.fetchContainerMeasurement(parseInt(containerId));
-      
-      if (measurement) {
-        addLog('✓ Sensor data retrieved successfully');
-        setMeasurementData(measurement);
+      if (sensorId) {
+        addLog(`Fetching data for sensor ID: ${sensorId}`);
+        const measurement = await api.fetchSensorMeasurement(sensorId);
         
-        // Log key metrics
-        addLog(`Fill Level: ${measurement.percentCalculated}%`);
-        addLog(`Last Update: ${new Date(measurement.measuredAt).toLocaleString()}`);
-        if (measurement.batteryStatus) {
-          addLog(`Battery: ${SensoneoAPI.formatBatteryStatus(measurement.batteryStatus)}`);
+        if (measurement) {
+          addLog('✓ Sensor data retrieved successfully');
+          setMeasurementData(measurement);
+          
+          // Log key metrics
+          addLog(`Fill Level: ${measurement.percentCalculated}%`);
+          addLog(`Last Update: ${new Date(measurement.measuredAt).toLocaleString()}`);
+          if (measurement.batteryStatus) {
+            addLog(`Battery: ${SensoneoAPI.formatBatteryStatus(measurement.batteryStatus)}`);
+          }
+        } else {
+          addLog('No measurement data found for this sensor');
+          setError('No data available for this sensor ID');
         }
-      } else {
-        addLog('No measurement data found for this container');
-        setError('No data available for this container ID');
+      } else if (containerId) {
+        addLog(`Fetching data for container ID: ${containerId}`);
+        const measurement = await api.fetchContainerMeasurement(parseInt(containerId));
+        
+        if (measurement) {
+          addLog('✓ Sensor data retrieved successfully');
+          setMeasurementData(measurement);
+          
+          // Log key metrics
+          addLog(`Fill Level: ${measurement.percentCalculated}%`);
+          addLog(`Last Update: ${new Date(measurement.measuredAt).toLocaleString()}`);
+          if (measurement.batteryStatus) {
+            addLog(`Battery: ${SensoneoAPI.formatBatteryStatus(measurement.batteryStatus)}`);
+          }
+        } else {
+          addLog('No measurement data found for this container');
+          setError('No data available for this container ID');
+        }
       }
     } catch (err) {
       addLog(`✗ Failed to fetch sensor data: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -208,6 +229,21 @@ function SensorTest() {
             </div>
 
             <div>
+              <Label htmlFor="sensorId">Sensor ID (Optional)</Label>
+              <Input
+                id="sensorId"
+                type="text"
+                placeholder="Enter sensor ID (e.g., SS7000F0CC)"
+                value={sensorId}
+                onChange={(e) => setSensorId(e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Enter a specific sensor ID to fetch its data directly
+              </p>
+            </div>
+
+            <div>
               <Label htmlFor="refreshInterval" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Auto-Refresh Interval
@@ -245,7 +281,7 @@ function SensorTest() {
               
               <Button 
                 onClick={fetchSensorData}
-                disabled={isLoading || !apiKey || !containerId}
+                disabled={isLoading || !apiKey || (!containerId && !sensorId)}
                 variant="outline"
                 className="flex-1"
               >
@@ -287,6 +323,13 @@ function SensorTest() {
                   <p className="text-sm text-gray-500">Container ID</p>
                   <p className="font-semibold">{measurementData.containerId}</p>
                 </div>
+                
+                {measurementData.sensorId && (
+                  <div>
+                    <p className="text-sm text-gray-500">Sensor ID</p>
+                    <p className="font-semibold">{measurementData.sensorId}</p>
+                  </div>
+                )}
                 
                 <div>
                   <p className="text-sm text-gray-500">Fill Level</p>

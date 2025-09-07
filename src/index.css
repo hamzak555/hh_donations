@@ -68,12 +68,12 @@
     @apply border-border;
   }
   html {
-    overflow-x: hidden;
+    overflow-x: auto;
     height: 100%;
   }
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
+    overflow-x: auto;
     position: relative;
     height: 100%;
     margin: 0;

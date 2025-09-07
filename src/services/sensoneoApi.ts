@@ -178,6 +178,30 @@ class SensoneoAPI {
   }
 
   /**
+   * Fetch latest measurement for a specific sensor ID
+   */
+  async fetchSensorMeasurement(sensorId: string): Promise<MeasurementResponse | null> {
+    // The Sensoneo API doesn't have a direct sensor ID filter in the measurements endpoint
+    // We need to fetch all recent measurements and filter by sensor ID
+    const measurements = await this.fetchMeasurements({});
+    
+    // Filter measurements by sensor ID and get the most recent one
+    const sensorMeasurements = measurements.filter(m => m.sensorId === sensorId);
+    
+    if (sensorMeasurements.length === 0) {
+      console.log(`No measurements found for sensor ID: ${sensorId}`);
+      return null;
+    }
+    
+    // Sort by measuredAt to get the most recent
+    sensorMeasurements.sort((a, b) => 
+      new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime()
+    );
+    
+    return sensorMeasurements[0];
+  }
+
+  /**
    * Fetch measurements for multiple containers
    */
   async fetchBulkMeasurements(containerIds: number[]): Promise<Map<number, MeasurementResponse>> {
@@ -192,6 +216,28 @@ class SensoneoAPI {
       const existing = measurementMap.get(measurement.containerId);
       if (!existing || new Date(measurement.measuredAt) > new Date(existing.measuredAt)) {
         measurementMap.set(measurement.containerId, measurement);
+      }
+    });
+
+    return measurementMap;
+  }
+
+  /**
+   * Fetch measurements for multiple sensor IDs
+   */
+  async fetchBulkSensorMeasurements(sensorIds: string[]): Promise<Map<string, MeasurementResponse>> {
+    // Fetch all recent measurements
+    const measurements = await this.fetchMeasurements({});
+    
+    // Create a map of sensorId to most recent measurement
+    const measurementMap = new Map<string, MeasurementResponse>();
+    
+    measurements.forEach(measurement => {
+      if (measurement.sensorId && sensorIds.includes(measurement.sensorId)) {
+        const existing = measurementMap.get(measurement.sensorId);
+        if (!existing || new Date(measurement.measuredAt) > new Date(existing.measuredAt)) {
+          measurementMap.set(measurement.sensorId, measurement);
+        }
       }
     });
 

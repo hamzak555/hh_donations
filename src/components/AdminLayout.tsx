@@ -22,7 +22,7 @@ const AdminLayout = () => {
         <AdminSidebar />
         {/* Content Area - Responsive margins */}
         <div className="flex-1 lg:ml-64 pt-16 lg:pt-0 min-w-0 h-full overflow-auto">
-          <div className="min-h-full">
+          <div className="min-h-full min-w-fit">
             <Outlet />
           </div>
         </div>
