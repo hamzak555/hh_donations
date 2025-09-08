@@ -752,7 +752,7 @@ function BinsManagement() {
         address: formData.address,
         status: formData.status,
         assignedDriver: newDriverName,
-        sensorId: formData.sensorId || null, // Set to null if empty string or undefined
+        sensorId: formData.sensorId || undefined, // Set to undefined if empty string
         partnerId: newPartnerId,
         // Update bin number if provided
         ...(formData.binNumber && {
