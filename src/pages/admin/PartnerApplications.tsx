@@ -777,7 +777,7 @@ const PartnerApplications = () => {
                             {getStatusBadge(app.status)}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent align="center" side="bottom">
                           <SelectItem value="approved">
                             <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
                               <CheckCircle className="h-3 w-3" />
@@ -933,7 +933,7 @@ const PartnerApplications = () => {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="center" side="bottom">
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>

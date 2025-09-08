@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { MobileTooltip } from '@/components/MobileTooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1191,17 +1192,18 @@ function Reporting() {
                 </CardHeader>
                 <CardContent>
                   {salesMetrics.unsoldByLocation && salesMetrics.unsoldByLocation.length > 0 ? (
-                    <TooltipProvider>
-                      <div className="space-y-3">
-                        {salesMetrics.unsoldByLocation.map((item, index) => (
-                          <Tooltip key={index}>
-                            <TooltipTrigger asChild>
-                              <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-help transition-colors">
-                                <span className="text-sm text-gray-700">{item.location}</span>
-                                <span className="font-bold" style={{ color: '#0b503c' }}>{item.count}</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
+                    <div className="space-y-3">
+                      {salesMetrics.unsoldByLocation.map((item, index) => (
+                        <MobileTooltip 
+                          key={index}
+                          trigger={
+                            <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-help transition-colors">
+                              <span className="text-sm text-gray-700">{item.location}</span>
+                              <span className="font-bold" style={{ color: '#0b503c' }}>{item.count}</span>
+                            </div>
+                          }
+                          content={
+                            <div className="max-w-xs p-3 bg-white rounded-lg shadow-lg border">
                               <div className="space-y-2">
                                 <div className="font-semibold text-sm">{item.location}</div>
                                 <div className="text-xs text-gray-600">
@@ -1221,11 +1223,11 @@ function Reporting() {
                                   </div>
                                 )}
                               </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
-                      </div>
-                    </TooltipProvider>
+                            </div>
+                          }
+                        />
+                      ))}
+                    </div>
                   ) : (
                     <div className="mt-4">
                       <p className="text-sm text-gray-400">No unsold inventory</p>

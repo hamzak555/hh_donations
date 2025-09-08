@@ -697,7 +697,10 @@ function BinsManagement() {
       status: formData.status,
       lat: coordinates.lat,
       lng: coordinates.lng,
-      createdDate: new Date().toISOString().split('T')[0]
+      createdDate: new Date().toISOString().split('T')[0],
+      // Include sensorId and partnerId if provided
+      ...(formData.sensorId && { sensorId: formData.sensorId }),
+      ...(formData.partnerId && formData.partnerId !== 'none' && { partnerId: formData.partnerId })
     };
 
 
@@ -749,7 +752,7 @@ function BinsManagement() {
         address: formData.address,
         status: formData.status,
         assignedDriver: newDriverName,
-        sensorId: formData.sensorId,
+        sensorId: formData.sensorId || null, // Set to null if empty string or undefined
         partnerId: newPartnerId,
         // Update bin number if provided
         ...(formData.binNumber && {
@@ -1210,11 +1213,11 @@ function BinsManagement() {
                             value={bin.assignedDriver || 'unassigned'}
                             onValueChange={(value) => {
                               const oldDriverName = bin.assignedDriver;
-                              const newDriverName = value === 'unassigned' ? undefined : value;
+                              const newDriverName = value === 'unassigned' ? null : value;
                               
                               // Find the new driver to get their ID
                               const newDriver = newDriverName ? drivers.find(d => d.name === newDriverName) : null;
-                              const newDriverId = newDriver?.id || undefined;
+                              const newDriverId = newDriver?.id || null;
                               
                               // Update the bin with both driver name and ID (relational connection)
                               updateBin(bin.id, { 
@@ -1242,7 +1245,7 @@ function BinsManagement() {
                           <SelectTrigger className="h-8 w-full">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent align="center" side="bottom">
                             <SelectItem value="unassigned">
                               <span className="text-red-600">Unassigned</span>
                             </SelectItem>
@@ -1424,7 +1427,7 @@ function BinsManagement() {
               />
             </div>
             <div>
-              <Label htmlFor="address">Address *</Label>
+              <Label htmlFor="address">Address</Label>
               <div 
                 className="relative" 
                 onClick={(e) => e.stopPropagation()}
@@ -1471,7 +1474,7 @@ function BinsManagement() {
                 <SelectTrigger id="add-status">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="z-[99999]">
+                <SelectContent>
                   <SelectItem value="Available">Available</SelectItem>
                   <SelectItem value="Unavailable">Unavailable</SelectItem>
                   <SelectItem value="Warehouse">Warehouse</SelectItem>
@@ -1487,7 +1490,7 @@ function BinsManagement() {
                 <SelectTrigger id="add-driver">
                   <SelectValue placeholder="Select a driver (optional)" />
                 </SelectTrigger>
-                <SelectContent className="z-[99999]">
+                <SelectContent>
                   <SelectItem value="none">No driver assigned</SelectItem>
                   {activeDrivers.map(driver => (
                     <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
@@ -1668,7 +1671,7 @@ function BinsManagement() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="z-[99999]">
+                <SelectContent>
                   <SelectItem value="Available">Available</SelectItem>
                   <SelectItem value="Almost Full">Almost Full</SelectItem>
                   <SelectItem value="Full">Full</SelectItem>
@@ -1730,7 +1733,7 @@ function BinsManagement() {
                 <SelectTrigger id="edit-driver">
                   <SelectValue placeholder="Select a driver" />
                 </SelectTrigger>
-                <SelectContent className="z-[99999]">
+                <SelectContent>
                   <SelectItem value="none">No driver assigned</SelectItem>
                   {activeDrivers.map(driver => (
                     <SelectItem key={driver.id} value={driver.name}>{driver.name}</SelectItem>
@@ -1747,7 +1750,7 @@ function BinsManagement() {
                 <SelectTrigger id="edit-partner">
                   <SelectValue placeholder="Select a partner" />
                 </SelectTrigger>
-                <SelectContent className="z-[99999]">
+                <SelectContent>
                   <SelectItem value="none">No partner assigned</SelectItem>
                   {applications
                     .filter(app => app.status === 'approved')

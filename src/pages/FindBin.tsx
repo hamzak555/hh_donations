@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GoogleMapsErrorBoundary } from '@/components/GoogleMapsLoader';
 import { SimpleGoogleMap } from '@/components/SimpleGoogleMap';
 import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
@@ -18,7 +18,7 @@ const FindBin = () => {
   const [selectedBin, setSelectedBin] = useState<BinLocation | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [nearbyBins, setNearbyBins] = useState<BinLocation[]>([]);
+  const [nearbyBins, setNearbyBins] = useState<any[]>([]);
   const [map, setMap] = useState<any>(null);
   const [autocomplete, setAutocomplete] = useState<any>(null);
   const [locationError, setLocationError] = useState<string>('');
@@ -33,16 +33,21 @@ const FindBin = () => {
 
   // Use bins from shared context and filter out Warehouse bins
   const { bins: allBins } = useBins();
-  const bins = allBins.filter(bin => {
-    // Filter out Warehouse bins and ensure valid coordinates
-    return bin.status !== 'Warehouse' && 
-           bin.lat !== undefined && 
-           bin.lat !== null && 
-           bin.lng !== undefined && 
-           bin.lng !== null &&
-           !isNaN(bin.lat) &&
-           !isNaN(bin.lng);
-  });
+  const bins = useMemo(() => {
+    if (!allBins) return [];
+    return allBins.filter(bin => {
+      // Filter out Warehouse bins, bins without addresses, and ensure valid coordinates
+      return bin.status !== 'Warehouse' && 
+             bin.address && 
+             bin.address.trim() !== '' &&
+             bin.lat !== undefined && 
+             bin.lat !== null && 
+             bin.lng !== undefined && 
+             bin.lng !== null &&
+             !isNaN(bin.lat) &&
+             !isNaN(bin.lng);
+    });
+  }, [allBins]);
 
   const mapContainerStyle = {
     width: '100%',
@@ -50,8 +55,8 @@ const FindBin = () => {
   };
 
   const center = {
-    lat: userLocation?.lat || 43.6532,
-    lng: userLocation?.lng || -79.3832
+    lat: userLocation?.lat || 45.4215,
+    lng: userLocation?.lng || -75.6972
   };
 
   useEffect(() => {
@@ -173,12 +178,8 @@ const FindBin = () => {
       binsWithDistance.sort((a, b) => (a.distance || 0) - (b.distance || 0));
       setNearbyBins(binsWithDistance);
     } else {
-      // Only update if bins have actually changed
-      setNearbyBins(prevBins => {
-        const binsChanged = prevBins.length !== bins.length || 
-          bins.some((bin, index) => bin.id !== prevBins[index]?.id);
-        return binsChanged ? bins : prevBins;
-      });
+      // Set bins directly without comparison to avoid infinite loops
+      setNearbyBins(bins);
     }
   }, [userLocation, bins]);
 
@@ -349,7 +350,7 @@ const FindBin = () => {
           {/* Main Content Area - Full Height */}
           <div className="flex-1 flex flex-col lg:grid lg:grid-cols-3 gap-6 px-4 lg:px-8 pb-6 lg:overflow-hidden">
           {/* Map with Search Bar */}
-          <div className="lg:col-span-2 h-[300px] lg:h-full flex flex-col gap-4 flex-shrink-0">
+          <div className="lg:col-span-2 h-[450px] lg:h-full flex flex-col gap-4 flex-shrink-0">
             {/* Search Controls */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 pt-1">
               <div className="lg:col-span-2 relative autocomplete-container overflow-visible">
@@ -399,7 +400,7 @@ const FindBin = () => {
                 <SimpleGoogleMap
                   mapContainerStyle={mapContainerStyle}
                   center={center}
-                  zoom={12}
+                  zoom={10}
                   onLoad={onLoad}
                   onUnmount={onUnmount}
                 >
@@ -459,15 +460,28 @@ const FindBin = () => {
           {/* Nearby Bins List */}
           <div className="lg:col-span-1 h-[500px] lg:h-full overflow-hidden flex-shrink-0 mt-6 lg:mt-0">
             <Card className="h-full flex flex-col">
-              <CardHeader className="flex-shrink-0 pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MapPin className="w-5 h-5" />
-                  Nearby Bins ({nearbyBins.length})
-                </CardTitle>
+              <CardHeader className="flex-shrink-0 py-4 px-4 border-b">
+                <div className="pr-4 pl-1">
+                  <CardTitle className="flex items-center justify-between text-lg">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      Nearby Bins ({nearbyBins.length})
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={getUserLocation}
+                      className="h-8 px-2"
+                      title="Use My Location"
+                    >
+                      <Navigation className="w-4 h-4" />
+                    </Button>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden p-0 px-4 pb-6">
                 <ScrollArea className="h-full" ref={scrollAreaRef}>
-                  <div className="space-y-3 pr-4 pl-1 py-2">
+                  <div className="space-y-3 pr-4 pl-1 pt-4 pb-2">
                     {nearbyBins.map((bin) => {
                       const isUnavailable = bin.status === 'Unavailable';
                       return (

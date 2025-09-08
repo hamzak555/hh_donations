@@ -1,0 +1,61 @@
+/* Mobile-specific fixes for table dropdowns */
+@media (max-width: 768px) {
+  /* Ensure table cells don't overflow and cause horizontal scroll */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Fix Select component in tables on mobile */
+  td [data-radix-collection-item],
+  td [role="combobox"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ensure dropdown triggers are easily tappable on mobile */
+  td button[role="combobox"] {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  /* Prevent table from interfering with dropdown portal */
+  table {
+    position: static !important;
+  }
+
+  /* Ensure dropdown content appears above everything */
+  [data-radix-popper-content-wrapper] {
+    z-index: 9999 !important;
+  }
+
+  /* Fix viewport issues on mobile */
+  [data-radix-select-viewport] {
+    max-height: 300px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Improve touch targets for select items */
+  [role="option"] {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+  }
+
+  /* Prevent accidental scrolling when dropdown is open */
+  body:has([data-state="open"]) {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}
+
+/* Additional fixes for iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  td button[role="combobox"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}

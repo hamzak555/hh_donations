@@ -157,8 +157,8 @@ export class BinsService {
     if (updates.lng !== undefined) dbUpdates.lng = updates.lng
     if (updates.status !== undefined) dbUpdates.status = updates.status
     // distance is a calculated field, not stored in database
-    if (updates.assignedDriver !== undefined) dbUpdates.assignedDriver = updates.assignedDriver
-    if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId
+    if (updates.assignedDriver !== undefined) dbUpdates.assignedDriver = updates.assignedDriver || null
+    if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId || null
     if ('partnerId' in updates) dbUpdates.partner_id = updates.partnerId
     if (updates.createdDate !== undefined) dbUpdates.createdDate = updates.createdDate
     if (updates.fullSince !== undefined) dbUpdates.fullSince = updates.fullSince

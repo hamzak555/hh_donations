@@ -213,6 +213,18 @@ function DriversManagement() {
   };
   const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
 
+  // Helper function to get actual bin count for a driver
+  const getActualBinCount = (driverName: string): number => {
+    return bins.filter(bin => bin.assignedDriver === driverName).length;
+  };
+
+  // Helper function to get actual assigned bins for a driver
+  const getActualAssignedBins = (driverName: string): string[] => {
+    return bins
+      .filter(bin => bin.assignedDriver === driverName)
+      .map(bin => bin.binNumber);
+  };
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -232,8 +244,8 @@ function DriversManagement() {
       // Handle special cases
       
       if (sortColumn === 'assignedBins') {
-        aValue = a.assignedBins.length;
-        bValue = b.assignedBins.length;
+        aValue = getActualBinCount(a.name);
+        bValue = getActualBinCount(b.name);
         return sortDirection === 'asc' 
           ? (aValue as number - (bValue as number))
           : ((bValue as number) - (aValue as number));
@@ -288,7 +300,7 @@ function DriversManagement() {
   const handleEditDriver = () => {
     if (selectedDriver) {
       // If marking driver as inactive, unassign from all bins
-      if (formData.status === 'Inactive' && selectedDriver.status === 'Active' && selectedDriver.assignedBins.length > 0) {
+      if (formData.status === 'Inactive' && selectedDriver.status === 'Active' && getActualBinCount(selectedDriver.name) > 0) {
         const driverName = selectedDriver.name;
         bins.forEach(bin => {
           if (bin.assignedDriver === driverName) {
@@ -387,7 +399,7 @@ function DriversManagement() {
   const confirmDeleteDriver = () => {
     if (driverToDelete) {
       // Unassign driver from all bins
-      if (driverToDelete.assignedBins.length > 0) {
+      if (getActualBinCount(driverToDelete.name) > 0) {
         const driverName = driverToDelete.name;
         bins.forEach(bin => {
           if (bin.assignedDriver === driverName) {
@@ -585,7 +597,16 @@ function DriversManagement() {
             {getSortedDrivers().map((driver, index) => {
               // Get real pickup requests assigned to this driver
               const driverPickupRequests = pickupRequests.filter(p => p.assignedDriver === driver.name);
-              const pendingPickups = driverPickupRequests.filter(p => p.status === 'Pending' || p.status === 'Overdue');
+              const pendingPickups = driverPickupRequests.filter(p => p.status === 'Pending');
+              
+              // Debug logging for all drivers to find the issue
+              console.log(`Driver: ${driver.name}`, {
+                driverName: driver.name,
+                totalPickups: driverPickupRequests.length,
+                pendingCount: pendingPickups.length,
+                allStatuses: driverPickupRequests.map(p => ({ status: p.status, assignedDriver: p.assignedDriver })),
+                allPickupRequests: pickupRequests.map(p => ({ assignedDriver: p.assignedDriver, status: p.status }))
+              });
               
               // For compatibility with expansion panel, keep using mock data there
               const driverPickupList = driverPickups[driver.id] || [];
@@ -693,32 +714,35 @@ function DriversManagement() {
                     )}
                     {visibleColumns.has('assignedBins') && (
                       <TableCell>
-                        {driver.assignedBins.length > 0 ? (
-                          <div className="flex flex-nowrap gap-1 items-center">
-                            {driver.assignedBins.slice(0, 2).map(bin => (
-                              <Badge key={bin} variant="outline" className="whitespace-nowrap">{bin}</Badge>
-                            ))}
-                            {driver.assignedBins.length > 2 && (
-                              <span className="text-sm text-gray-600 font-medium whitespace-nowrap">
-                                +{driver.assignedBins.length - 2}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">None assigned</span>
-                        )}
+                        {(() => {
+                          const actualBins = getActualAssignedBins(driver.name);
+                          return actualBins.length > 0 ? (
+                            <div className="flex flex-nowrap gap-1 items-center">
+                              {actualBins.slice(0, 2).map(bin => (
+                                <Badge key={bin} variant="outline" className="whitespace-nowrap">{bin}</Badge>
+                              ))}
+                              {actualBins.length > 2 && (
+                                <span className="text-sm text-gray-600 font-medium whitespace-nowrap">
+                                  +{actualBins.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">None assigned</span>
+                          );
+                        })()}
                       </TableCell>
                     )}
                     {visibleColumns.has('binsCount') && (
                       <TableCell>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                          {driver.assignedBins.length}
+                          {getActualBinCount(driver.name)}
                         </Badge>
                       </TableCell>
                     )}
                     {visibleColumns.has('pickupsCount') && (
                       <TableCell>
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200" title="Pending/Overdue">
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200" title="Pending">
                           {pendingPickups.length} Pending
                         </Badge>
                       </TableCell>
@@ -770,15 +794,17 @@ function DriversManagement() {
                         className="bg-gray-50 p-4"
                       >
                         <div>
-                          {driver.assignedBins.length > 0 ? (
-                            <div>
-                              <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
-                                <Package className="w-4 h-4 text-gray-600" />
-                                Assigned Bins ({driver.assignedBins.length})
-                              </h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {driver.assignedBins.map(binNumber => {
-                                  const bin = bins.find(b => b.binNumber === binNumber);
+                          {(() => {
+                            const actualBins = getActualAssignedBins(driver.name);
+                            return actualBins.length > 0 ? (
+                              <div>
+                                <h4 className="font-semibold text-sm flex items-center gap-2 mb-3">
+                                  <Package className="w-4 h-4 text-gray-600" />
+                                  Assigned Bins ({actualBins.length})
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {actualBins.map(binNumber => {
+                                    const bin = bins.find(b => b.binNumber === binNumber);
                                   if (!bin) return null;
                                   
                                   const getStatusColor = (status: string) => {
@@ -821,7 +847,8 @@ function DriversManagement() {
                             <div className="text-center py-4 text-gray-500 italic text-sm">
                               No bins assigned to this driver
                             </div>
-                          )}
+                          );
+                          })()}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -937,10 +964,10 @@ function DriversManagement() {
                   <SelectItem value="Inactive">Inactive</SelectItem>
                 </SelectContent>
               </Select>
-              {formData.status === 'Inactive' && selectedDriver?.status === 'Active' && selectedDriver?.assignedBins.length > 0 && (
+              {formData.status === 'Inactive' && selectedDriver?.status === 'Active' && getActualBinCount(selectedDriver?.name || '') > 0 && (
                 <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <p className="text-sm text-yellow-800">
-                    <strong>Warning:</strong> Marking this driver as inactive will unassign them from {selectedDriver.assignedBins.length} bin{selectedDriver.assignedBins.length > 1 ? 's' : ''}.
+                    <strong>Warning:</strong> Marking this driver as inactive will unassign them from {getActualBinCount(selectedDriver.name)} bin{getActualBinCount(selectedDriver.name) > 1 ? 's' : ''}.
                   </p>
                 </div>
               )}
@@ -969,10 +996,10 @@ function DriversManagement() {
                   )}
                   {' '}and remove them from the system.
                 </p>
-                {driverToDelete && driverToDelete.assignedBins.length > 0 && (
+                {driverToDelete && getActualBinCount(driverToDelete.name) > 0 && (
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                     <p className="text-sm text-yellow-800">
-                      <strong>Warning:</strong> This driver is currently assigned to {driverToDelete.assignedBins.length} bin{driverToDelete.assignedBins.length > 1 ? 's' : ''}. 
+                      <strong>Warning:</strong> This driver is currently assigned to {getActualBinCount(driverToDelete.name)} bin{getActualBinCount(driverToDelete.name) > 1 ? 's' : ''}. 
                       Deleting this driver will unassign them from all bins.
                     </p>
                   </div>

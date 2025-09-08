@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { LoadScript } from '@react-google-maps/api';
+import './styles/mobile-table-fixes.css';
 // Use Supabase contexts - now properly configured
 import { BinsProvider } from './contexts/BinsContextSupabase';
 import { PickupRequestsProvider } from './contexts/PickupRequestsContextSupabase';

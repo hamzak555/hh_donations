@@ -1125,7 +1125,7 @@ function PickupRequests() {
                           {getStatusBadge(request.status)}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent align="center" side="bottom">
                         <SelectItem value="Pending">
                           <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium">
                             <Clock className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1172,7 +1172,7 @@ function PickupRequests() {
                             {request.assignedDriver || <span className="text-gray-400">Unassigned</span>}
                           </SelectValue>
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent align="center" side="bottom">
                           <SelectItem value="unassigned">
                             <span className="text-gray-400">Unassigned</span>
                           </SelectItem>
@@ -1237,7 +1237,7 @@ function PickupRequests() {
                 <SelectTrigger id="bulk-driver">
                   <SelectValue placeholder="Choose a driver" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="center" side="bottom">
                   {drivers.map(driver => (
                     <SelectItem key={driver} value={driver}>{driver}</SelectItem>
                   ))}
@@ -1289,7 +1289,7 @@ function PickupRequests() {
                 <SelectTrigger id="default-driver">
                   <SelectValue placeholder="Select a default driver" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="center" side="bottom">
                   <SelectItem value="none">No default driver</SelectItem>
                   {drivers.map(driverName => (
                     <SelectItem key={driverName} value={driverName}>
