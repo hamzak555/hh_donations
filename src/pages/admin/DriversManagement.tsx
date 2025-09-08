@@ -597,16 +597,15 @@ function DriversManagement() {
             {getSortedDrivers().map((driver, index) => {
               // Get real pickup requests assigned to this driver
               const driverPickupRequests = pickupRequests.filter(p => p.assignedDriver === driver.name);
-              const pendingPickups = driverPickupRequests.filter(p => p.status === 'Pending');
               
-              // Debug logging for all drivers to find the issue
-              console.log(`Driver: ${driver.name}`, {
-                driverName: driver.name,
-                totalPickups: driverPickupRequests.length,
-                pendingCount: pendingPickups.length,
-                allStatuses: driverPickupRequests.map(p => ({ status: p.status, assignedDriver: p.assignedDriver })),
-                allPickupRequests: pickupRequests.map(p => ({ assignedDriver: p.assignedDriver, status: p.status }))
-              });
+              // Only count non-overdue pending pickups (same logic as PickupRequests page)
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const todayStr = today.toISOString().split('T')[0];
+              
+              const pendingPickups = driverPickupRequests.filter(p => 
+                p.status === 'Pending' && p.date >= todayStr
+              );
               
               // For compatibility with expansion panel, keep using mock data there
               const driverPickupList = driverPickups[driver.id] || [];
