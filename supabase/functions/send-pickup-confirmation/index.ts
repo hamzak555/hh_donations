@@ -40,83 +40,400 @@ Deno.serve(async (req) => {
 
     const formattedDate = pickupDate ? formatDate(pickupDate) : 'Date to be confirmed'
 
-    // Email HTML template
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
+    // Read the HTML template from the server directory
+    const emailHtmlTemplate = await fetch('https://raw.githubusercontent.com/hamzak555/hh_donations/main/server/email-pickup-confirmed.html')
+      .then(res => res.text())
+      .catch(() => {
+        // Fallback to inline template if fetch fails
+        return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" style="background-color: rgb(240, 240, 240);">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pickup Request Confirmed</title>
+  <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+    Thank you for scheduling your donation pickup! We'll collect your items on the scheduled date. Please review the accepted items list to ensure a smooth pickup.
+  </div>
+  <title>Pickup Confirmed</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <style type="text/css">
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; }
+    .im { color: inherit !important; }
+    a[x-apple-data-detectors] {
+      color: inherit !important;
+      text-decoration: none !important;
+      font-size: inherit !important;
+      font-family: inherit !important;
+      font-weight: inherit !important;
+      line-height: inherit !important;
+    }
+    img {
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+      display: block;
+    }
+    table { border-collapse: collapse; }
+    table td { border-collapse: collapse; display: table-cell; }
+    body {
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+    }
+    .mainTable { background-color: #F0F0F0; }
+    html { background-color: #F0F0F0; }
+    .bg-white { background-color: white; }
+    .hr {
+      background-color: #14532d;
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+      mso-line-height-rule: exactly;
+      line-height: 1px;
+    }
+    .textAlignLeft { text-align: left !important; }
+    .textAlignRight { text-align: right !important; }
+    .textAlignCenter { text-align: center !important; }
+    .mt1 { margin-top: 6px; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      color: #4f4f65;
+      -webkit-font-smoothing: antialiased;
+      -ms-text-size-adjust: 100%;
+      -moz-osx-font-smoothing: grayscale;
+      font-smoothing: always;
+      text-rendering: optimizeLegibility;
+    }
+    .h1 {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 700;
+      vertical-align: middle;
+      font-size: 36px;
+      line-height: 42px;
+    }
+    .h2 {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 600;
+      vertical-align: middle;
+      font-size: 16px;
+      line-height: 24px;
+    }
+    .text {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 21px;
+    }
+    .text-list {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      font-size: 16px;
+      line-height: 25px;
+    }
+    .textSmall {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-weight: 400;
+      font-size: 14px;
+    }
+    .text-xsmall {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      line-height: 22px;
+      letter-spacing: 1px;
+    }
+    .text-bold { font-weight: 600; }
+    .text-link { text-decoration: underline; }
+    .textColorDark { color: #0a0e27; }
+    .textColorNormal { color: #4f4f65; }
+    .textColorGreen { color: #14532d; }
+    .textColorGrayDark { color: #7B7B8B; }
+    .textColorGray { color: #A5A8AD; }
+    .textColorWhite { color: #FFFFFF; }
+    .Button-primary-wrapper {
+      border-radius: 6px;
+      background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+    }
+    .Button-primary {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      border-radius: 6px;
+      border: 1px solid #14532d;
+      color: #ffffff;
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 18px;
+      text-decoration: none;
+    }
+    .Button-secondary-wrapper {
+      border-radius: 6px;
+      background-color: #ffffff;
+    }
+    .Button-secondary {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;
+      border-radius: 6px;
+      border: 1px solid #14532d;
+      color: #14532d;
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 18px;
+      text-decoration: none;
+    }
+    .Content-container {
+      padding-left: 60px;
+      padding-right: 60px;
+    }
+    .Content-container--main {
+      padding-top: 54px;
+      padding-bottom: 60px;
+    }
+    .Content {
+      width: 580px;
+      margin: 0 auto;
+    }
+    .wrapper { max-width: 600px; }
+    .section {
+      padding: 24px 0px;
+      border-bottom: 1px solid #d3d3d8;
+    }
+    .message {
+      background-color: #f0fdf4;
+      padding: 18px;
+      border-left: 4px solid #14532d;
+      border-radius: 4px;
+    }
+    .card {
+      border: 1px solid #d3d3d8;
+      padding: 18px;
+    }
+    .header-logoImage {
+      display: block;
+      color: #F0F0F0;
+    }
+    .business-logo__container {
+      width: 48px;
+      height: 48px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #14532d 0%, #166534 100%);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .business-logo__image {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      display: block;
+    }
+    @media screen and (max-width: 648px) {
+      .wrapper { width: 100% !important; max-width: 100% !important; }
+      .Content { width: 90% !important; }
+      .Content-container {
+        padding-left: 36px !important;
+        padding-right: 36px !important;
+      }
+      .Content-container--main {
+        padding-top: 30px !important;
+        padding-bottom: 42px !important;
+      }
+    }
+    @media screen and (max-width: 480px) {
+      .h1 { font-size: 30px !important; line-height: 30px !important; }
+      .text { font-size: 16px !important; line-height: 22px !important; }
+      .Content { width: 100% !important; }
+      .Content-container {
+        padding-left: 18px !important;
+        padding-right: 18px !important;
+      }
+      .Content-container--main {
+        padding-top: 24px !important;
+        padding-bottom: 30px !important;
+      }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f0fdf4;">
-    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-        <!-- Header -->
-        <div style="background-color: #22c55e; padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Pickup Request Confirmed</h1>
-        </div>
-        
-        <!-- Content -->
-        <div style="padding: 40px;">
-            <p style="color: #1f2937; font-size: 16px; line-height: 1.5; margin-bottom: 20px;">
-                Dear ${name || 'Customer'},
-            </p>
-            
-            <p style="color: #1f2937; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">
-                Thank you for scheduling a donation pickup with H&H Donations! We have successfully received your request and will collect your items on the scheduled date.
-            </p>
-            
-            <div style="background-color: #f0fdf4; border-left: 4px solid #22c55e; padding: 20px; margin-bottom: 30px;">
-                <h2 style="color: #14532d; font-size: 20px; margin-top: 0; margin-bottom: 15px;">Pickup Details</h2>
-                <p style="color: #14532d; font-size: 14px; margin: 8px 0;">
-                    <strong>📅 Date:</strong> ${formattedDate}
-                </p>
-                <p style="color: #14532d; font-size: 14px; margin: 8px 0;">
-                    <strong>⏰ Time:</strong> Between 9:00 AM - 4:00 PM
-                </p>
-                <p style="color: #14532d; font-size: 14px; margin: 8px 0;">
-                    <strong>📍 Location:</strong> ${address || 'Address not provided'}
-                </p>
-                ${specialInstructions ? `
-                <p style="color: #14532d; font-size: 14px; margin: 8px 0;">
-                    <strong>📝 Special Instructions:</strong> ${specialInstructions}
-                </p>
-                ` : ''}
-            </div>
-            
-            <div style="background-color: #fef3c7; border-radius: 8px; padding: 20px; margin-bottom: 30px;">
-                <h3 style="color: #92400e; font-size: 18px; margin-top: 0; margin-bottom: 12px;">Important Reminders:</h3>
-                <ul style="color: #92400e; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
-                    <li>Please place your donations on your front porch by 9:00 AM on the pickup day</li>
-                    <li>Ensure items are in bags or boxes for easy collection</li>
-                    <li>Our driver will collect the items without needing to knock</li>
-                    <li>You'll receive a reminder email the day before your pickup</li>
-                </ul>
-            </div>
-            
-            <div style="text-align: center; margin-top: 40px;">
-                <p style="color: #6b7280; font-size: 14px; margin-bottom: 10px;">
-                    Need to make changes to your pickup request?
-                </p>
-                <a href="mailto:info@hhdonations.com" style="display: inline-block; background-color: #22c55e; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-weight: bold;">
-                    Contact Us
-                </a>
-            </div>
-        </div>
-        
-        <!-- Footer -->
-        <div style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-            <p style="color: #6b7280; font-size: 14px; margin: 0;">
-                Thank you for supporting H&H Donations!
-            </p>
-            <p style="color: #9ca3af; font-size: 12px; margin-top: 10px;">
-                © 2025 H&H Donations. All rights reserved.
-            </p>
-        </div>
-    </div>
+<body style="margin: 0; padding: 0; width: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica', 'Arial', sans-serif;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" class="mainTable" style="background-color: #F0F0F0;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" class="Content bg-white" style="background-color: white; width: 580px; margin: 0 auto; border-radius: 12px; overflow: hidden;">
+          <tr>
+            <td class="Content-container Content-container--main text textColorNormal" style="padding: 36px 60px 36px 60px;">
+              <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td valign="top" align="left">
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="left" valign="middle">
+                          <img src="https://raw.githubusercontent.com/hamzak555/hh_donations/main/public/images/HH%20Logo%20Green.png" width="100" height="auto" alt="H&H Donations" border="0" />
+                        </td>
+                        <td align="right" valign="middle">
+                          <a href="https://hhdonations.com" class="textSmall textColorGreen" style="font-size: 14px; color: #14532d; text-decoration: none; font-weight: 500;">Visit Website →</a>
+                        </td>
+                      </tr>
+                      <tr class="spacer">
+                        <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td align="left">
+                          <span class="h1 textColorDark" style="font-weight: 700; font-size: 28px; line-height: 34px; color: #0a0e27;">Pickup Confirmed</span>
+                        </td>
+                      </tr>
+                      <tr class="spacer">
+                        <td height="18px" style="font-size: 18px; line-height:18px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="12px" style="font-size: 12px; line-height:12px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td align="left" class="message" valign="top" style="background-color: #f0fdf4; padding: 18px; border-left: 4px solid #14532d; border-radius: 4px;">
+                    <div class="textSmall textColorNormal" style="font-size: 14px; line-height: 20px; color: #4f4f65;">
+                      <span class="text-bold textColorDark" style="font-weight: 600; color: #0a0e27;">Thank you for scheduling a donation pickup!</span>
+                      <br /><br />
+                      Your donation will help families in need both locally and in underdeveloped countries. Our team will arrive on the scheduled date to collect your items.
+                    </div>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td valign="top">
+                    <table align="left" border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="left" valign="middle" width="468">
+                          <div class="textSmall textColorNormal" style="font-size: 14px; line-height: 20px; color: #4f4f65;">
+                            <span class="text-bold textColorDark" style="font-weight: 600; color: #0a0e27;"><span style="display: inline-block; width: 20px;">📅</span> {{PICKUP_DATE}}</span>
+                            <br />
+                            <span style="color: #14532d; display: inline-block; width: 20px;">⏰</span> Pickup window: 9:00 AM - 4:00 PM
+                            <br />
+                            <span style="color: #14532d; display: inline-block; width: 20px;">📍</span> {{ADDRESS}}
+                            {{SPECIAL_INSTRUCTIONS}}
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr class="spacer">
+                        <td height="30px" style="font-size: 30px; line-height:30px;">&nbsp;</td>
+                      </tr>
+                      <tr>
+                        <td align="left" colspan="2" valign="top" width="100%" height="1" class="hr" style="background-color: #14532d; line-height: 1px;">
+                          <!--[if gte mso 15]>&nbsp;<![endif]-->
+                        </td>
+                      </tr>
+                      <tr class="spacer">
+                        <td height="30px" style="font-size: 30px; line-height:30px;">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td valign="top">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="left">
+                          <div class="textSmall text-bold textColorDark" style="font-weight: 600; font-size: 14px; color: #0a0e27;">
+                            What to Expect
+                          </div>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="left">
+                          <div class="textSmall textColorNormal mt1" style="margin-top: 12px; font-size: 14px; line-height: 22px; color: #4f4f65; white-space: nowrap;">
+                            • Our team will arrive during the scheduled window<br />
+                            • Have items bagged or boxed and ready<br />
+                            • Place items in a visible, accessible location<br />
+                            • No need to be home - leave items outside<br />
+                            • <strong>Important:</strong> See our <a href="https://www.hhdonations.com/what-to-donate" style="color: #14532d; text-decoration: underline;">accepted items list</a><br />
+                            • Non-accepted items will be left behind
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td valign="top">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="left">
+                          <div class="textSmall textColorNormal" style="font-size: 14px; line-height: 20px; color: #4f4f65;">
+                            <span class="text-bold textColorDark" style="font-weight: 600; color: #0a0e27;">Need to reschedule or have questions?</span><br />
+                            To reschedule or if you have any questions about your pickup, please contact us at <a href="mailto:info@hhdonations.com" class="textSmall text-link textColorGreen" style="font-size: 14px; text-decoration: underline; color: #14532d;">info@hhdonations.com</a>.
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="30px" style="font-size: 30px; line-height:30px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td align="left" colspan="2" valign="top" width="100%" height="1" class="hr" style="background-color: #d3d3d8; line-height: 1px;">
+                    <!--[if gte mso 15]>&nbsp;<![endif]-->
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="24px" style="font-size: 24px; line-height:24px;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td>
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                      <tr>
+                        <td align="left" valign="middle">
+                          <img src="https://raw.githubusercontent.com/hamzak555/hh_donations/main/public/images/HH%20Logo%20Green.png" width="40" height="auto" alt="H&H Donations" border="0" />
+                        </td>
+                        <td align="right" valign="middle">
+                          <div class="text-xsmall textColorNormal" style="font-size: 11px; text-transform: uppercase; line-height: 22px; letter-spacing: 1px; color: #7B7B8B;">
+                            © 2025 H&H Donations
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr class="spacer">
+                  <td height="0px" style="font-size: 0px; line-height:0px;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
-</html>
-    `
+</html>`
+      })
+
+    // Replace placeholders in the template
+    const emailHtml = emailHtmlTemplate
+      .replace('{{PICKUP_DATE}}', formattedDate)
+      .replace('{{ADDRESS}}', address || 'Address not provided')
+      .replace('{{SPECIAL_INSTRUCTIONS}}', specialInstructions ? 
+        `<br /><span style="color: #14532d; display: inline-block; width: 20px;">📝</span> Special Instructions: ${specialInstructions}` : '')
 
     // Send email using Resend
     const res = await fetch('https://api.resend.com/emails', {
