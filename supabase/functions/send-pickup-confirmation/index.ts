@@ -15,9 +15,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, name, address, pickupDate, specialInstructions } = await req.json()
+    const requestBody = await req.json()
+    console.log('Received request:', { ...requestBody, email: requestBody.email ? 'provided' : 'missing' })
+    
+    const { email, name, address, pickupDate, specialInstructions } = requestBody
 
     if (!email) {
+      console.error('Email is missing from request')
       return new Response(
         JSON.stringify({ error: 'Email is required' }),
         { 
@@ -40,12 +44,8 @@ Deno.serve(async (req) => {
 
     const formattedDate = pickupDate ? formatDate(pickupDate) : 'Date to be confirmed'
 
-    // Read the HTML template from the server directory
-    const emailHtmlTemplate = await fetch('https://raw.githubusercontent.com/hamzak555/hh_donations/main/server/email-pickup-confirmed.html')
-      .then(res => res.text())
-      .catch(() => {
-        // Fallback to inline template if fetch fails
-        return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    // Use inline template directly for reliability
+    const emailHtmlTemplate = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" style="background-color: rgb(240, 240, 240);">
 <head>
   <div style="display:none;font-size:1px;color:#333333;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
@@ -426,7 +426,6 @@ Deno.serve(async (req) => {
   </table>
 </body>
 </html>`
-      })
 
     // Replace placeholders in the template
     const emailHtml = emailHtmlTemplate
@@ -436,21 +435,28 @@ Deno.serve(async (req) => {
         `<br /><span style="color: #14532d; display: inline-block; width: 20px;">📝</span> Special Instructions: ${specialInstructions}` : '')
 
     // Send email using Resend
+    console.log('Sending email to:', email)
+    console.log('RESEND_API_KEY exists:', !!RESEND_API_KEY)
+    
+    const emailPayload = {
+      from: 'H&H Donations <noreply@hhdonations.com>',
+      to: email,
+      subject: 'Pickup Request Confirmed - H&H Donations',
+      html: emailHtml,
+    }
+    
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
-      body: JSON.stringify({
-        from: 'H&H Donations <noreply@hhdonations.com>',
-        to: email,
-        subject: 'Pickup Request Confirmed - H&H Donations',
-        html: emailHtml,
-      }),
+      body: JSON.stringify(emailPayload),
     })
 
     const data = await res.json()
+    console.log('Resend API response status:', res.status)
+    console.log('Resend API response:', data)
 
     if (!res.ok) {
       console.error('Resend API error:', data)
