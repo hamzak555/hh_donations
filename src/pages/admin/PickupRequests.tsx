@@ -368,15 +368,34 @@ function PickupRequests() {
     
     // Filter by tab status
     if (activeTab !== 'all') {
-      const statusMap: Record<string, string> = {
-        'pending': 'Pending',
-        'overdue': 'Overdue',
-        'picked-up': 'Picked Up',
-        'cancelled': 'Cancelled'
-      };
-      filteredRequests = filteredRequests.filter(request => 
-        request.status === statusMap[activeTab]
-      );
+      if (activeTab === 'overdue') {
+        // For overdue tab, check if date is past and status is still Pending
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+        
+        filteredRequests = filteredRequests.filter(request => 
+          request.status === 'Pending' && request.date < todayStr
+        );
+      } else if (activeTab === 'pending') {
+        // For pending tab, show only non-overdue pending requests
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+        
+        filteredRequests = filteredRequests.filter(request => 
+          request.status === 'Pending' && request.date >= todayStr
+        );
+      } else {
+        // For other tabs, use the status mapping
+        const statusMap: Record<string, string> = {
+          'picked-up': 'Picked Up',
+          'cancelled': 'Cancelled'
+        };
+        filteredRequests = filteredRequests.filter(request => 
+          request.status === statusMap[activeTab]
+        );
+      }
     }
     
     // Filter by search query
@@ -625,10 +644,18 @@ function PickupRequests() {
   };
 
   const getStatusCounts = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().split('T')[0];
+    
+    const pendingRequests = pickupRequests.filter(r => r.status === 'Pending');
+    const overdueRequests = pendingRequests.filter(r => r.date < todayStr);
+    const nonOverduePendingRequests = pendingRequests.filter(r => r.date >= todayStr);
+    
     return {
       all: pickupRequests.length,
-      pending: pickupRequests.filter(r => r.status === 'Pending').length,
-      overdue: pickupRequests.filter(r => r.status === 'Overdue').length,
+      pending: nonOverduePendingRequests.length,
+      overdue: overdueRequests.length,
       pickedUp: pickupRequests.filter(r => r.status === 'Picked Up').length,
       cancelled: pickupRequests.filter(r => r.status === 'Cancelled').length
     };
