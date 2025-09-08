@@ -1043,11 +1043,11 @@ function BinsManagement() {
         </div>
       </div>
 
-      <div className="overflow-x-auto mx-4 sm:mx-6 lg:mx-8">
-        <Card className="min-w-fit">
-          <div className="p-6">
-            <div className="inline-block min-w-full align-middle">
-              <Table className="min-w-[800px]">
+      <div className="mx-4 sm:mx-6 lg:mx-8">
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="p-6 min-w-[800px]">
+              <Table className="w-full">
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
                 {!isDriverRole && (

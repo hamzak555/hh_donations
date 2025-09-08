@@ -1138,11 +1138,10 @@ function BaleManagement() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
         <TabsContent value="active" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <div className="overflow-x-auto flex-1 flex flex-col">
-            <Card className="min-w-fit flex-1 flex flex-col">
-              <div className="p-6">
-                <div className="inline-block min-w-full align-middle">
-                  <Table className="min-w-[900px] select-none">
+          <Card className="overflow-hidden flex-1 flex flex-col">
+            <div className="overflow-x-auto flex-1 flex flex-col">
+              <div className="p-6 min-w-[900px]">
+                  <Table className="w-full select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
                     {visibleActiveColumns.has('baleNumber') && (
@@ -1307,18 +1306,16 @@ function BaleManagement() {
                   ))}
                 </TableBody>
                   </Table>
-                </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="sold" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <div className="overflow-x-auto flex-1 flex flex-col">
-            <Card className="min-w-fit flex-1 flex flex-col">
-              <div className="p-6">
-                <div className="inline-block min-w-full align-middle">
-                  <Table className="min-w-[900px] select-none">
+          <Card className="overflow-hidden flex-1 flex flex-col">
+            <div className="overflow-x-auto flex-1 flex flex-col">
+              <div className="p-6 min-w-[900px]">
+                  <Table className="w-full select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
                     {visibleSoldColumns.has('baleNumber') && (
@@ -1511,10 +1508,9 @@ function BaleManagement() {
                   ))}
                 </TableBody>
                   </Table>
-                </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         </TabsContent>
       </Tabs>
 

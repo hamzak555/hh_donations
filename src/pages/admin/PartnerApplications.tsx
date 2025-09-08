@@ -602,9 +602,10 @@ const PartnerApplications = () => {
       </div>
 
       {/* Applications Table */}
-      <div className="overflow-x-auto mx-4 sm:mx-6 lg:mx-8">
-        <Card className="min-w-fit">
-          <div className="p-6">
+      <div className="mx-4 sm:mx-6 lg:mx-8">
+        <Card className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="p-6 min-w-[800px]">
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-600">
               {(() => {
@@ -911,6 +912,7 @@ const PartnerApplications = () => {
               )}
             </TableBody>
           </Table>
+            </div>
             </div>
           </div>
         </Card>

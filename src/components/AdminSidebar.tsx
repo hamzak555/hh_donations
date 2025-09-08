@@ -360,7 +360,7 @@ const AdminSidebar = () => {
       </div>
 
       {/* Desktop Sidebar - Only visible on desktop */}
-      <div className="hidden lg:block w-64 bg-white border-r border-gray-200 h-screen flex-col fixed left-0 top-0">
+      <div className="hidden lg:block w-64 bg-white border-r border-gray-200 h-screen flex-col fixed left-0 top-0 z-20">
         {/* Logo Section */}
         <div className="p-6 border-b border-gray-200">
           <Link to="/home" className="flex items-center">
