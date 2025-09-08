@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { usePickupRequests } from '@/contexts/PickupRequestsContextSupabase';
 
 const RequestPickup = () => {
-  const { addPickupRequest } = usePickupRequests();
+  const { addPickupRequest, updatePickupRequest } = usePickupRequests();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 3;
   
@@ -131,9 +131,9 @@ const RequestPickup = () => {
         status: 'Pending' as const
       };
 
-      // Add the pickup request
-      await addPickupRequest(pickupRequest);
-      console.log('Pickup request submitted:', pickupRequest);
+      // Add the pickup request and get the ID
+      const requestId = await addPickupRequest(pickupRequest);
+      console.log('Pickup request submitted with ID:', requestId);
       
       // Send confirmation email in the background (don't block submission)
       if (formData.email) {
@@ -153,7 +153,7 @@ const RequestPickup = () => {
             })
           },
           body: JSON.stringify({
-            requestId: new Date().getTime().toString(), // Generate a temporary ID
+            requestId: requestId,
             email: formData.email,
             name: formData.name,
             address: formData.address,
@@ -162,9 +162,19 @@ const RequestPickup = () => {
           })
         })
         .then(response => response.json())
-        .then(result => {
+        .then(async result => {
           if (result.success) {
             console.log('Confirmation email sent successfully');
+            // Update the pickup request to mark email as sent
+            try {
+              await updatePickupRequest(requestId, {
+                confirmationSent: true,
+                confirmationSentAt: new Date().toISOString()
+              });
+              console.log('Updated pickup request with email status');
+            } catch (error) {
+              console.error('Failed to update email status:', error);
+            }
           } else {
             console.error('Failed to send email:', result.error);
           }

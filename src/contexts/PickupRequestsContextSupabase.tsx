@@ -35,7 +35,7 @@ export interface PickupRequest {
 
 interface PickupRequestsContextType {
   pickupRequests: PickupRequest[];
-  addPickupRequest: (request: Omit<PickupRequest, 'id'>) => Promise<void>;
+  addPickupRequest: (request: Omit<PickupRequest, 'id'>) => Promise<string>;
   updatePickupRequest: (id: string, updates: Partial<PickupRequest>) => Promise<void>;
   deletePickupRequest: (id: string) => Promise<void>;
   getPickupRequestById: (id: string) => PickupRequest | undefined;
@@ -259,6 +259,7 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     }
     
     setPickupRequests(prev => [...prev, newRequest]);
+    return newRequest.id;
   };
 
   const updatePickupRequest = async (id: string, updates: Partial<PickupRequest>) => {
