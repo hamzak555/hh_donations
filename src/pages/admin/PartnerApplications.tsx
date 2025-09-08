@@ -521,16 +521,17 @@ const PartnerApplications = () => {
           />
         </div>
         
-        <div className="w-full sm:w-2/3 flex items-center gap-1 p-1 bg-muted rounded-lg overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+        <div className="w-full sm:w-2/3 overflow-x-auto">
+          <div className="flex items-center gap-1 p-1 bg-muted rounded-lg min-w-max">
+            <button
+              onClick={() => setActiveTab('approved')}
+              className={`min-w-[80px] sm:min-w-0 sm:flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'approved'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            <span className="truncate">Approved</span>
+            <span>Approved</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'approved'
                 ? 'bg-gray-200 text-gray-900'
@@ -541,13 +542,13 @@ const PartnerApplications = () => {
           </button>
           <button
             onClick={() => setActiveTab('pending')}
-            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`min-w-[80px] sm:min-w-0 sm:flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'pending'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            <span className="truncate">Pending</span>
+            <span>Pending</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'pending'
                 ? 'bg-gray-200 text-gray-900'
@@ -558,13 +559,13 @@ const PartnerApplications = () => {
           </button>
           <button
             onClick={() => setActiveTab('rejected')}
-            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`min-w-[80px] sm:min-w-0 sm:flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'rejected'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            <span className="truncate">Rejected</span>
+            <span>Rejected</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'rejected'
                 ? 'bg-gray-200 text-gray-900'
@@ -575,13 +576,13 @@ const PartnerApplications = () => {
           </button>
           <button
             onClick={() => setActiveTab('archived')}
-            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`min-w-[80px] sm:min-w-0 sm:flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'archived'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            <span className="truncate">Archive</span>
+            <span>Archive</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'archived'
                 ? 'bg-gray-200 text-gray-900'
@@ -592,13 +593,13 @@ const PartnerApplications = () => {
           </button>
           <button
             onClick={() => setActiveTab('all')}
-            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`min-w-[80px] sm:min-w-0 sm:flex-1 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'all'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            <span className="truncate">All</span>
+            <span>All</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'all'
                 ? 'bg-gray-200 text-gray-900'
@@ -607,6 +608,7 @@ const PartnerApplications = () => {
               {applications.length}
             </span>
           </button>
+          </div>
         </div>
       </div>
 
