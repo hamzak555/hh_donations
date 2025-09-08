@@ -118,6 +118,7 @@ function PickupRequests() {
   const currentDriverName = isDriverRole ? contextDrivers.find(d => d.id === driverId)?.name : null;
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(new Set());
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   
   // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState<Set<ColumnId>>(() => {
@@ -590,6 +591,24 @@ function PickupRequests() {
     });
   };
 
+  const handleBulkDelete = async () => {
+    try {
+      // Delete all selected requests
+      const deletePromises = Array.from(selectedRequests).map(id => 
+        deletePickupRequest(id)
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Clear selection after successful deletion
+      setSelectedRequests(new Set());
+      setLastSelectedIndex(null);
+      setIsBulkDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting pickup requests:', error);
+    }
+  };
+
   // Check if a date is Tuesday (2) or Thursday (4)
   const isTuesdayOrThursday = (date: Date) => {
     const day = date.getDay();
@@ -647,6 +666,14 @@ function PickupRequests() {
               >
                 <Users className="w-4 h-4" />
                 Assign Driver ({selectedRequests.size})
+              </Button>
+              <Button 
+                onClick={() => setIsBulkDeleteDialogOpen(true)}
+                variant="outline"
+                className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
+              >
+                <Trash className="w-4 h-4" />
+                Delete ({selectedRequests.size})
               </Button>
               <Button 
                 onClick={() => {
@@ -1383,6 +1410,29 @@ function PickupRequests() {
               className="bg-red-600 hover:bg-red-700"
             >
               Delete Request
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedRequests.size} Pickup Request{selectedRequests.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected pickup request{selectedRequests.size !== 1 ? 's' : ''} from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete {selectedRequests.size} Request{selectedRequests.size !== 1 ? 's' : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
