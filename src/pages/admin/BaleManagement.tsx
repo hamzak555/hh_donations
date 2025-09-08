@@ -924,38 +924,42 @@ function BaleManagement() {
 
   return (
     <div className="h-screen flex flex-col pt-10 pb-6">
-      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold">Bales</h1>
-        <div className="flex gap-2">
-          {/* Column Visibility Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className={
-                  activeTab === 'active' 
-                    ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : "")
-                    : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : "")
-                }
-              >
-                <Settings2 className={
-                  activeTab === 'active'
-                    ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4")
-                    : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4")
-                } />
-                Columns
-                <span className={`text-xs font-medium ${
-                  activeTab === 'active'
-                    ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "text-green-600" : "text-gray-500")
-                    : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "text-green-600" : "text-gray-500")
-                }`}>
-                  {activeTab === 'active' 
-                    ? `(${visibleActiveColumns.size}/${Object.keys(ACTIVE_COLUMN_IDS).length})`
-                    : `(${visibleSoldColumns.size}/${Object.keys(SOLD_COLUMN_IDS).length})`
-                  }
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
+        {/* Title - always on its own line on mobile */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Bales</h1>
+          
+          {/* Action buttons - wrap on mobile */}
+          <div className="flex flex-wrap gap-2">
+            {/* Column Visibility Dropdown */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className={`text-sm ${
+                    activeTab === 'active' 
+                      ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : "")
+                      : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : "")
+                  }`}
+                >
+                  <Settings2 className={`h-4 w-4 ${
+                    activeTab === 'active'
+                      ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "text-green-600" : "")
+                      : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "text-green-600" : "")
+                  }`} />
+                  <span className="ml-1 sm:ml-2">Columns</span>
+                  <span className={`ml-1 text-xs font-medium ${
+                    activeTab === 'active'
+                      ? (visibleActiveColumns.size < Object.keys(ACTIVE_COLUMN_IDS).length ? "text-green-600" : "text-gray-500")
+                      : (visibleSoldColumns.size < Object.keys(SOLD_COLUMN_IDS).length ? "text-green-600" : "text-gray-500")
+                  }`}>
+                    {activeTab === 'active' 
+                      ? `(${visibleActiveColumns.size}/${Object.keys(ACTIVE_COLUMN_IDS).length})`
+                      : `(${visibleSoldColumns.size}/${Object.keys(SOLD_COLUMN_IDS).length})`
+                    }
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
               <div className="px-2 py-1.5 text-sm font-semibold">
                 Toggle columns
@@ -1012,41 +1016,45 @@ function BaleManagement() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
-            <Plus className="w-4 h-4" />
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)} 
+            variant="outline"
+            className="text-sm"
+          >
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
             Create New Bale
           </Button>
+          </div>
         </div>
       </div>
 
       {/* Search Bar, Tabs and Statistics Layout */}
-      <div className="mb-6 flex items-start gap-4 px-4 sm:px-6 lg:px-8">
-        <div className="flex-1 space-y-4">
-          {/* Search Bar */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-2xl">
+      <div className="mb-6 flex flex-col lg:flex-row items-start gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex-1 w-full">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            {/* Search Bar */}
+            <div className="relative w-full lg:max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 type="text"
-                placeholder="Search bales by number, contents, status..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
-          </div>
 
-          {/* Tabs */}
-          <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full max-w-md">
+            {/* Tabs */}
+            <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full lg:w-auto lg:min-w-[280px]">
             <button
               onClick={() => setActiveTab('active')}
-              className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
                 activeTab === 'active'
                   ? 'bg-background text-foreground shadow-sm'
                   : ''
               }`}
             >
-              Active Bales
+              <span className="truncate">Active</span>
               <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
                 activeTab === 'active'
                   ? 'bg-gray-200 text-gray-900'
@@ -1057,13 +1065,13 @@ function BaleManagement() {
             </button>
             <button
               onClick={() => setActiveTab('sold')}
-              className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+              className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
                 activeTab === 'sold'
                   ? 'bg-background text-foreground shadow-sm'
                   : ''
               }`}
             >
-              Sold Bales
+              <span className="truncate">Sold</span>
               <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
                 activeTab === 'sold'
                   ? 'bg-gray-200 text-gray-900'
@@ -1072,12 +1080,13 @@ function BaleManagement() {
                 {bales.filter(b => b.status === 'Sold').length}
               </span>
             </button>
+            </div>
           </div>
         </div>
 
         {/* Statistics Card - Only show on sold tab */}
         {activeTab === 'sold' && (
-          <Card className="p-3 h-[88px] flex items-center" style={{ width: '450px' }}>
+          <Card className="p-3 h-auto lg:h-[88px] flex items-center w-full lg:w-[450px]">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center justify-evenly flex-1">
                 <div className="flex flex-col items-center">
@@ -1138,10 +1147,9 @@ function BaleManagement() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
         <TabsContent value="active" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <Card className="overflow-hidden flex-1 flex flex-col">
-            <div className="overflow-x-auto flex-1 flex flex-col">
-              <div className="p-6 min-w-[900px]">
-                  <Table className="w-full select-none">
+          <Card className="overflow-x-auto flex-1 flex flex-col">
+            <div className="p-6">
+              <Table className="min-w-[900px] select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
                     {visibleActiveColumns.has('baleNumber') && (
@@ -1306,16 +1314,14 @@ function BaleManagement() {
                   ))}
                 </TableBody>
                   </Table>
-              </div>
             </div>
           </Card>
         </TabsContent>
 
         <TabsContent value="sold" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <Card className="overflow-hidden flex-1 flex flex-col">
-            <div className="overflow-x-auto flex-1 flex flex-col">
-              <div className="p-6 min-w-[900px]">
-                  <Table className="w-full select-none">
+          <Card className="overflow-x-auto flex-1 flex flex-col">
+            <div className="p-6">
+              <Table className="min-w-[900px] select-none">
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
                     {visibleSoldColumns.has('baleNumber') && (
@@ -1508,7 +1514,6 @@ function BaleManagement() {
                   ))}
                 </TableBody>
                   </Table>
-              </div>
             </div>
           </Card>
         </TabsContent>

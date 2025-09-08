@@ -924,57 +924,65 @@ function BinsManagement() {
 
   return (
     <div className="pt-10 pb-20 w-full">
-      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Bins' : 'All Bins'}</h1>
-        <div className="flex gap-2">
-          {selectedBins.size > 0 && !isDriverRole && (
-            <>
-              <Button 
-                onClick={() => setIsBulkAssignDialogOpen(true)}
-                variant="outline"
-              >
-                <Users className="w-4 h-4" />
-                Assign Driver ({selectedBins.size})
-              </Button>
-              <Button 
-                onClick={() => {
-                  setSelectedBins(new Set());
-                  setLastSelectedIndex(null);
-                }}
-                variant="ghost"
-                size="sm"
-              >
-                Clear Selection
-              </Button>
-            </>
-          )}
-          <Button 
-            onClick={() => fetchSensorData(false)}
-            variant="outline"
-            disabled={isLoadingSensorData}
-          >
-            {isLoadingSensorData ? (
-              <div className="animate-spin w-4 h-4 mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full" />
-            ) : (
-              <div className="w-4 h-4 mr-2 text-blue-600">📡</div>
-            )}
-            Refresh Sensors
-          </Button>
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
+        {/* Title - always on its own line on mobile */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">{isDriverRole ? 'My Assigned Bins' : 'All Bins'}</h1>
           
-          {/* Column Visibility Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
-              >
-                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
-                Columns
-                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
-                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
+          {/* Action buttons - wrap on mobile */}
+          <div className="flex flex-wrap gap-2">
+            {selectedBins.size > 0 && !isDriverRole && (
+              <>
+                <Button 
+                  onClick={() => setIsBulkAssignDialogOpen(true)}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  <Users className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Assign Driver</span>
+                  <span className="sm:hidden">Assign</span> ({selectedBins.size})
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setSelectedBins(new Set());
+                    setLastSelectedIndex(null);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              </>
+            )}
+            <Button 
+              onClick={() => fetchSensorData(false)}
+              variant="outline"
+              disabled={isLoadingSensorData}
+              className="text-sm"
+            >
+              {isLoadingSensorData ? (
+                <div className="animate-spin w-4 h-4 mr-1 sm:mr-2 border-2 border-gray-300 border-t-gray-600 rounded-full" />
+              ) : (
+                <div className="w-4 h-4 mr-1 sm:mr-2 text-blue-600">📡</div>
+              )}
+              <span className="hidden sm:inline">Refresh Sensors</span>
+              <span className="sm:hidden">Refresh</span>
+            </Button>
+            
+            {/* Column Visibility Dropdown */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className={`text-sm ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}`}
+                >
+                  <Settings2 className={`h-4 w-4 ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : ""}`} />
+                  <span className="ml-1 sm:ml-2">Columns</span>
+                  <span className={`ml-1 text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                    ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
               <div className="px-2 py-1.5 text-sm font-semibold">
                 Toggle columns
@@ -1011,43 +1019,50 @@ function BinsManagement() {
           </DropdownMenu>
           
           {!isDriverRole && (
-            <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
-              <Plus className="w-4 h-4" />
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              variant="outline"
+              className="text-sm"
+            >
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />
               Add New Bin
             </Button>
           )}
+          </div>
         </div>
       </div>
 
       {/* Search Bar */}
       <div className="mb-6 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-4">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              type="text"
-              placeholder="Search bins by number, location, address, status..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <div className="text-sm text-gray-600">
-            {searchQuery.trim() ? (
-              <>Showing {getFilteredAndSortedBins().length} of {bins.length} bins</>
-            ) : (
-              <>{bins.length} bins total</>
-            )}
-          </div>
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
         </div>
       </div>
 
       <div className="mx-4 sm:mx-6 lg:mx-8">
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="p-6 min-w-[800px]">
-              <Table className="w-full">
+        <Card className="overflow-x-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-gray-600">
+                {(() => {
+                  const filteredBins = getFilteredAndSortedBins();
+                  
+                  if (searchQuery.trim()) {
+                    return <>Showing {filteredBins.length} of {bins.length} bins</>;
+                  }
+                  return <>Showing {filteredBins.length} bins</>;
+                })()}
+              </div>
+            </div>
+            
+            <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:!bg-transparent">
                 {!isDriverRole && (
@@ -1373,7 +1388,6 @@ function BinsManagement() {
               })}
             </TableBody>
           </Table>
-            </div>
           </div>
         </Card>
       </div>

@@ -1033,23 +1033,27 @@ function ContainerManagement() {
 
   return (
     <div className="pt-10 pb-20 w-full">
-      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold">Containers</h1>
-        <div className="flex gap-2">
-          {/* Column Visibility Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
-              >
-                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
-                Columns
-                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
-                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
+        {/* Title - always on its own line on mobile */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Containers</h1>
+          
+          {/* Action buttons - wrap on mobile */}
+          <div className="flex flex-wrap gap-2">
+            {/* Column Visibility Dropdown */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className={`text-sm ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}`}
+                >
+                  <Settings2 className={`h-4 w-4 ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : ""}`} />
+                  <span className="ml-1 sm:ml-2">Columns</span>
+                  <span className={`ml-1 text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                    ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
               <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
               {Object.entries(COLUMN_IDS).map(([id, label]) => (
@@ -1078,19 +1082,24 @@ function ContainerManagement() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline">
-            <Plus className="w-4 h-4" />
+          <Button 
+            onClick={() => setIsCreateDialogOpen(true)} 
+            variant="outline"
+            className="text-sm"
+          >
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
             Create Container
           </Button>
+          </div>
         </div>
       </div>
 
       {/* Filters and Tabs */}
-      <div className="flex gap-4 mb-6 px-4 sm:px-6 lg:px-8">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 px-4 sm:px-6 lg:px-8">
+        <div className="relative w-full sm:w-1/2">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
-            placeholder="Search containers..."
+            placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -1098,16 +1107,16 @@ function ContainerManagement() {
         </div>
         
         {/* Tabs */}
-        <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground flex-1">
+        <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full sm:flex-1 overflow-x-auto">
           <button
             onClick={() => setActiveTab('all')}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'all'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            All Containers
+            <span className="truncate">All</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'all'
                 ? 'bg-gray-200 text-gray-900'
@@ -1118,13 +1127,13 @@ function ContainerManagement() {
           </button>
           <button
             onClick={() => setActiveTab('warehouse')}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'warehouse'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            Warehouse
+            <span className="truncate">Warehouse</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'warehouse'
                 ? 'bg-gray-200 text-gray-900'
@@ -1135,13 +1144,13 @@ function ContainerManagement() {
           </button>
           <button
             onClick={() => setActiveTab('shipped')}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'shipped'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            Shipped
+            <span className="truncate">Shipped</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'shipped'
                 ? 'bg-gray-200 text-gray-900'
@@ -1155,9 +1164,8 @@ function ContainerManagement() {
 
       {/* Containers Table */}
       <div className="mx-4 sm:mx-6 lg:mx-8">
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="p-6 min-w-[900px]">
+        <Card className="overflow-x-auto">
+          <div className="p-6">
           {/* Results Count */}
           <div className="flex justify-between items-center mb-4">
             <div className="text-sm text-gray-600">
@@ -1430,7 +1438,6 @@ function ContainerManagement() {
               )}
             </TableBody>
               </Table>
-            </div>
             </div>
           </div>
         </Card>

@@ -126,6 +126,15 @@ function Reporting() {
   const [selectedRange, setSelectedRange] = useState<string>('30D');
   const [activeTab, setActiveTab] = useState('financial');
   const [isLocationExpanded, setIsLocationExpanded] = useState(false);
+  const [expandedLocations, setExpandedLocations] = useState<string[]>([]);
+
+  const toggleLocationExpanded = (location: string) => {
+    setExpandedLocations(prev => 
+      prev.includes(location) 
+        ? prev.filter(l => l !== location)
+        : [...prev, location]
+    );
+  };
 
   // Quick range selection
   const handleQuickRange = (range: QuickRange) => {
@@ -561,33 +570,42 @@ function Reporting() {
   return (
     <div className="min-h-screen flex flex-col pt-10 pb-6 bg-gray-50">
       <div className="flex-1 overflow-x-hidden overflow-y-auto">
-      <div className="px-2 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold">Reporting</h1>
-          
-          {/* Date Range Selector */}
-          <div className="flex items-center gap-2">
-            {/* Quick Range Buttons */}
-            {quickRanges.map((range) => (
-              <Button
-                key={range.label}
-                variant={selectedRange === range.label ? "default" : "outline"}
-                size="sm"
-                onClick={() => handleQuickRange(range)}
-                style={selectedRange === range.label ? { backgroundColor: '#0b503c', borderColor: '#0b503c' } : {}}
-              >
-                {range.label}
-              </Button>
-            ))}
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 mb-6">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold">Reporting</h1>
+            
+            {/* Date Range Selector */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            {/* Quick Range Buttons - wrap on mobile */}
+            <div className="flex flex-wrap gap-2">
+              {quickRanges.map((range) => (
+                <Button
+                  key={range.label}
+                  variant={selectedRange === range.label ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleQuickRange(range)}
+                  style={selectedRange === range.label ? { backgroundColor: '#0b503c', borderColor: '#0b503c' } : {}}
+                  className="text-xs sm:text-sm"
+                >
+                  {range.label}
+                </Button>
+              ))}
+            </div>
             
             {/* Date Range Picker */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="min-w-[240px] justify-start">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto sm:min-w-[240px] justify-start text-xs sm:text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {dateRange?.from && dateRange?.to ? (
                     <>
-                      {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                      <span className="hidden sm:inline">
+                        {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                      </span>
+                      <span className="sm:hidden">
+                        {format(dateRange.from, 'MMM dd')} - {format(dateRange.to, 'MMM dd')}
+                      </span>
                     </>
                   ) : (
                     'Select date range'
@@ -607,28 +625,36 @@ function Reporting() {
                 />
               </PopoverContent>
             </Popover>
+            </div>
           </div>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center">
             <TabsList className="grid w-full sm:max-w-md grid-cols-2">
-              <TabsTrigger value="financial">Financial</TabsTrigger>
-              <TabsTrigger value="operational">Operational</TabsTrigger>
+              <TabsTrigger value="financial">
+                <span className="truncate">Financial</span>
+              </TabsTrigger>
+              <TabsTrigger value="operational">
+                <span className="truncate">Operational</span>
+              </TabsTrigger>
             </TabsList>
             
-            {/* Export Button */}
-            <Button
-              onClick={activeTab === 'financial' ? handleExportFinancial : handleExportOperational}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              style={{ borderColor: '#0b503c', color: '#0b503c' }}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Export to Excel
-            </Button>
+            {/* Export Button - Only show for Financial tab */}
+            {activeTab === 'financial' && (
+              <Button
+                onClick={handleExportFinancial}
+                variant="outline"
+                size="sm"
+                className="flex items-center justify-center gap-2 w-full sm:w-auto"
+                style={{ borderColor: '#0b503c', color: '#0b503c' }}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                <span className="hidden sm:inline">Export to Excel</span>
+                <span className="sm:hidden">Export</span>
+              </Button>
+            )}
           </div>
 
           {/* Operational Tab */}
@@ -1193,40 +1219,47 @@ function Reporting() {
                 <CardContent>
                   {salesMetrics.unsoldByLocation && salesMetrics.unsoldByLocation.length > 0 ? (
                     <div className="space-y-3">
-                      {salesMetrics.unsoldByLocation.map((item, index) => (
-                        <MobileTooltip 
-                          key={index}
-                          trigger={
-                            <div className="flex justify-between items-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-help transition-colors">
-                              <span className="text-sm text-gray-700">{item.location}</span>
-                              <span className="font-bold" style={{ color: '#0b503c' }}>{item.count}</span>
-                            </div>
-                          }
-                          content={
-                            <div className="max-w-xs p-3 bg-white rounded-lg shadow-lg border">
-                              <div className="space-y-2">
-                                <div className="font-semibold text-sm">{item.location}</div>
-                                <div className="text-xs text-gray-600">
-                                  Total: {item.count} bales ({item.weight.toFixed(0)} kg)
+                      {salesMetrics.unsoldByLocation.map((item, index) => {
+                        const isExpanded = expandedLocations.includes(item.location);
+                        return (
+                          <div key={index} className="rounded-lg bg-gray-50 overflow-hidden">
+                            <button
+                              onClick={() => toggleLocationExpanded(item.location)}
+                              className="w-full p-3 hover:bg-gray-100 transition-colors"
+                            >
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2">
+                                  {isExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                                  ) : (
+                                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                                  )}
+                                  <span className="font-semibold text-sm text-left">{item.location}</span>
                                 </div>
-                                {item.byType && item.byType.length > 0 && (
-                                  <div className="border-t pt-2 mt-2">
-                                    <div className="text-xs font-medium mb-1">By Type:</div>
-                                    <div className="space-y-1">
-                                      {item.byType.map((t, idx) => (
-                                        <div key={idx} className="flex justify-between text-xs gap-4">
-                                          <span className="text-gray-600">{t.type}:</span>
-                                          <span className="font-medium">{t.count} bales ({t.weight.toFixed(0)} kg)</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
+                                <div className="text-right">
+                                  <span className="font-bold" style={{ color: '#0b503c' }}>{item.count} bales</span>
+                                  <div className="text-xs text-gray-600">{item.weight.toFixed(0)} kg</div>
+                                </div>
                               </div>
-                            </div>
-                          }
-                        />
-                      ))}
+                            </button>
+                            {isExpanded && item.byType && item.byType.length > 0 && (
+                              <div className="px-3 pb-3 border-t border-gray-200">
+                                <div className="pt-2">
+                                  <div className="text-xs font-medium mb-2">By Type:</div>
+                                  <div className="space-y-1">
+                                    {item.byType.map((t, idx) => (
+                                      <div key={idx} className="flex justify-between text-xs">
+                                        <span className="text-gray-600">{t.type}:</span>
+                                        <span className="font-medium">{t.count} bales ({t.weight.toFixed(0)} kg)</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="mt-4">

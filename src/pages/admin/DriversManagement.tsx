@@ -463,23 +463,27 @@ function DriversManagement() {
 
   return (
     <div className="pt-10 pb-20 w-full">
-      <div className="flex justify-between items-center mb-6 px-8">
-        <h1 className="text-3xl font-bold">Drivers</h1>
-        <div className="flex gap-2">
-          {/* Column Visibility Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
-              >
-                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
-                Columns
-                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
-                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
+        {/* Title - always on its own line on mobile */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Drivers</h1>
+          
+          {/* Action buttons - wrap on mobile */}
+          <div className="flex flex-wrap gap-2">
+            {/* Column Visibility Dropdown */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className={`text-sm ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}`}
+                >
+                  <Settings2 className={`h-4 w-4 ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : ""}`} />
+                  <span className="ml-1 sm:ml-2">Columns</span>
+                  <span className={`ml-1 text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                    ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
               <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
               {Object.entries(COLUMN_IDS).map(([id, label]) => (
@@ -508,17 +512,29 @@ function DriversManagement() {
             </DropdownMenuContent>
           </DropdownMenu>
           
-          <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
-            <Plus className="w-4 h-4" />
-            Add New Driver
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)} 
+            variant="outline"
+            className="text-sm"
+          >
+            <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Add New Driver</span>
+            <span className="sm:hidden">Add Driver</span>
           </Button>
+          </div>
         </div>
       </div>
 
       {/* Drivers Table */}
-      <div className="mx-8">
+      <div className="mx-4 sm:mx-6 lg:mx-8">
         <Card>
           <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-gray-600">
+                Showing {getSortedDrivers().length} drivers
+              </div>
+            </div>
+            
             <div className="w-full">
               <Table className="w-full">
             <TableHeader>

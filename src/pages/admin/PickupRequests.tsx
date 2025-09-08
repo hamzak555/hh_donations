@@ -667,68 +667,78 @@ function PickupRequests() {
 
   return (
     <div className="pt-10 pb-20 w-full">
-      <div className="flex justify-between items-center mb-6 px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold">{isDriverRole ? 'My Assigned Pickup Requests' : 'Pickup Requests'}</h1>
-        <div className="flex gap-2">
-          {!isDriverRole && activeTab === 'pending' && (
-            <>
-              <Button 
-                onClick={() => {
-                  setTempDefaultDriver(defaultDriver || "");
-                  setIsDefaultDriverDialogOpen(true);
-                }}
-                variant="outline"
-                size="sm"
-              >
-                <Settings className="w-4 h-4" />
-                Default Driver {defaultDriver && `(${defaultDriver})`}
-              </Button>
-            </>
-          )}
-          {selectedRequests.size > 0 && !isDriverRole && (
-            <>
-              <Button 
-                onClick={() => setIsBulkAssignDialogOpen(true)}
-                variant="outline"
-              >
-                <Users className="w-4 h-4" />
-                Assign Driver ({selectedRequests.size})
-              </Button>
-              <Button 
-                onClick={() => setIsBulkDeleteDialogOpen(true)}
-                variant="outline"
-                className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400"
-              >
-                <Trash className="w-4 h-4" />
-                Delete ({selectedRequests.size})
-              </Button>
-              <Button 
-                onClick={() => {
-                  setSelectedRequests(new Set());
-                  setLastSelectedIndex(null);
-                }}
-                variant="ghost"
-                size="sm"
-              >
-                Clear Selection
-              </Button>
-            </>
-          )}
+      <div className="mb-6 px-4 sm:px-6 lg:px-8">
+        {/* Title - always on its own line on mobile */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">{isDriverRole ? 'My Assigned Pickup Requests' : 'Pickup Requests'}</h1>
           
-          {/* Column Visibility Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="outline" 
-                className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}
-              >
-                <Settings2 className={visibleColumns.size < Object.keys(COLUMN_IDS).length ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
-                Columns
-                <span className={`text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
-                  ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
+          {/* Action buttons - wrap on mobile */}
+          <div className="flex flex-wrap gap-2">
+            {!isDriverRole && activeTab === 'pending' && (
+              <>
+                <Button 
+                  onClick={() => {
+                    setTempDefaultDriver(defaultDriver || "");
+                    setIsDefaultDriverDialogOpen(true);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-sm"
+                >
+                  <Settings className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Default Driver</span>
+                  <span className="sm:hidden">Default</span>
+                  {defaultDriver && ` (${defaultDriver})`}
+                </Button>
+              </>
+            )}
+            {selectedRequests.size > 0 && !isDriverRole && (
+              <>
+                <Button 
+                  onClick={() => setIsBulkAssignDialogOpen(true)}
+                  variant="outline"
+                  className="text-sm"
+                >
+                  <Users className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Assign Driver</span>
+                  <span className="sm:hidden">Assign</span> ({selectedRequests.size})
+                </Button>
+                <Button 
+                  onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 text-sm"
+                >
+                  <Trash className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span> ({selectedRequests.size})
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setSelectedRequests(new Set());
+                    setLastSelectedIndex(null);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              </>
+            )}
+            
+            {/* Column Visibility Dropdown */}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className={`text-sm ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "border-green-300 bg-green-50 hover:bg-green-100" : ""}`}
+                >
+                  <Settings2 className={`h-4 w-4 ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : ""}`} />
+                  <span className="ml-1 sm:ml-2">Columns</span>
+                  <span className={`ml-1 text-xs font-medium ${visibleColumns.size < Object.keys(COLUMN_IDS).length ? "text-green-600" : "text-gray-500"}`}>
+                    ({visibleColumns.size}/{Object.keys(COLUMN_IDS).length})
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
               <div className="px-2 py-1.5 text-sm font-semibold">Toggle columns</div>
               {Object.entries(COLUMN_IDS).map(([id, label]) => (
@@ -756,35 +766,36 @@ function PickupRequests() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </div>
 
       {/* Search and Tabs */}
-      <div className="flex gap-4 mb-6 px-4 sm:px-6 lg:px-8">
-        <div className="w-1/3 relative">
+      <div className="flex flex-col sm:flex-row gap-4 mb-6 px-4 sm:px-6 lg:px-8">
+        <div className="w-full sm:w-1/3 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <Input
-            placeholder="Search by name, email, phone, address, status..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
           />
         </div>
         
-        <div className="w-2/3 flex items-center gap-1 p-1 bg-muted rounded-lg">
+        <div className="w-full sm:w-2/3 flex items-center gap-1 p-1 bg-muted rounded-lg overflow-x-auto">
           <button
             onClick={() => {
               setActiveTab('pending');
               setSelectedRequests(new Set());
               setLastSelectedIndex(null);
             }}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'pending'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            Pending
+            <span className="truncate">Pending</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'pending'
                 ? 'bg-gray-200 text-gray-900'
@@ -799,13 +810,13 @@ function PickupRequests() {
               setSelectedRequests(new Set());
               setLastSelectedIndex(null);
             }}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'overdue'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            Overdue
+            <span className="truncate">Overdue</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'overdue'
                 ? 'bg-gray-200 text-gray-900'
@@ -820,13 +831,14 @@ function PickupRequests() {
               setSelectedRequests(new Set());
               setLastSelectedIndex(null);
             }}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'picked-up'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            Picked Up
+            <span className="truncate hidden sm:inline">Picked Up</span>
+            <span className="truncate sm:hidden">Picked</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'picked-up'
                 ? 'bg-gray-200 text-gray-900'
@@ -841,13 +853,14 @@ function PickupRequests() {
               setSelectedRequests(new Set());
               setLastSelectedIndex(null);
             }}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'cancelled'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            Cancelled
+            <span className="truncate hidden sm:inline">Cancelled</span>
+            <span className="truncate sm:hidden">Cancel</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'cancelled'
                 ? 'bg-gray-200 text-gray-900'
@@ -862,13 +875,13 @@ function PickupRequests() {
               setSelectedRequests(new Set());
               setLastSelectedIndex(null);
             }}
-            className={`flex-1 inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+            className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'all'
                 ? 'bg-background text-foreground shadow-sm'
                 : ''
             }`}
           >
-            All
+            <span className="truncate">All</span>
             <span className={`inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full ${
               activeTab === 'all'
                 ? 'bg-gray-200 text-gray-900'
@@ -882,10 +895,23 @@ function PickupRequests() {
 
       {/* Pickup Requests Table */}
       <div className="mx-4 sm:mx-6 lg:mx-8">
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="p-6 min-w-[800px]">
-              <Table className="w-full">
+        <Card className="overflow-x-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-gray-600">
+                {(() => {
+                  const filteredRequests = getFilteredAndSortedRequests();
+                  const tabName = activeTab === 'picked-up' ? 'picked up' : activeTab;
+                  
+                  if (searchQuery.trim()) {
+                    return <>Showing {filteredRequests.length} of {getStatusCounts()[activeTab === 'picked-up' ? 'pickedUp' : activeTab]} {tabName} requests</>;
+                  }
+                  return <>Showing {filteredRequests.length} {activeTab === 'all' ? 'total' : tabName} requests</>;
+                })()}
+              </div>
+            </div>
+            
+            <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {!isDriverRole && (
@@ -1267,7 +1293,6 @@ function PickupRequests() {
               )))}
             </TableBody>
           </Table>
-            </div>
           </div>
         </Card>
       </div>

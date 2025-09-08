@@ -275,31 +275,38 @@ function UserManagement() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">User Management</h1>
+    <div className="min-h-screen flex flex-col pt-10 pb-6 bg-gray-50">
+      <div className="flex-1 overflow-x-hidden overflow-y-auto">
+        {/* Header */}
+        <div className="mb-6 px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <h1 className="text-2xl sm:text-3xl font-bold">User Management</h1>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              variant="outline"
+              className="text-sm w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4 mr-1 sm:mr-2" />
+              Add User
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setIsAddDialogOpen(true)} variant="outline">
-          <Plus className="w-4 h-4" />
-          Add User
-        </Button>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Admin Users ({users.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <div className="mx-4 sm:mx-6 lg:mx-8">
+          <Card className="overflow-x-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-gray-600">
+              Showing {users.length} users
+            </div>
+          </div>
+          
           {isLoading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-blue-600 rounded-full" />
             </div>
           ) : (
-            <Table>
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -408,8 +415,10 @@ function UserManagement() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
+        </div>
       </Card>
+      </div>
+      </div>
 
       {/* Add User Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
