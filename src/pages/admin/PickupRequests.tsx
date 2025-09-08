@@ -184,26 +184,27 @@ function PickupRequests() {
   }, []);
 
   // Auto-update overdue pickup requests
-  useEffect(() => {
-    const checkAndUpdateOverdueRequests = () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Set to start of day
-      const todayStr = today.toISOString().split('T')[0];
+  // DISABLED: Database constraint doesn't allow 'Overdue' status
+  // useEffect(() => {
+  //   const checkAndUpdateOverdueRequests = () => {
+  //     const today = new Date();
+  //     today.setHours(0, 0, 0, 0); // Set to start of day
+  //     const todayStr = today.toISOString().split('T')[0];
       
-      pickupRequests.forEach(request => {
-        if (request.status === 'Pending' && request.date < todayStr) {
-          updatePickupRequest(request.id, { status: 'Overdue' });
-        }
-      });
-    };
+  //     pickupRequests.forEach(request => {
+  //       if (request.status === 'Pending' && request.date < todayStr) {
+  //         updatePickupRequest(request.id, { status: 'Overdue' });
+  //       }
+  //     });
+  //   };
 
-    checkAndUpdateOverdueRequests();
+  //   checkAndUpdateOverdueRequests();
     
-    // Check for overdue requests every minute
-    const interval = setInterval(checkAndUpdateOverdueRequests, 60000);
+  //   // Check for overdue requests every minute
+  //   const interval = setInterval(checkAndUpdateOverdueRequests, 60000);
     
-    return () => clearInterval(interval);
-  }, [pickupRequests, updatePickupRequest]);
+  //   return () => clearInterval(interval);
+  // }, [pickupRequests, updatePickupRequest]);
   
   // Auto-assign default driver to new pending requests without a driver
   useEffect(() => {
