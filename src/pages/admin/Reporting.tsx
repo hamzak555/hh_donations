@@ -127,6 +127,7 @@ function Reporting() {
   const [activeTab, setActiveTab] = useState('financial');
   const [isLocationExpanded, setIsLocationExpanded] = useState(false);
   const [expandedLocations, setExpandedLocations] = useState<string[]>([]);
+  const [isSelectingRange, setIsSelectingRange] = useState(false);
 
   const toggleLocationExpanded = (location: string) => {
     setExpandedLocations(prev => 
@@ -598,15 +599,21 @@ function Reporting() {
               <PopoverTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full sm:w-auto sm:min-w-[240px] justify-start text-xs sm:text-sm">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from && dateRange?.to ? (
-                    <>
-                      <span className="hidden sm:inline">
-                        {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        <span className="hidden sm:inline">
+                          {format(dateRange.from, 'MMM dd, yyyy')} - {format(dateRange.to, 'MMM dd, yyyy')}
+                        </span>
+                        <span className="sm:hidden">
+                          {format(dateRange.from, 'MMM dd')} - {format(dateRange.to, 'MMM dd')}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">
+                        {format(dateRange.from, 'MMM dd')} - Select end date
                       </span>
-                      <span className="sm:hidden">
-                        {format(dateRange.from, 'MMM dd')} - {format(dateRange.to, 'MMM dd')}
-                      </span>
-                    </>
+                    )
                   ) : (
                     'Select date range'
                   )}
@@ -617,11 +624,33 @@ function Reporting() {
                   mode="range"
                   selected={dateRange}
                   onSelect={(range) => {
-                    setDateRange(range);
-                    setSelectedRange(''); // Clear quick range selection when using calendar
+                    // Handle date range selection
+                    if (!range) {
+                      // If range is undefined, reset
+                      setDateRange(undefined);
+                      setIsSelectingRange(false);
+                    } else if (!range.from) {
+                      // This shouldn't happen in range mode
+                      setDateRange(undefined);
+                      setIsSelectingRange(false);
+                    } else if (!range.to) {
+                      // First date selected, waiting for second
+                      setDateRange({ from: range.from, to: undefined });
+                      setIsSelectingRange(true);
+                    } else {
+                      // Both dates selected
+                      // Ensure from is before to
+                      const from = range.from <= range.to ? range.from : range.to;
+                      const to = range.from <= range.to ? range.to : range.from;
+                      setDateRange({ from, to });
+                      setIsSelectingRange(false);
+                      setSelectedRange(''); // Clear quick range selection
+                    }
                   }}
                   numberOfMonths={typeof window !== 'undefined' && window.innerWidth < 640 ? 1 : 2}
                   initialFocus
+                  defaultMonth={dateRange?.from || new Date()}
+                  disabled={(date) => date > new Date()}
                 />
               </PopoverContent>
             </Popover>
@@ -660,29 +689,29 @@ function Reporting() {
           {/* Operational Tab */}
           <TabsContent value="operational" className="space-y-6 mb-8">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{binMetrics.total}</div>
-                  <p className="text-sm text-gray-600 mt-1">Total Bins</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{binMetrics.total}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">Total Bins</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.total}</div>
-                  <p className="text-sm text-gray-600 mt-1">Pickup Requests</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{pickupMetrics.total}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Pickup<br className="sm:hidden" /> Requests</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{driverBinAssignments.length}</div>
-                  <p className="text-sm text-gray-600 mt-1">Active Drivers</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{driverBinAssignments.length}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Active<br className="sm:hidden" /> Drivers</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{partnerMetrics.approved}</div>
-                  <p className="text-sm text-gray-600 mt-1">Active Partners</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{partnerMetrics.approved}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Active<br className="sm:hidden" /> Partners</p>
                 </CardContent>
               </Card>
             </div>
@@ -949,34 +978,34 @@ function Reporting() {
           {/* Financial Tab */}
           <TabsContent value="financial" className="space-y-6 mb-8">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-6">
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>${Math.round(salesMetrics.totalSales).toLocaleString()}</div>
-                  <p className="text-sm text-gray-600 mt-1">Total Revenue</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>${Math.round(salesMetrics.totalSales).toLocaleString()}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">Total Revenue</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{salesMetrics.unsoldCount}</div>
-                  <p className="text-sm text-gray-600 mt-1">Unsold Bales</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{salesMetrics.unsoldCount}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1">Unsold Bales</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.unshippedCount}</div>
-                  <p className="text-sm text-gray-600 mt-1">Containers in Warehouse</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.unshippedCount}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Containers in<br className="sm:hidden" /> Warehouse</p>
                 </CardContent>
               </Card>
               <Card className="border-gray-200 bg-white">
-                <CardContent className="pt-6">
-                  <div className="text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.shippedCount}</div>
-                  <p className="text-sm text-gray-600 mt-1">Containers Shipped</p>
+                <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                  <div className="text-lg sm:text-2xl font-bold" style={{ color: '#0b503c' }}>{containerMetrics.shippedCount}</div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">Containers<br className="sm:hidden" /> Shipped</p>
                 </CardContent>
               </Card>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-4 mb-6">
               
               {/* Sales Overview */}
               <Card className="border-l-4 border-l-[#0b503c]">
@@ -1098,18 +1127,13 @@ function Reporting() {
               </Card>
 
               {/* Sales by Location - Horizontal Bar Chart */}
-              <div className={`relative ${isLocationExpanded ? "row-span-2" : ""}`}>
-                <Card className={`${isLocationExpanded ? "absolute z-10 flex flex-col" : "relative"}`} style={isLocationExpanded ? {
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0, // Stretch to fill available space
-                } : {}}>
+              <div className={`${isLocationExpanded ? "sm:col-span-2 lg:col-span-1" : ""}`}>
+                <Card className="flex flex-col">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-lg">Sales by Location</CardTitle>
                   {salesMetrics.totalSales > 0 && (
-                    <div className="text-sm text-muted-foreground">
-                      Total sales: ${Math.round(salesMetrics.totalSales).toLocaleString()}
+                    <div className="text-sm text-muted-foreground hidden sm:block">
+                      Total: ${Math.round(salesMetrics.totalSales).toLocaleString()}
                     </div>
                   )}
                 </CardHeader>
@@ -1122,7 +1146,7 @@ function Reporting() {
                     label: {
                       color: "var(--background)",
                     },
-                  }} className={`w-full ${isLocationExpanded ? "flex-1" : "h-[200px]"}`}>
+                  }} className={`w-full ${isLocationExpanded ? "min-h-[400px]" : "h-[200px]"}`}>
                     <BarChart
                       accessibilityLayer
                       data={salesMetrics.byLocation}

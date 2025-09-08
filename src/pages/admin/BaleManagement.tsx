@@ -361,7 +361,14 @@ const NotesHoverCard = ({ bale, noteValue, onNoteChange, onAddNote }: NotesHover
           <span className="text-sm">{noteCount}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-96" align="center" side="left" sideOffset={5}>
+      <PopoverContent 
+        className="w-[90vw] sm:w-96 max-w-[400px]" 
+        align="center" 
+        side="top" 
+        sideOffset={5}
+        alignOffset={0}
+        collisionPadding={10}
+      >
         <div className="space-y-3">
           <div className="flex items-center justify-between border-b pb-2">
             <h4 className="font-semibold text-sm">Notes Timeline</h4>
