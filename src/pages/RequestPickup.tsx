@@ -149,7 +149,7 @@ const RequestPickup = () => {
             'Content-Type': 'application/json',
             // Add Supabase anon key for production
             ...(window.location.hostname !== 'localhost' && {
-              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtiZGh6bWxjb210aHJoeGtpZmJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MzQ2MTAsImV4cCI6MjA3MTExMDYxMH0.7-FTUxN0pHn-ZMNUoPJ9RTGZMRxNTdyAFT6HOcJtDeg'
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`
             })
           },
           body: JSON.stringify({
