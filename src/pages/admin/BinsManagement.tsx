@@ -1213,11 +1213,11 @@ function BinsManagement() {
                             value={bin.assignedDriver || 'unassigned'}
                             onValueChange={(value) => {
                               const oldDriverName = bin.assignedDriver;
-                              const newDriverName = value === 'unassigned' ? null : value;
+                              const newDriverName = value === 'unassigned' ? undefined : value;
                               
                               // Find the new driver to get their ID
                               const newDriver = newDriverName ? drivers.find(d => d.name === newDriverName) : null;
-                              const newDriverId = newDriver?.id || null;
+                              const newDriverId = newDriver?.id || undefined;
                               
                               // Update the bin with both driver name and ID (relational connection)
                               updateBin(bin.id, { 
