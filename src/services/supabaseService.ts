@@ -145,7 +145,7 @@ export class BinsService {
 
   static async updateBin(id: string, updates: Partial<BinLocation>): Promise<BinLocation> {
     // Convert field names properly
-    const dbUpdates: Partial<DatabaseBin> = {}
+    const dbUpdates: any = {} // Use 'any' to allow null values for database
     
     // Map each field individually to ensure proper conversion
     if (updates.binNumber !== undefined) dbUpdates.binNumber = updates.binNumber
@@ -156,7 +156,7 @@ export class BinsService {
     if (updates.status !== undefined) dbUpdates.status = updates.status
     // distance is a calculated field, not stored in database
     if ('assignedDriver' in updates) {
-      // Explicitly handle undefined to clear the field
+      // Explicitly handle undefined to clear the field - database expects null, not undefined
       dbUpdates.assignedDriver = updates.assignedDriver === undefined ? null : updates.assignedDriver
     }
     if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId
