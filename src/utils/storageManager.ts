@@ -5,7 +5,7 @@ import { dbManager } from './indexedDbManager';
 const PROTECTED_KEYS = [
   'bales',
   'containers', 
-  'bins',
+  'binsData',  // Changed from 'bins' to match BinsContextSupabase
   'driversData',
   'pickupRequests',
   'adminAuth'

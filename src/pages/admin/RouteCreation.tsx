@@ -235,36 +235,43 @@ function RouteCreation() {
                 ) : (
                   <Select 
                     value={selectedRouteDriver}
-                    onValueChange={setSelectedRouteDriver}
+                    onValueChange={(value) => {
+                      console.log('Driver selected:', value);
+                      setSelectedRouteDriver(value);
+                    }}
                   >
                     <SelectTrigger id="route-driver">
                       <SelectValue placeholder="Choose a driver" />
                     </SelectTrigger>
-                  <SelectContent>
-                    {drivers
-                      .filter(driver => {
-                        // Only show active drivers with Almost Full or Full bins
-                        if (driver.status !== 'Active' || driver.assignedBins.length === 0) return false;
-                        
-                        const driverBins = bins.filter(bin => 
-                          driver.assignedBins.includes(bin.binNumber) &&
-                          (bin.status === 'Almost Full' || bin.status === 'Full')
-                        );
-                        
-                        return driverBins.length > 0;
-                      })
-                      .map(driver => {
-                        const urgentBins = bins.filter(bin => 
-                          driver.assignedBins.includes(bin.binNumber) &&
-                          (bin.status === 'Almost Full' || bin.status === 'Full')
-                        );
-                        
-                        return (
-                          <SelectItem key={driver.id} value={driver.id}>
-                            {driver.name} ({urgentBins.length} bins need pickup)
-                          </SelectItem>
-                        );
-                      })}
+                    <SelectContent>
+                      {drivers.length === 0 ? (
+                        <SelectItem value="no-drivers" disabled>
+                          No drivers available
+                        </SelectItem>
+                      ) : (
+                        drivers
+                          .filter(driver => {
+                            // Show all active drivers, even if they don't have urgent bins
+                            // This allows selecting a driver first, then seeing their bins
+                            return driver.status === 'Active';
+                          })
+                          .map(driver => {
+                            const urgentBins = bins.filter(bin => 
+                              driver.assignedBins.includes(bin.binNumber) &&
+                              (bin.status === 'Almost Full' || bin.status === 'Full')
+                            );
+                            
+                            const totalAssignedBins = bins.filter(bin => 
+                              driver.assignedBins.includes(bin.binNumber)
+                            ).length;
+                            
+                            return (
+                              <SelectItem key={driver.id} value={driver.id}>
+                                {driver.name} ({urgentBins.length} urgent / {totalAssignedBins} total bins)
+                              </SelectItem>
+                            );
+                          })
+                      )}
                     </SelectContent>
                   </Select>
                 )}

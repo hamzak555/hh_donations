@@ -63,7 +63,7 @@ const convertFromDatabase = (dbRequest: any): PickupRequest => {
     location: dbRequest.location || (dbRequest.lat && dbRequest.lng ? { lat: dbRequest.lat, lng: dbRequest.lng } : undefined),
     submittedAt: dbRequest.submittedAt || dbRequest.created_at,
     status: dbRequest.status as 'Pending' | 'Picked Up' | 'Cancelled',
-    assignedDriver: dbRequest.assignedDriver || undefined,
+    assignedDriver: dbRequest.assignedDriver || "",  // Convert null/undefined to empty string for UI
     adminNotes: dbRequest.adminNotes || undefined,
     // Email tracking fields - handle booleans correctly (don't use || for booleans)
     confirmationSent: dbRequest.confirmationSent === true,
@@ -89,7 +89,17 @@ const convertToDatabase = (request: Partial<PickupRequest>): any => {
   if (request.date !== undefined) dbRequest.date = request.date;
   if (request.time !== undefined) dbRequest.time = request.time;
   if (request.status !== undefined) dbRequest.status = request.status;
-  if (request.assignedDriver !== undefined) dbRequest.assignedDriver = request.assignedDriver;
+  
+  // Handle assignedDriver - convert empty string to null for database
+  // Also clear driver_id when unassigning to work with database triggers
+  if ('assignedDriver' in request) {
+    dbRequest.assignedDriver = request.assignedDriver === "" ? null : request.assignedDriver;
+    // If unassigning driver, also clear driver_id
+    if (request.assignedDriver === "" || request.assignedDriver === null) {
+      dbRequest.driver_id = null;
+    }
+  }
+  
   if (request.adminNotes !== undefined) dbRequest.adminNotes = request.adminNotes;
   if (request.submittedAt !== undefined) dbRequest.submittedAt = request.submittedAt;
   
@@ -245,21 +255,42 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
   };
 
   const updatePickupRequest = async (id: string, updates: Partial<PickupRequest>) => {
-    // Update in Supabase if configured
-    if (USE_SUPABASE) {
-      try {
-        const dbUpdates = convertToDatabase(updates);
-        await SupabaseService.pickupRequests.updatePickupRequest(id, dbUpdates);
-      } catch (error) {
-        console.error('[PickupRequestsContext] Failed to update in Supabase:', error);
-      }
-    }
+    console.log('[PickupRequestsContext] Updating request:', id, 'with:', updates);
     
+    // Store the previous state for rollback
+    const previousRequests = pickupRequests;
+    
+    // Optimistically update the UI
     setPickupRequests(prev => 
       prev.map(request => 
         request.id === id ? { ...request, ...updates } : request
       )
     );
+    
+    // Update in Supabase if configured
+    if (USE_SUPABASE) {
+      try {
+        const dbUpdates = convertToDatabase(updates);
+        console.log('[PickupRequestsContext] Sending to database:', dbUpdates);
+        const updatedRequest = await SupabaseService.pickupRequests.updatePickupRequest(id, dbUpdates);
+        console.log('[PickupRequestsContext] Database response:', updatedRequest);
+        
+        // Update with the actual database response
+        if (updatedRequest) {
+          const convertedRequest = convertFromDatabase(updatedRequest);
+          setPickupRequests(prev => 
+            prev.map(request => 
+              request.id === id ? convertedRequest : request
+            )
+          );
+        }
+      } catch (error) {
+        console.error('[PickupRequestsContext] Failed to update in Supabase:', error);
+        // Rollback on error
+        setPickupRequests(previousRequests);
+        throw error; // Re-throw the error so the UI can handle it
+      }
+    }
   };
 
   const deletePickupRequest = async (id: string) => {

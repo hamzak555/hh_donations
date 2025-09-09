@@ -84,6 +84,13 @@ function BinsManagement() {
   const { drivers, updateDriver, getActiveDrivers } = useDrivers();
   const { applications, updateApplication } = usePartnerApplications();
   
+  // Log if we're using Supabase or localStorage
+  useEffect(() => {
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+    console.log('Storage mode:', (supabaseUrl && supabaseKey) ? 'Supabase' : 'localStorage');
+  }, []);
+  
   // Check if current user is a driver
   const userRole = localStorage.getItem('userRole');
   const isDriverRole = userRole === 'driver';
@@ -585,33 +592,42 @@ function BinsManagement() {
     setLastSelectedIndex(null);
   };
 
-  const handleBulkAssignDriver = () => {
+  const handleBulkAssignDriver = async () => {
     if (bulkDriverName && selectedBins.size > 0) {
-      // Collect bin numbers that will be assigned
-      const binsToAssign: string[] = [];
-      
-      selectedBins.forEach(binId => {
-        const bin = bins.find(b => b.id === binId);
-        if (bin) {
-          updateBin(binId, { 
-            assignedDriver: bulkDriverName 
-          });
-          binsToAssign.push(bin.binNumber);
-          
+      try {
+        // Collect bin numbers that will be assigned
+        const binsToAssign: string[] = [];
+        
+        // Update all selected bins
+        const updatePromises: Promise<void>[] = [];
+        selectedBins.forEach(binId => {
+          const bin = bins.find(b => b.id === binId);
+          if (bin) {
+            updatePromises.push(updateBin(binId, { 
+              assignedDriver: bulkDriverName 
+            }));
+            binsToAssign.push(bin.binNumber);
+          }
+        });
+        
+        // Wait for all bin updates
+        await Promise.all(updatePromises);
+        
+        // Update the driver's assignedBins array
+        const driver = drivers.find(d => d.name === bulkDriverName);
+        if (driver) {
+          const updatedAssignedBins = Array.from(new Set([...driver.assignedBins, ...binsToAssign]));
+          await updateDriver(driver.id, { assignedBins: updatedAssignedBins });
         }
-      });
-      
-      // Update the driver's assignedBins array
-      const driver = drivers.find(d => d.name === bulkDriverName);
-      if (driver) {
-        const updatedAssignedBins = Array.from(new Set([...driver.assignedBins, ...binsToAssign]));
-        updateDriver(driver.id, { assignedBins: updatedAssignedBins });
+        
+        setIsBulkAssignDialogOpen(false);
+        setSelectedBins(new Set());
+        setBulkDriverName('');
+        setLastSelectedIndex(null);
+      } catch (error) {
+        console.error('Failed to bulk assign driver:', error);
+        alert('Failed to assign driver to selected bins. Please try again.');
       }
-      
-      setIsBulkAssignDialogOpen(false);
-      setSelectedBins(new Set());
-      setBulkDriverName('');
-      setLastSelectedIndex(null);
     }
   };
 
@@ -680,7 +696,7 @@ function BinsManagement() {
     });
   };
 
-  const handleAddBin = () => {
+  const handleAddBin = async () => {
     // Use selected location coordinates if available, otherwise use default Toronto coordinates
     const coordinates = selectedLocation || { lat: 43.6532, lng: -79.3832 };
     
@@ -709,12 +725,17 @@ function BinsManagement() {
       // Update the driver's assignedBins array
       const driver = drivers.find(d => d.name === formData.assignedDriver);
       if (driver) {
-        const updatedAssignedBins = [...driver.assignedBins, generateBinNumber()];
-        updateDriver(driver.id, { assignedBins: updatedAssignedBins });
+        try {
+          const updatedAssignedBins = [...driver.assignedBins, generateBinNumber()];
+          await updateDriver(driver.id, { assignedBins: updatedAssignedBins });
+        } catch (error) {
+          console.error('Failed to update driver assignment:', error);
+          // Continue with bin creation even if driver update fails
+        }
       }
     }
 
-    addBin(newBin);
+    await addBin(newBin);
     setIsAddDialogOpen(false);
     setFormData({ locationName: '', address: '', status: 'Available', assignedDriver: 'none', sensorId: undefined, binNumber: undefined });
     setSelectedLocation(null);
@@ -762,22 +783,28 @@ function BinsManagement() {
       
       // Update driver assignments if driver has changed
       if (oldDriverName !== newDriverName) {
-        // Remove bin from old driver's assignedBins
-        if (oldDriverName) {
-          const oldDriver = drivers.find(d => d.name === oldDriverName);
-          if (oldDriver) {
-            const updatedBins = oldDriver.assignedBins.filter(bin => bin !== selectedBin.binNumber);
-            updateDriver(oldDriver.id, { assignedBins: updatedBins });
+        try {
+          // Remove bin from old driver's assignedBins
+          if (oldDriverName) {
+            const oldDriver = drivers.find(d => d.name === oldDriverName);
+            if (oldDriver) {
+              const updatedBins = oldDriver.assignedBins.filter(bin => bin !== selectedBin.binNumber);
+              await updateDriver(oldDriver.id, { assignedBins: updatedBins });
+            }
           }
-        }
-        
-        // Add bin to new driver's assignedBins
-        if (newDriverName) {
-          const newDriver = drivers.find(d => d.name === newDriverName);
-          if (newDriver) {
-            const updatedBins = Array.from(new Set([...newDriver.assignedBins, selectedBin.binNumber]));
-            updateDriver(newDriver.id, { assignedBins: updatedBins });
+          
+          // Add bin to new driver's assignedBins
+          if (newDriverName) {
+            const newDriver = drivers.find(d => d.name === newDriverName);
+            if (newDriver) {
+              const updatedBins = Array.from(new Set([...newDriver.assignedBins, selectedBin.binNumber]));
+              await updateDriver(newDriver.id, { assignedBins: updatedBins });
+            }
           }
+        } catch (error) {
+          console.error('Failed to update driver assignments:', error);
+          // Don't throw the error, just log it
+          // The bin update should still proceed
         }
       }
       
@@ -1221,7 +1248,7 @@ function BinsManagement() {
                         ) : (
                           <Select
                             value={bin.assignedDriver || 'unassigned'}
-                            onValueChange={(value) => {
+                            onValueChange={async (value) => {
                               const oldDriverName = bin.assignedDriver;
                               const newDriverName = value === 'unassigned' ? undefined : value;
                               
@@ -1229,35 +1256,62 @@ function BinsManagement() {
                               const newDriver = newDriverName ? drivers.find(d => d.name === newDriverName) : null;
                               const newDriverId = newDriver?.id || undefined;
                               
-                              // Update the bin with both driver name and ID (relational connection)
-                              updateBin(bin.id, { 
-                                assignedDriver: newDriverName,
-                                driverId: newDriverId  // Set the foreign key reference
-                              });
-                              
-                              // Update driver assignments
-                              if (oldDriverName && oldDriverName !== newDriverName) {
-                                // Remove bin from old driver's assignedBins
-                                const oldDriver = drivers.find(d => d.name === oldDriverName);
-                                if (oldDriver) {
-                                  const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
-                                  updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                              try {
+                                // Update the bin with driver name
+                                console.log('Updating bin with:', { 
+                                  assignedDriver: newDriverName
+                                });
+                                
+                                await updateBin(bin.id, { 
+                                  assignedDriver: newDriverName
+                                  // Note: removed driverId as it may not exist in the database
+                                });
+                                
+                                // Update driver assignments
+                                if (oldDriverName && oldDriverName !== newDriverName) {
+                                  // Remove bin from old driver's assignedBins
+                                  const oldDriver = drivers.find(d => d.name === oldDriverName);
+                                  if (oldDriver) {
+                                    const updatedBins = oldDriver.assignedBins.filter(b => b !== bin.binNumber);
+                                    console.log('Updating old driver:', oldDriver.name, 'removing bin:', bin.binNumber);
+                                    await updateDriver(oldDriver.id, { assignedBins: updatedBins });
+                                  }
                                 }
-                              }
-                              
-                              if (newDriver) {
-                                // Add bin to new driver's assignedBins
-                                const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
-                                updateDriver(newDriver.id, { assignedBins: updatedBins });
+                                
+                                if (newDriver) {
+                                  // Add bin to new driver's assignedBins
+                                  const updatedBins = Array.from(new Set([...newDriver.assignedBins, bin.binNumber]));
+                                  console.log('Updating new driver:', newDriver.name, 'adding bin:', bin.binNumber);
+                                  await updateDriver(newDriver.id, { assignedBins: updatedBins });
+                                }
+                                
+                                console.log('Driver assignment updated successfully');
+                              } catch (error) {
+                                console.error('Failed to update driver assignment:', error);
+                                // Check if it's a Supabase error with more details
+                                if (error && typeof error === 'object' && 'message' in error) {
+                                  const err = error as any;
+                                  console.error('Error details:', {
+                                    message: err.message,
+                                    details: err.details,
+                                    hint: err.hint,
+                                    code: err.code
+                                  });
+                                  alert(`Failed to update driver assignment: ${err.message || 'Unknown error'}`);
+                                } else {
+                                  alert('Failed to update driver assignment. Please try again.');
+                                }
                               }
                             }}
                           >
                           <SelectTrigger className="h-8 w-full">
-                            <SelectValue />
+                            <SelectValue>
+                              {bin.assignedDriver || <span className="text-gray-400">Unassigned</span>}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent align="center" side="bottom">
                             <SelectItem value="unassigned">
-                              <span className="text-red-600">Unassigned</span>
+                              <span className="text-gray-400">Unassigned</span>
                             </SelectItem>
                             {activeDrivers.map(driver => (
                               <SelectItem key={driver.id} value={driver.name}>

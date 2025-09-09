@@ -91,9 +91,11 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setBins(parsedBins);
               } else {
                 setBins([]);
+                localStorage.setItem(STORAGE_KEY, '[]'); // Initialize empty array
               }
             } else {
               setBins([]);
+              localStorage.setItem(STORAGE_KEY, '[]'); // Initialize empty array
             }
           } catch (error) {
             console.error('[BinsProvider] Error loading bins from localStorage:', error);
@@ -147,8 +149,28 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     try {
       if (USE_SUPABASE) {
-        const updatedBin = await SupabaseService.bins.updateBin(id, updates);
-        setBins(prev => prev.map(bin => bin.id === id ? updatedBin : bin));
+        try {
+          // Call the service to update in database
+          const updatedBin = await SupabaseService.bins.updateBin(id, updates);
+          
+          // Update local state with the response
+          setBins(prev => prev.map(bin => {
+            if (bin.id === id) {
+              // If we got a full response, use it
+              if (updatedBin && Object.keys(updatedBin).length > 2) {
+                console.log('[BinsProvider] Using full response from database');
+                return updatedBin;
+              }
+              // Otherwise merge the updates
+              console.log('[BinsProvider] Merging updates with existing bin');
+              return { ...bin, ...updates };
+            }
+            return bin;
+          }));
+        } catch (dbError) {
+          console.error('[BinsProvider] Database update failed:', dbError);
+          throw dbError;
+        }
       } else {
         setBins(prev => {
           const updated = prev.map(bin => bin.id === id ? { ...bin, ...updates } : bin);

@@ -214,16 +214,39 @@ function PickupRequests() {
   //   return () => clearInterval(interval);
   // }, [pickupRequests, updatePickupRequest]);
   
-  // Auto-assign default driver to new pending requests without a driver
+  // Track previously seen request IDs to only auto-assign new ones
+  const [processedRequestIds, setProcessedRequestIds] = useState<Set<string>>(new Set());
+  
+  // Auto-assign default driver to NEW pending requests without a driver
   useEffect(() => {
-    if (defaultDriver) {
-      pickupRequests.forEach(request => {
-        if (request.status === 'Pending' && !request.assignedDriver) {
-          updatePickupRequest(request.id, { assignedDriver: defaultDriver });
+    const assignDefaultDriver = async () => {
+      if (defaultDriver) {
+        // Find new unassigned pending requests
+        const newUnassignedRequests = pickupRequests.filter(request => 
+          request.status === 'Pending' && 
+          !request.assignedDriver && 
+          !processedRequestIds.has(request.id)
+        );
+        
+        if (newUnassignedRequests.length > 0) {
+          // Update the processed IDs
+          setProcessedRequestIds(prev => {
+            const newSet = new Set(prev);
+            newUnassignedRequests.forEach(r => newSet.add(r.id));
+            return newSet;
+          });
+          
+          // Assign default driver to new requests
+          const updatePromises = newUnassignedRequests.map(request => 
+            updatePickupRequest(request.id, { assignedDriver: defaultDriver })
+          );
+          await Promise.all(updatePromises);
         }
-      });
-    }
-  }, [defaultDriver, pickupRequests, updatePickupRequest]);
+      }
+    };
+    
+    assignDefaultDriver();
+  }, [defaultDriver, pickupRequests, updatePickupRequest, processedRequestIds]);
   
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -499,13 +522,14 @@ function PickupRequests() {
     }
   };
 
-  const handleBulkAssignDriver = () => {
+  const handleBulkAssignDriver = async () => {
     if (bulkDriverName && selectedRequests.size > 0) {
-      selectedRequests.forEach(requestId => {
+      const updatePromises = Array.from(selectedRequests).map(requestId => 
         updatePickupRequest(requestId, { 
           assignedDriver: bulkDriverName
-        });
-      });
+        })
+      );
+      await Promise.all(updatePromises);
       setSelectedRequests(new Set());
       setIsBulkAssignDialogOpen(false);
       setBulkDriverName('');
@@ -767,10 +791,10 @@ function PickupRequests() {
   };
 
   // Handle date change from calendar
-  const handleDateChange = (requestId: string, newDate: Date | undefined) => {
+  const handleDateChange = async (requestId: string, newDate: Date | undefined) => {
     if (newDate) {
       const formattedDate = format(newDate, 'yyyy-MM-dd');
-      updatePickupRequest(requestId, { date: formattedDate });
+      await updatePickupRequest(requestId, { date: formattedDate });
       setOpenDatePicker(null);
     }
   };
@@ -1349,8 +1373,8 @@ function PickupRequests() {
                     <TableCell>
                       <Select 
                       value={request.status}
-                      onValueChange={(value) => {
-                        updatePickupRequest(request.id, { 
+                      onValueChange={async (value) => {
+                        await updatePickupRequest(request.id, { 
                           status: value as PickupRequest['status']
                         });
                       }}
@@ -1396,10 +1420,15 @@ function PickupRequests() {
                     ) : (
                       <Select 
                         value={request.assignedDriver || "unassigned"}
-                        onValueChange={(value) => {
-                          updatePickupRequest(request.id, { 
-                            assignedDriver: value === "unassigned" ? "" : value 
-                          });
+                        onValueChange={async (value) => {
+                          try {
+                            await updatePickupRequest(request.id, { 
+                              assignedDriver: value === "unassigned" ? "" : value 
+                            });
+                          } catch (error) {
+                            console.error('Failed to update driver assignment:', error);
+                            alert('Failed to update driver assignment. Please try again.');
+                          }
                         }}
                       >
                         <SelectTrigger className="w-40 h-8">
@@ -1559,7 +1588,7 @@ function PickupRequests() {
               Cancel
             </Button>
             <Button 
-              onClick={() => {
+              onClick={async () => {
                 setDefaultDriver(tempDefaultDriver);
                 if (tempDefaultDriver) {
                   localStorage.setItem('defaultPickupDriver', tempDefaultDriver);
@@ -1578,9 +1607,10 @@ function PickupRequests() {
                       `Do you want to assign ${tempDefaultDriver} to ${unassignedPending.length} existing unassigned pending request${unassignedPending.length !== 1 ? 's' : ''}?`
                     );
                     if (confirmAssign) {
-                      unassignedPending.forEach(request => {
-                        updatePickupRequest(request.id, { assignedDriver: tempDefaultDriver });
-                      });
+                      const updatePromises = unassignedPending.map(request => 
+                        updatePickupRequest(request.id, { assignedDriver: tempDefaultDriver })
+                      );
+                      await Promise.all(updatePromises);
                     }
                   }
                 }

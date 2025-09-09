@@ -5,9 +5,9 @@ import { BinLocation } from '@/contexts/BinsContextSupabase'
 const convertDatabaseBinToApp = (dbBin: DatabaseBin): BinLocation => ({
   // Direct mapping - all fields match after column rename
   ...dbBin,
-  driverId: dbBin.driver_id, // Map snake_case to camelCase
-  partnerId: dbBin.partner_id, // Map snake_case to camelCase (renamed from partner_application_id)
-  assignedDriver: dbBin.assignedDriver // Keep for backward compatibility
+  driverId: dbBin.driver_id || undefined, // Map snake_case to camelCase, convert null to undefined
+  partnerId: dbBin.partner_id || undefined, // Map snake_case to camelCase, convert null to undefined
+  assignedDriver: dbBin.assignedDriver || undefined // Convert null to undefined for consistency
 })
 
 const convertAppBinToDatabase = (appBin: BinLocation): Omit<DatabaseBin, 'created_at' | 'updated_at'> => ({
@@ -155,7 +155,10 @@ export class BinsService {
     if (updates.lng !== undefined) dbUpdates.lng = updates.lng
     if (updates.status !== undefined) dbUpdates.status = updates.status
     // distance is a calculated field, not stored in database
-    if (updates.assignedDriver !== undefined) dbUpdates.assignedDriver = updates.assignedDriver
+    if ('assignedDriver' in updates) {
+      // Explicitly handle undefined to clear the field
+      dbUpdates.assignedDriver = updates.assignedDriver === undefined ? null : updates.assignedDriver
+    }
     if (updates.driverId !== undefined) dbUpdates.driver_id = updates.driverId
     if ('partnerId' in updates) dbUpdates.partner_id = updates.partnerId
     if (updates.createdDate !== undefined) dbUpdates.createdDate = updates.createdDate
@@ -168,12 +171,14 @@ export class BinsService {
     if (updates.temperature !== undefined) dbUpdates.temperature = updates.temperature
     if (updates.sensorEnabled !== undefined) dbUpdates.sensorEnabled = updates.sensorEnabled
 
+    console.log('[BinsService] Original updates:', updates);
+    console.log('[BinsService] Database updates:', dbUpdates, 'for ID:', id);
+    
     const { data, error } = await supabase
       .from(TABLES.BINS)
       .update(dbUpdates)
       .eq('id', id)
       .select()
-      .single()
 
     if (error) {
       console.error('[BinsService] Error updating bin:', error)
@@ -185,8 +190,41 @@ export class BinsService {
       })
       throw error
     }
+    
+    console.log('[BinsService] Update response data:', data)
+    console.log('[BinsService] Update successful, data length:', data?.length)
 
-    return convertDatabaseBinToApp(data)
+    // If we got data back, return it
+    if (data && data.length > 0) {
+      if (data.length > 1) {
+        console.warn(`[BinsService] Multiple bins found with ID ${id}, using first result`)
+      }
+      return convertDatabaseBinToApp(data[0])
+    }
+
+    // If no data returned (which happens with some Supabase configs),
+    // we need to fetch the full record
+    console.log('[BinsService] No data returned from update, fetching full record')
+    
+    const { data: fetchedBin, error: fetchError } = await supabase
+      .from(TABLES.BINS)
+      .select('*')
+      .eq('id', id)
+      .limit(1)
+    
+    if (fetchError) {
+      console.error('[BinsService] Failed to fetch bin after update:', fetchError)
+      // As a last resort, return just the updates with ID
+      return { id, ...updates } as BinLocation
+    }
+    
+    if (fetchedBin && fetchedBin.length > 0) {
+      console.log('[BinsService] Successfully fetched updated bin')
+      return convertDatabaseBinToApp(fetchedBin[0])
+    }
+    
+    // If all else fails, return the updates
+    return { id, ...updates } as BinLocation
   }
 
   static async deleteBin(id: string): Promise<void> {
@@ -287,14 +325,21 @@ export class DriversService {
       .update(updates)
       .eq('id', id)
       .select()
-      .single()
 
     if (error) {
       console.error('Error updating driver:', error)
       throw error
     }
 
-    return data
+    if (!data || data.length === 0) {
+      throw new Error('Driver not found')
+    }
+
+    if (data.length > 1) {
+      console.warn(`[DriversService] Multiple drivers found with ID ${id}, using first result`)
+    }
+
+    return data[0]
   }
 
   static async getDriver(id: string) {
