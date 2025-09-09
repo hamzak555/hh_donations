@@ -650,7 +650,7 @@ function PickupRequests() {
         .eq('status', 'Pending')
         .not('email', 'is', null)
         .neq('email', '')
-        .and('reminderSent.is.null,reminderSent.eq.false');
+        .or('reminderSent.is.null,reminderSent.eq.false');
 
       if (error) {
         console.error('Error fetching pending requests:', error);
