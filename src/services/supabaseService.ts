@@ -733,5 +733,55 @@ export const supabaseService = {
   getPickupRequests: () => PickupRequestsService.getAllPickupRequests(),
   addPickupRequest: (request: any) => PickupRequestsService.createPickupRequest(request),
   updatePickupRequest: (id: string, updates: any) => PickupRequestsService.updatePickupRequest(id, updates),
-  deletePickupRequest: (id: string) => PickupRequestsService.deletePickupRequest(id)
+  deletePickupRequest: (id: string) => PickupRequestsService.deletePickupRequest(id),
+  
+  // Email reminder functions
+  sendReminderEmail: (pickupRequest: any) => EmailService.sendReminderEmail(pickupRequest)
 };
+
+// Email Service for handling reminder emails
+class EmailService {
+  // Send a reminder email for a specific pickup request
+  static async sendReminderEmail(pickupRequest: any): Promise<{ success: boolean; error?: string; data?: any }> {
+    try {
+      console.log('Sending reminder email for pickup:', pickupRequest.id);
+      
+      // Call the Supabase Edge Function
+      const { data, error } = await supabase.functions.invoke('send-pickup-reminder', {
+        body: {
+          email: pickupRequest.email,
+          name: pickupRequest.name,
+          address: pickupRequest.address,
+          pickupDate: pickupRequest.date,
+          specialInstructions: pickupRequest.additionalNotes || pickupRequest.item_description
+        }
+      });
+
+      if (error) {
+        console.error('Error sending reminder email:', error);
+        return { success: false, error: error.message };
+      }
+
+      // Update the pickup request to mark reminder as sent
+      const { error: updateError } = await supabase
+        .from(TABLES.PICKUP_REQUESTS)
+        .update({
+          reminderSent: true,
+          reminderSentAt: new Date().toISOString()
+        })
+        .eq('id', pickupRequest.id);
+
+      if (updateError) {
+        console.error('Error updating pickup request after sending reminder:', updateError);
+        // Don't fail the whole operation if the update fails
+      }
+
+      console.log('Reminder email sent successfully for pickup:', pickupRequest.id);
+      return { success: true, data };
+    } catch (error: any) {
+      console.error('Failed to send reminder email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+}

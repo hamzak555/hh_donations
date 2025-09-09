@@ -4,6 +4,8 @@ import { DelayedMarker as SafeMarker } from '@/components/DelayedMarker';
 import LoadingSkeleton from '@/components/LoadingSkeleton';
 import { usePickupRequests, PickupRequest } from '@/contexts/PickupRequestsContextSupabase';
 import { useDrivers } from '@/contexts/DriversContextSupabase';
+import { supabaseService } from '@/services/supabaseService';
+import { supabase } from '@/lib/supabase';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
@@ -108,7 +110,7 @@ type ColumnId = keyof typeof COLUMN_IDS;
 
 function PickupRequests() {
   const [isLoading] = useState(false);
-  const { pickupRequests, updatePickupRequest, deletePickupRequest } = usePickupRequests();
+  const { pickupRequests, updatePickupRequest, deletePickupRequest, refreshPickupRequests } = usePickupRequests();
   const { drivers: contextDrivers } = useDrivers();
   
   // Check if current user is a driver
@@ -156,6 +158,11 @@ function PickupRequests() {
   // Route generation states
   const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
   const [selectedDriverForRoute, setSelectedDriverForRoute] = useState<string>('');
+  
+  // Reminder email state
+  const [isReminderLoading, setIsReminderLoading] = useState(false);
+  const [reminderResults, setReminderResults] = useState<any>(null);
+  const [isReminderDialogOpen, setIsReminderDialogOpen] = useState(false);
   const [startingAddress, setStartingAddress] = useState<string>('');
   const [startingCoordinates, setStartingCoordinates] = useState<{lat: number, lng: number} | null>(null);
   const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
@@ -628,6 +635,131 @@ function PickupRequests() {
     }
   };
 
+
+
+  // Send reminders to all pending pickups that haven't received reminders yet
+  const handleForceTestReminders = async () => {
+    setIsReminderLoading(true);
+    try {
+      console.log('Sending reminders to all pending pickups that haven\'t received reminders...');
+      
+      // Get ONLY pickup requests with pending status that have NOT received reminders
+      const { data: pendingRequests, error } = await supabase
+        .from('pickup_requests')
+        .select('*')
+        .eq('status', 'Pending')
+        .not('email', 'is', null)
+        .neq('email', '')
+        .and('reminderSent.is.null,reminderSent.eq.false');
+
+      if (error) {
+        console.error('Error fetching pending requests:', error);
+        setReminderResults({
+          success: false,
+          sent: 0,
+          errors: [{ id: 'error', email: 'error', error: 'Database error: ' + error.message }],
+          results: []
+        });
+        setIsReminderDialogOpen(true);
+        return;
+      }
+
+      console.log('Found', pendingRequests?.length || 0, 'pending pickup requests that need reminders');
+      console.log('Pending pickup requests:', pendingRequests);
+
+      if (!pendingRequests || pendingRequests.length === 0) {
+        setReminderResults({
+          success: true,
+          sent: 0,
+          errors: [],
+          results: []
+        });
+        setIsReminderDialogOpen(true);
+        return;
+      }
+
+      const results: Array<{id: string; email: string; status: 'sent' | 'error'; message: string}> = [];
+      const errors: Array<{id: string; email: string; error: string}> = [];
+      let sentCount = 0;
+
+      // Try to send to each pending request that needs a reminder
+      for (const request of pendingRequests) {
+        if (!request.email) {
+          results.push({
+            id: request.id,
+            email: 'No email',
+            status: 'error',
+            message: 'No email address provided'
+          });
+          continue;
+        }
+
+        try {
+          const result = await supabaseService.sendReminderEmail(request);
+          
+          if (result.success) {
+            sentCount++;
+            results.push({
+              id: request.id,
+              email: request.email,
+              status: 'sent',
+              message: 'Reminder sent successfully'
+            });
+          } else {
+            errors.push({
+              id: request.id,
+              email: request.email,
+              error: result.error || 'Unknown error'
+            });
+            results.push({
+              id: request.id,
+              email: request.email,
+              status: 'error',
+              message: result.error || 'Unknown error'
+            });
+          }
+        } catch (error: any) {
+          const errorMessage = error.message || 'Unknown error sending reminder';
+          errors.push({
+            id: request.id,
+            email: request.email,
+            error: errorMessage
+          });
+          results.push({
+            id: request.id,
+            email: request.email,
+            status: 'error',
+            message: errorMessage
+          });
+        }
+
+        // Add a small delay between requests
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      setReminderResults({
+        success: true,
+        sent: sentCount,
+        errors,
+        results
+      });
+      setIsReminderDialogOpen(true);
+      
+      console.log('Reminder sending completed. Sent:', sentCount, 'Errors:', errors.length);
+    } catch (error) {
+      console.error('Error in force test reminders:', error);
+      setReminderResults({
+        success: false,
+        sent: 0,
+        errors: [{ id: 'unknown', email: 'unknown', error: 'Failed to send reminders' }],
+        results: []
+      });
+      setIsReminderDialogOpen(true);
+    } finally {
+      setIsReminderLoading(false);
+    }
+  };
+
   // Check if a date is Tuesday (2) or Thursday (4)
   const isTuesdayOrThursday = (date: Date) => {
     const day = date.getDay();
@@ -689,6 +821,28 @@ function PickupRequests() {
                   <span className="hidden sm:inline">Default Driver</span>
                   <span className="sm:hidden">Default</span>
                   {defaultDriver && ` (${defaultDriver})`}
+                </Button>
+                
+                <Button 
+                  onClick={handleForceTestReminders}
+                  disabled={isReminderLoading}
+                  variant="outline"
+                  size="sm"
+                  className="text-sm text-green-600 hover:text-green-700 border-green-300 hover:border-green-400"
+                >
+                  {isReminderLoading ? (
+                    <>
+                      <div className="w-4 h-4 mr-1 sm:mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      <span className="hidden sm:inline">Sending...</span>
+                      <span className="sm:hidden">Send...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="hidden sm:inline">Send Reminders</span>
+                      <span className="sm:hidden">Send</span>
+                    </>
+                  )}
                 </Button>
               </>
             )}
@@ -1489,6 +1643,87 @@ function PickupRequests() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reminder Results Dialog */}
+      <Dialog open={isReminderDialogOpen} onOpenChange={setIsReminderDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MailCheck className="w-5 h-5" />
+              Reminder Email Results
+            </DialogTitle>
+            <DialogDescription>
+              Results of sending reminder emails
+            </DialogDescription>
+          </DialogHeader>
+          
+          {reminderResults && (
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="flex flex-wrap gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium">Sent: {reminderResults.sent}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <XCircle className="w-4 h-4 text-red-600" />
+                  <span className="text-sm font-medium">Errors: {reminderResults.errors?.length || 0}</span>
+                </div>
+              </div>
+
+              {/* Results Details */}
+              {reminderResults.results && reminderResults.results.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Email Details:</h4>
+                  <div className="max-h-64 overflow-y-auto border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Message</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reminderResults.results.map((result: any, index: number) => (
+                          <TableRow key={index}>
+                            <TableCell className="text-sm">{result.email}</TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={result.status === 'sent' ? 'default' : 'destructive'}
+                                className="text-xs"
+                              >
+                                {result.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {result.message}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* No results message */}
+              {(!reminderResults.results || reminderResults.results.length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <MailCheck className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>No pickup requests found that need reminder emails.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setIsReminderDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
