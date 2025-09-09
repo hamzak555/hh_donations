@@ -144,8 +144,6 @@ export class BinsService {
   }
 
   static async updateBin(id: string, updates: Partial<BinLocation>): Promise<BinLocation> {
-    console.log('[BinsService] Updating bin:', id, 'with updates:', updates)
-    
     // Convert field names properly
     const dbUpdates: Partial<DatabaseBin> = {}
     
@@ -169,9 +167,6 @@ export class BinsService {
     if (updates.batteryLevel !== undefined) dbUpdates.batteryLevel = updates.batteryLevel
     if (updates.temperature !== undefined) dbUpdates.temperature = updates.temperature
     if (updates.sensorEnabled !== undefined) dbUpdates.sensorEnabled = updates.sensorEnabled
-
-    console.log('[BinsService] Database updates:', dbUpdates)
-    console.log('[BinsService] Updating bin ID:', id)
 
     const { data, error } = await supabase
       .from(TABLES.BINS)

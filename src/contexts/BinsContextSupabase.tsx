@@ -73,19 +73,15 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setError(null);
       try {
         if (USE_SUPABASE) {
-          console.log('[BinsProvider] Using Supabase for data persistence');
           // Try to fetch from Supabase
           const supabaseBins = await SupabaseService.bins.getAllBins();
           
           if (supabaseBins.length > 0) {
-            console.log(`[BinsProvider] Loaded ${supabaseBins.length} bins from Supabase`);
             setBins(supabaseBins);
           } else {
-            console.log('[BinsProvider] No bins in Supabase, starting with empty array');
             setBins([]);
           }
         } else {
-          console.log('[BinsProvider] Using localStorage for data persistence');
           // Fallback to localStorage
           try {
             const stored = localStorage.getItem(STORAGE_KEY);
@@ -130,17 +126,10 @@ export const BinsProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const addBin = async (newBin: BinLocation) => {
     if (USE_SUPABASE) {
       try {
-        console.log('[BinsProvider] Creating bin in Supabase:', newBin);
         const createdBin = await SupabaseService.bins.createBin(newBin);
         setBins(prevBins => [...prevBins, createdBin]);
-        console.log(`[BinsProvider] Created bin ${createdBin.binNumber} in Supabase`);
       } catch (error) {
-        console.error('[BinsProvider] Error creating bin:', error);
-        console.error('[BinsProvider] Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : 'No stack trace',
-          fullError: error
-        });
+        console.error('Error creating bin:', error);
         setError(`Failed to create bin: ${error instanceof Error ? error.message : 'Unknown error'}`);
         throw error;
       }

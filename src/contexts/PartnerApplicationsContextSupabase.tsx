@@ -233,7 +233,7 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
 
     // If status is changing to 'archived' and the partner has assigned bins
     if (status === 'archived' && app.assignedBins && app.assignedBins.length > 0) {
-      console.log(`[PartnerApplications] Archiving partner ${app.organizationName} with ${app.assignedBins.length} assigned bins`);
+      // Archiving partner with assigned bins
       
       // Unassign all bins from this partner and move them to Warehouse
       if (USE_SUPABASE) {
@@ -248,7 +248,7 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
               address: ''
             });
           }
-          console.log(`[PartnerApplications] Unassigned ${app.assignedBins.length} bins and moved to Warehouse`);
+          // Unassigned bins and moved to Warehouse
         } catch (err) {
           console.error('Failed to unassign bins:', err);
           setError('Failed to unassign bins from archived partner');
@@ -256,7 +256,7 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
       } else {
         // Handle localStorage case - update bins in BinsContext
         // This will be handled by the BinsContext when it detects partner changes
-        console.log(`[PartnerApplications] Partner archived - bins will be moved to Warehouse`);
+        // Partner archived - bins moved to Warehouse
       }
       
       // Clear assignedBins from the partner
@@ -381,7 +381,7 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
 
     // If the partner has assigned bins, unassign them and set status to Unavailable
     if (app.assignedBins && app.assignedBins.length > 0) {
-      console.log(`[PartnerApplications] Deleting partner ${app.organizationName} with ${app.assignedBins.length} assigned bins`);
+      // Deleting partner with assigned bins
       
       if (USE_SUPABASE) {
         try {
@@ -392,7 +392,7 @@ export const PartnerApplicationsProvider: React.FC<{ children: ReactNode }> = ({
               status: 'Unavailable'
             });
           }
-          console.log(`[PartnerApplications] Unassigned ${app.assignedBins.length} bins and set to Unavailable`);
+          // Unassigned bins and set to Unavailable
         } catch (err) {
           console.error('Failed to unassign bins before deletion:', err);
           setError('Failed to unassign bins from partner');

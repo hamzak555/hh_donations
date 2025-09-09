@@ -125,33 +125,18 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
   const refreshPickupRequests = async () => {
     if (USE_SUPABASE) {
       try {
-        console.log('[PickupRequestsContext] Refreshing pickup requests...');
         const dbRequests = await SupabaseService.pickupRequests.getAllPickupRequests();
         // Always update with Supabase data when available (even if empty)
         if (dbRequests !== null && dbRequests !== undefined) {
           const convertedRequests = dbRequests.map(convertFromDatabase);
-          // Log the most recent request to see email status
-          const recentRequest = dbRequests.find((r: any) => r.email === 'hk11345@gmail.com');
-          if (recentRequest) {
-            console.log('[PickupRequestsContext] Recent request email status:', {
-              raw: {
-                confirmationSent: recentRequest.confirmationSent,
-                confirmationSentAt: recentRequest.confirmationSentAt
-              },
-              converted: convertedRequests.find(r => r.email === 'hk11345@gmail.com')
-            });
-          }
           setPickupRequests(convertedRequests);
-          console.log('[PickupRequestsContext] Refreshed with', convertedRequests.length, 'requests from Supabase');
-        } else {
-          console.log('[PickupRequestsContext] No data received from Supabase');
         }
       } catch (error) {
         console.error('[PickupRequestsContext] Failed to refresh from Supabase:', error);
         // Continue with current data
       }
     } else {
-      console.log('[PickupRequestsContext] Supabase not configured');
+      // Supabase not configured
     }
   };
 
@@ -175,7 +160,7 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
             table: 'pickup_requests' 
           }, 
           (payload: any) => {
-            console.log('[PickupRequestsContext] Real-time update received:', payload);
+            // Real-time update received
             
             if (payload.eventType === 'INSERT') {
               const newRequest = convertFromDatabase(payload.new);
@@ -236,12 +221,9 @@ export const PickupRequestsProvider: React.FC<{ children: ReactNode }> = ({ chil
     // Add to Supabase if configured
     if (USE_SUPABASE) {
       try {
-        console.log('[PickupRequestsContext] Adding pickup request to Supabase:', newRequest);
         const dbRequest = convertToDatabase(newRequest);
-        console.log('[PickupRequestsContext] Converted request for database:', dbRequest);
         
         const addedRequest = await SupabaseService.pickupRequests.createPickupRequest(dbRequest);
-        console.log('[PickupRequestsContext] Supabase response:', addedRequest);
         
         if (addedRequest) {
           newRequest.id = addedRequest.id; // Use the database-generated ID

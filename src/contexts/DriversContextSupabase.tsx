@@ -63,7 +63,6 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
     
     try {
       if (USE_SUPABASE) {
-        console.log('[DriversProvider] Using Supabase for data persistence');
         const supabaseDrivers = await SupabaseService.drivers.getAllDrivers();
         
         // Direct mapping from database format after column rename
@@ -84,12 +83,10 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
         }));
         
         setDrivers(formattedDrivers);
-        console.log(`[DriversProvider] Loaded ${formattedDrivers.length} drivers from Supabase`);
         
         // Sync to localStorage for offline access
         SafeStorage.setItem(STORAGE_KEY, JSON.stringify(formattedDrivers));
       } else {
-        console.log('[DriversProvider] Using localStorage (Supabase not configured)');
         const stored = SafeStorage.getLatestValue(STORAGE_KEY);
         
         if (stored && stored !== 'undefined' && stored !== 'null' && stored !== '[]') {
@@ -109,7 +106,7 @@ export const DriversProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (stored) {
           const parsedDrivers = JSON.parse(stored);
           setDrivers(parsedDrivers);
-          console.log('[DriversProvider] Loaded from localStorage fallback');
+          // Loaded from localStorage fallback
         }
       } catch (fallbackErr) {
         console.error('[DriversProvider] Fallback also failed:', fallbackErr);

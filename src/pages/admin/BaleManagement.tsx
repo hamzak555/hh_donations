@@ -54,7 +54,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, MoreHorizontal, Edit, Trash, Printer, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Search, MessageSquare, Send, Camera, ChevronLeft, ChevronRight, X, Undo2, Settings2 } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash, Printer, DollarSign, ArrowUpDown, ChevronUp, ChevronDown, Search, MessageSquare, Send, Camera, ChevronLeft, ChevronRight, X, Undo2, Settings2, Users, Package } from 'lucide-react';
 import { format } from 'date-fns';
 
 // Safe date formatter to handle invalid dates
@@ -445,7 +445,7 @@ const SOLD_COLUMN_IDS = {
   weight: 'Weight (kg)',
   destination: 'Destination',
   salePrice: 'Sale Price',
-  paymentMethod: 'Payment Method',
+  paymentMethod: 'Payment',
   notes: 'Notes',
   photos: 'Photos',
   soldDate: 'Sold Date'
@@ -465,6 +465,9 @@ function BaleManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRevertDialogOpen, setIsRevertDialogOpen] = useState(false);
   const [selectedBale, setSelectedBale] = useState<Bale | null>(null);
+  const [selectedBales, setSelectedBales] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   
   // Column visibility state for Active tab
   const [visibleActiveColumns, setVisibleActiveColumns] = useState<Set<ActiveColumnId>>(() => {
@@ -472,7 +475,9 @@ function BaleManagement() {
     if (savedColumns) {
       try {
         const parsed = JSON.parse(savedColumns);
-        return new Set(parsed as ActiveColumnId[]);
+        // Filter out 'container' if it exists in saved columns
+        const filteredColumns = parsed.filter((col: string) => col !== 'container');
+        return new Set(filteredColumns as ActiveColumnId[]);
       } catch {
         // If parsing fails, return default
       }
@@ -554,6 +559,19 @@ function BaleManagement() {
   const [statsPeriod, setStatsPeriod] = useState<'7d' | '14d' | '30d'>('7d');
   
   const printRef = useRef<HTMLDivElement>(null);
+  
+  // Cleanup orphaned bales (status Container but no containerNumber)
+  useEffect(() => {
+    const orphanedBales = bales.filter(bale => 
+      bale.status === 'Container' && !bale.containerNumber
+    );
+    
+    if (orphanedBales.length > 0) {
+      orphanedBales.forEach(bale => {
+        updateBale(bale.id, { status: 'Warehouse' });
+      });
+    }
+  }, [bales, updateBale]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -662,7 +680,31 @@ function BaleManagement() {
 
   const handleMarkAsSold = () => {
     if (selectedBale) {
-      markAsSold(selectedBale.id, soldFormData.salePrice, soldFormData.paymentMethod);
+      // If the bale is in a container, save the container's destination to the bale's location field
+      let updatedLocation = selectedBale.location || 'Warehouse';
+      if (selectedBale.containerNumber) {
+        const container = containers.find(c => 
+          c.containerNumber?.trim().toLowerCase() === selectedBale.containerNumber?.trim().toLowerCase()
+        );
+        if (container && container.destination) {
+          updatedLocation = container.destination;
+        } else if (selectedBale.containerNumber) {
+          // If container was deleted, preserve the container number as location
+          updatedLocation = selectedBale.containerNumber;
+        }
+      }
+      
+      // Update all sale information including location in a single call
+      const soldDate = new Date().toISOString().split('T')[0];
+      const updateData = { 
+        status: 'Sold',
+        salePrice: soldFormData.salePrice,
+        paymentMethod: soldFormData.paymentMethod,
+        soldDate: soldDate,
+        location: updatedLocation
+      };
+      updateBale(selectedBale.id, updateData);
+      
       setIsSoldDialogOpen(false);
       setSelectedBale(null);
       setSoldFormData({ salePrice: 0, paymentMethod: 'Cash' });
@@ -695,44 +737,123 @@ function BaleManagement() {
         setIsDeleteDialogOpen(false);
         setBaleToDelete(null);
       } catch (error) {
-        console.error('Failed to delete bale:', error);
+        console.error(`Failed to delete bale ${baleToDelete.baleNumber}:`, error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        alert(`Failed to delete bale: ${errorMessage}. Please try again.`);
+        alert(`Failed to delete bale ${baleToDelete.baleNumber}: ${errorMessage}. Please try again.`);
         setIsDeleteDialogOpen(false);
         setBaleToDelete(null);
       }
     }
   };
 
+  const handleSelectAll = () => {
+    const currentBales = getFilteredAndSortedBales(activeTab as 'active' | 'sold');
+    if (selectedBales.size === currentBales.length) {
+      setSelectedBales(new Set());
+    } else {
+      setSelectedBales(new Set(currentBales.map(b => b.id)));
+    }
+  };
+
+  const handleSelectBale = (baleId: string, event?: React.MouseEvent) => {
+    const filteredBales = getFilteredAndSortedBales(activeTab as 'active' | 'sold');
+    const clickedIndex = filteredBales.findIndex(b => b.id === baleId);
+    
+    if (event?.shiftKey && lastSelectedIndex !== null) {
+      // Shift-click: select range
+      const start = Math.min(lastSelectedIndex, clickedIndex);
+      const end = Math.max(lastSelectedIndex, clickedIndex);
+      const newSelection = new Set(selectedBales);
+      
+      for (let i = start; i <= end; i++) {
+        newSelection.add(filteredBales[i].id);
+      }
+      
+      setSelectedBales(newSelection);
+    } else {
+      // Regular click: toggle selection
+      const newSelection = new Set(selectedBales);
+      if (newSelection.has(baleId)) {
+        newSelection.delete(baleId);
+      } else {
+        newSelection.add(baleId);
+      }
+      setSelectedBales(newSelection);
+      setLastSelectedIndex(clickedIndex);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      // Delete all selected bales
+      const deletePromises = Array.from(selectedBales).map(async (baleId) => {
+        const baleToDelete = bales.find(b => b.id === baleId);
+        if (baleToDelete) {
+          // First check if the bale is assigned to a container
+          if (baleToDelete.containerNumber) {
+            const container = containers.find(c => 
+              c.containerNumber?.trim().toLowerCase() === baleToDelete.containerNumber?.trim().toLowerCase()
+            );
+            if (container) {
+              removeBaleFromContainer(container.id, baleToDelete.id);
+            }
+          }
+          // Then delete the bale
+          return deleteBale(baleId);
+        }
+      });
+      
+      await Promise.all(deletePromises);
+      
+      // Clear selection after successful deletion
+      setSelectedBales(new Set());
+      setLastSelectedIndex(null);
+      setIsBulkDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting bales:', error);
+    }
+  };
+
   // Helper function to get location for a bale
   const getBaleLocation = (bale: Bale) => {
+    // For sold bales, always prefer their saved location field
+    // This preserves the historical destination even if the container is deleted
+    if (bale.status === 'Sold' && bale.location) {
+      return bale.location;
+    }
+    
     // If status is Warehouse, always show "In Warehouse"
     if (bale.status === 'Warehouse') {
       return 'In Warehouse';
     }
     
-    // Check if bale has a container for other statuses
+    // If status is Container but no containerNumber, it's orphaned - show "In Warehouse"
+    if (bale.status === 'Container' && !bale.containerNumber) {
+      return 'In Warehouse';
+    }
+    
+    // Check if bale has a container
     if (bale.containerNumber) {
       // Case-insensitive container matching with trim
       const container = containers.find(c => 
         c.containerNumber?.trim().toLowerCase() === bale.containerNumber?.trim().toLowerCase()
       );
       
-      // Debug logging for CONT002
-      if (bale.containerNumber.toLowerCase().includes('cont002')) {
-        console.log('Looking for container:', bale.containerNumber);
-        console.log('Available containers:', containers.map(c => ({ num: c.containerNumber, dest: c.destination })));
-        console.log('Found container:', container);
-      }
-      
       if (container && container.destination) {
         return container.destination;
       }
-      // If no destination set, show container number
-      return bale.containerNumber;
+      
+      // Container doesn't exist or has no destination
+      // For sold bales, use their saved location
+      if (bale.status === 'Sold') {
+        return bale.location || 'Location not set';
+      }
+      
+      // For active bales, show warehouse since container is gone
+      return 'In Warehouse';
     }
     
-    // For bales not in a container
+    // Fallback - always show "In Warehouse" for consistency
     return 'In Warehouse';
   };
 
@@ -837,21 +958,34 @@ function BaleManagement() {
     let displayText: string = status;
     let badgeStyle = statusStyles[status];
     
-    // Check if bale is in a container
-    if (status === 'Container' && containerNumber) {
-      // Find the container to check if it's shipped
+    // If status is Container but no containerNumber, it's orphaned - show as Warehouse
+    if (status === 'Container' && !containerNumber) {
+      displayText = 'Warehouse';
+      badgeStyle = statusStyles['Warehouse'];
+    }
+    // Check if bale is in a container and what the container's status is
+    else if (containerNumber && status !== 'Sold') {
+      // Find the container to check if it exists and its status
       const container = containers.find(c => c.containerNumber === containerNumber);
       
-      if (container && container.status !== 'Shipped') {
-        // Container exists but not shipped - show as Warehouse
-        displayText = `Warehouse (${containerNumber})`;
-        badgeStyle = statusStyles['Warehouse']; // Use Warehouse styling
+      if (container) {
+        if (container.status === 'Shipped') {
+          // Container is shipped - show as Shipped
+          displayText = `Shipped (${containerNumber})`;
+          badgeStyle = statusStyles['Shipped']; // Use Shipped styling (green)
+        } else {
+          // Container exists but not shipped - show as Container
+          displayText = `Container (${containerNumber})`;
+          badgeStyle = statusStyles['Container']; // Use Container styling (orange)
+        }
       } else {
-        // Container is shipped or default behavior
-        displayText = `Container (${containerNumber})`;
+        // Container doesn't exist anymore - bale is orphaned, show as Warehouse
+        // This happens when a container is deleted but the bale hasn't been cleaned up yet
+        displayText = 'Warehouse';
+        badgeStyle = statusStyles['Warehouse']; // Use Warehouse styling (blue)
       }
-    } else if (status === 'Shipped' && containerNumber) {
-      displayText = `${status} (${containerNumber})`;
+    } else if (status === 'Sold') {
+      displayText = 'Sold';
     }
     
     return (
@@ -930,7 +1064,7 @@ function BaleManagement() {
   };
 
   return (
-    <div className="h-screen flex flex-col pt-10 pb-6">
+    <div className="pt-10 pb-20 w-full">
       <div className="mb-6 px-4 sm:px-6 lg:px-8">
         {/* Title - always on its own line on mobile */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -938,6 +1072,29 @@ function BaleManagement() {
           
           {/* Action buttons - wrap on mobile */}
           <div className="flex flex-wrap gap-2">
+            {selectedBales.size > 0 && (
+              <>
+                <Button 
+                  onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 text-sm"
+                >
+                  <Trash className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span> ({selectedBales.size})
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setSelectedBales(new Set());
+                    setLastSelectedIndex(null);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              </>
+            )}
             {/* Column Visibility Dropdown */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -1054,7 +1211,11 @@ function BaleManagement() {
             {/* Tabs */}
             <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full lg:w-auto lg:min-w-[280px]">
             <button
-              onClick={() => setActiveTab('active')}
+              onClick={() => {
+                setActiveTab('active');
+                setSelectedBales(new Set());
+                setLastSelectedIndex(null);
+              }}
               className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
                 activeTab === 'active'
                   ? 'bg-background text-foreground shadow-sm'
@@ -1071,7 +1232,11 @@ function BaleManagement() {
               </span>
             </button>
             <button
-              onClick={() => setActiveTab('sold')}
+              onClick={() => {
+                setActiveTab('sold');
+                setSelectedBales(new Set());
+                setLastSelectedIndex(null);
+              }}
               className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
                 activeTab === 'sold'
                   ? 'bg-background text-foreground shadow-sm'
@@ -1152,13 +1317,22 @@ function BaleManagement() {
         )}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden px-4 sm:px-6 lg:px-8">
-        <TabsContent value="active" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <Card className="overflow-x-auto flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="px-4 sm:px-6 lg:px-8">
+        <TabsContent value="active" className="data-[state=inactive]:hidden">
+          <Card className="overflow-x-auto">
             <div className="p-6">
-              <Table className="min-w-[900px] select-none">
+              <div className="mb-4 text-sm text-gray-600">
+                Showing {getFilteredAndSortedBales('active').length} total active bales
+              </div>
+              <Table className="min-w-[900px] select-none focus:outline-none" tabIndex={-1}>
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedBales.size === getFilteredAndSortedBales('active').length && getFilteredAndSortedBales('active').length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     {visibleActiveColumns.has('baleNumber') && (
                       <TableHead 
                         className="cursor-pointer select-none"
@@ -1203,6 +1377,17 @@ function BaleManagement() {
                         </div>
                       </TableHead>
                     )}
+                    {visibleActiveColumns.has('container') && (
+                      <TableHead 
+                        className="cursor-pointer select-none"
+                        onClick={() => handleSort('containerNumber')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Container
+                          {getSortIcon('containerNumber')}
+                        </div>
+                      </TableHead>
+                    )}
                     {visibleActiveColumns.has('location') && (
                       <TableHead 
                         className="cursor-pointer select-none"
@@ -1230,9 +1415,57 @@ function BaleManagement() {
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="select-none">
-                  {getFilteredAndSortedBales('active').map((bale) => (
-                    <TableRow key={bale.id} className="select-none">
+                <TableBody className="select-none focus:outline-none">
+                  {getFilteredAndSortedBales('active').length === 0 ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={visibleActiveColumns.size + 2} className="h-48 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <Package className="w-12 h-12 text-gray-300" />
+                          <div className="space-y-1">
+                            <p className="text-gray-500 font-medium">
+                              {searchQuery ? 'No active bales found matching your search' : 'No active bales yet'}
+                            </p>
+                            {!searchQuery && (
+                              <p className="text-sm text-gray-400">
+                                Click the "Add New Bale" button above to create your first bale
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    getFilteredAndSortedBales('active').map((bale) => (
+                    <TableRow 
+                      key={bale.id} 
+                      className={`cursor-pointer select-none focus:outline-none ${
+                        selectedBales.has(bale.id) ? 'bg-primary/5' : ''
+                      }`}
+                      onClick={(e) => {
+                        // Don't select if clicking on action buttons or dropdowns
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.closest('button') || 
+                          target.closest('[role="combobox"]') ||
+                          target.closest('[role="listbox"]')
+                        ) {
+                          return;
+                        }
+                        handleSelectBale(bale.id, e);
+                      }}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedBales.has(bale.id)}
+                          onCheckedChange={() => {
+                            // Use onClick for proper event handling with shift key
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectBale(bale.id, e);
+                          }}
+                        />
+                      </TableCell>
                       {visibleActiveColumns.has('baleNumber') && (
                         <TableCell className="font-medium">{bale.baleNumber}</TableCell>
                       )}
@@ -1244,6 +1477,17 @@ function BaleManagement() {
                       )}
                       {visibleActiveColumns.has('status') && (
                         <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
+                      )}
+                      {visibleActiveColumns.has('container') && (
+                        <TableCell>
+                          {bale.containerNumber ? (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              {bale.containerNumber}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
+                        </TableCell>
                       )}
                       {visibleActiveColumns.has('location') && (
                         <TableCell>
@@ -1285,28 +1529,37 @@ function BaleManagement() {
                         </TableCell>
                       )}
                       <TableCell className="text-right">
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent 
-                            align="end" 
-                            className="z-50"
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0 hover:bg-green-50"
+                            onClick={() => openSoldDialog(bale)}
+                            title="Mark as Sold"
                           >
-                            <DropdownMenuItem onClick={() => openEditDialog(bale)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openSoldDialog(bale)}>
-                              <DollarSign className="mr-2 h-4 w-4" />
-                              Mark as Sold
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openPrintDialog(bale)}>
-                              <Printer className="mr-2 h-4 w-4" />
-                              Print Label
-                            </DropdownMenuItem>
+                            <DollarSign className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0 hover:bg-blue-50"
+                            onClick={() => openPrintDialog(bale)}
+                            title="Print Label"
+                          >
+                            <Printer className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent 
+                              align="end" 
+                              className="z-50"
+                            >
+                              <DropdownMenuItem onClick={() => openEditDialog(bale)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleDeleteBale(bale)}
                               className="text-red-600"
@@ -1316,21 +1569,31 @@ function BaleManagement() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )))}
                 </TableBody>
                   </Table>
             </div>
           </Card>
         </TabsContent>
 
-        <TabsContent value="sold" className="flex-1 flex flex-col data-[state=inactive]:hidden">
-          <Card className="overflow-x-auto flex-1 flex flex-col">
+        <TabsContent value="sold" className="data-[state=inactive]:hidden">
+          <Card className="overflow-x-auto">
             <div className="p-6">
-              <Table className="min-w-[900px] select-none">
+              <div className="mb-4 text-sm text-gray-600">
+                Showing {getFilteredAndSortedBales('sold').length} total sold bales
+              </div>
+              <Table className="min-w-[900px] select-none focus:outline-none" tabIndex={-1}>
                 <TableHeader className="sticky top-0 bg-white z-10">
                   <TableRow className="hover:bg-transparent">
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedBales.size === getFilteredAndSortedBales('sold').length && getFilteredAndSortedBales('sold').length > 0}
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
                     {visibleSoldColumns.has('baleNumber') && (
                       <TableHead 
                         className="cursor-pointer select-none"
@@ -1397,7 +1660,7 @@ function BaleManagement() {
                         onClick={() => handleSort('paymentMethod')}
                       >
                         <div className="flex items-center gap-1">
-                          Payment Method
+                          Payment
                           {getSortIcon('paymentMethod')}
                         </div>
                       </TableHead>
@@ -1418,9 +1681,57 @@ function BaleManagement() {
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="select-none">
-                  {getFilteredAndSortedBales('sold').map((bale) => (
-                    <TableRow key={bale.id} className="select-none">
+                <TableBody className="select-none focus:outline-none">
+                  {getFilteredAndSortedBales('sold').length === 0 ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={visibleSoldColumns.size + 2} className="h-48 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <Package className="w-12 h-12 text-gray-300" />
+                          <div className="space-y-1">
+                            <p className="text-gray-500 font-medium">
+                              {searchQuery ? 'No sold bales found matching your search' : 'No sold bales yet'}
+                            </p>
+                            {!searchQuery && (
+                              <p className="text-sm text-gray-400">
+                                Sold bales will appear here once you mark them as sold
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    getFilteredAndSortedBales('sold').map((bale) => (
+                    <TableRow 
+                      key={bale.id} 
+                      className={`cursor-pointer select-none focus:outline-none ${
+                        selectedBales.has(bale.id) ? 'bg-primary/5' : ''
+                      }`}
+                      onClick={(e) => {
+                        // Don't select if clicking on action buttons or dropdowns
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.closest('button') || 
+                          target.closest('[role="combobox"]') ||
+                          target.closest('[role="listbox"]')
+                        ) {
+                          return;
+                        }
+                        handleSelectBale(bale.id, e);
+                      }}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedBales.has(bale.id)}
+                          onCheckedChange={() => {
+                            // Use onClick for proper event handling with shift key
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectBale(bale.id, e);
+                          }}
+                        />
+                      </TableCell>
                       {visibleSoldColumns.has('baleNumber') && (
                         <TableCell className="font-medium">{bale.baleNumber}</TableCell>
                       )}
@@ -1432,9 +1743,18 @@ function BaleManagement() {
                       )}
                       {visibleSoldColumns.has('destination') && (
                         <TableCell>
-                          <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
-                            {getBaleLocation(bale)}
-                          </span>
+                          <div className="flex flex-col">
+                            <span className={`text-sm ${getBaleLocation(bale) === 'In Warehouse' ? 'text-gray-500' : ''}`}>
+                              {getBaleLocation(bale)}
+                            </span>
+                            {bale.containerNumber && (
+                              <span className={`text-xs text-gray-400 mt-0.5 ${
+                                !containers.find(c => c.containerNumber === bale.containerNumber) ? 'line-through' : ''
+                              }`}>
+                                {bale.containerNumber}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                       )}
                       {visibleSoldColumns.has('salePrice') && (
@@ -1485,28 +1805,33 @@ function BaleManagement() {
                         </TableCell>
                       )}
                       <TableCell className="text-right">
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent 
-                            align="end" 
-                            className="z-50"
+                        <div className="flex items-center justify-end gap-1">
+                          <Button 
+                            variant="ghost" 
+                            className="h-8 w-8 p-0 hover:bg-blue-50"
+                            onClick={() => openPrintDialog(bale)}
+                            title="Print Label"
                           >
-                            <DropdownMenuItem onClick={() => openEditSoldDialog(bale)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Sale Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleRevertBale(bale)}>
-                              <Undo2 className="mr-2 h-4 w-4" />
-                              Revert to Active
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openPrintDialog(bale)}>
-                              <Printer className="mr-2 h-4 w-4" />
-                              Print Label
-                            </DropdownMenuItem>
+                            <Printer className="h-4 w-4 text-blue-600" />
+                          </Button>
+                          <DropdownMenu modal={false}>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent 
+                              align="end" 
+                              className="z-50"
+                            >
+                              <DropdownMenuItem onClick={() => openEditSoldDialog(bale)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit Sale Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleRevertBale(bale)}>
+                                <Undo2 className="mr-2 h-4 w-4" />
+                                Revert to Active
+                              </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleDeleteBale(bale)}
                               className="text-red-600"
@@ -1516,9 +1841,10 @@ function BaleManagement() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )))}
                 </TableBody>
                   </Table>
             </div>
@@ -1780,7 +2106,7 @@ function BaleManagement() {
 
       {/* Print Dialog */}
       <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Print Bale Label</DialogTitle>
             <DialogDescription>
@@ -1788,8 +2114,9 @@ function BaleManagement() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="border p-4 bg-white">
-            <div ref={printRef} className="w-96 h-64 p-4 border-2 border-black bg-white text-black flex flex-col justify-between" style={{ width: '4in', height: '6in' }}>
+          <div className="flex justify-center py-4">
+            <div className="border p-4 bg-white">
+              <div ref={printRef} className="p-4 border-2 border-black bg-white text-black flex flex-col justify-between" style={{ width: '4in', height: '6in' }}>
               <div className="text-center border-b-2 border-black pb-2 mb-2">
                 <h2 className="text-2xl font-bold">H&H DONATIONS</h2>
                 <p className="text-base">Bale Label</p>
@@ -1816,6 +2143,7 @@ function BaleManagement() {
                   <p className="text-lg mt-1">{safeFormatDate(selectedBale?.createdDate)}</p>
                 </div>
               </div>
+            </div>
             </div>
           </div>
           
@@ -1856,6 +2184,29 @@ function BaleManagement() {
               className="bg-red-600 hover:bg-red-700"
             >
               Delete Bale
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedBales.size} Bale{selectedBales.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected bale{selectedBales.size !== 1 ? 's' : ''} from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete {selectedBales.size} Bale{selectedBales.size !== 1 ? 's' : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

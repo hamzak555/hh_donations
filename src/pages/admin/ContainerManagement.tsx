@@ -319,6 +319,7 @@ function ContainerManagement() {
     addContainer, 
     updateContainer, 
     deleteContainer,
+    generateContainerNumber,
     assignBaleToContainer,
     removeBaleFromContainer,
     addNoteToTimeline,
@@ -348,6 +349,9 @@ function ContainerManagement() {
   const [isMarkShippedDialogOpen, setIsMarkShippedDialogOpen] = useState(false);
   const [isUnmarkShippedDialogOpen, setIsUnmarkShippedDialogOpen] = useState(false);
   const [selectedContainer, setSelectedContainer] = useState<any>(null);
+  const [selectedContainers, setSelectedContainers] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [detailsTabValue, setDetailsTabValue] = useState<string>('details');
   const [formData, setFormData] = useState<ContainerFormData>({
     destination: '',
@@ -506,12 +510,18 @@ function ContainerManagement() {
 
   // Function to get the actual count of bales assigned to a container
   const getActualBaleCount = (containerNumber: string) => {
-    return bales.filter(bale => bale.containerNumber === containerNumber).length;
+    // Only count non-sold bales to avoid counting historical assignments
+    return bales.filter(bale => 
+      bale.containerNumber === containerNumber && bale.status !== 'Sold'
+    ).length;
   };
 
   // Function to calculate total weight of bales in a container
   const getContainerTotalWeight = (containerNumber: string) => {
-    const containerBales = bales.filter(bale => bale.containerNumber === containerNumber);
+    // Only count non-sold bales to avoid counting historical assignments
+    const containerBales = bales.filter(bale => 
+      bale.containerNumber === containerNumber && bale.status !== 'Sold'
+    );
     return containerBales.reduce((total, bale) => total + (bale.weight || 0), 0);
   };
 
@@ -604,9 +614,29 @@ function ContainerManagement() {
   
   const filteredContainers = getFilteredContainers();
 
+  // Clean up orphaned ACTIVE bales (bales assigned to non-existent containers)
+  // Don't clean up sold bales - we want to keep their container history
+  useEffect(() => {
+    const validContainerNumbers = containers.map(c => c.containerNumber);
+    const orphanedBales = bales.filter(bale => 
+      bale.containerNumber && 
+      !validContainerNumbers.includes(bale.containerNumber) &&
+      bale.status !== 'Sold'  // Only clean up active bales, not sold ones
+    );
+    
+    if (orphanedBales.length > 0) {
+      console.log(`Found ${orphanedBales.length} orphaned active bales, cleaning up...`);
+      orphanedBales.forEach(bale => {
+        console.log(`Removing container reference ${bale.containerNumber} from active bale ${bale.baleNumber}`);
+        updateBale(bale.id, { containerNumber: null });
+      });
+    }
+  }, [containers, bales, updateBale]);
+
   // Get available bales for assignment (not already in containers and not sold)
+  // Match the logic from BaleManagement: Active bales are those that are not sold
   const availableBales = bales.filter(bale => 
-    !bale.containerNumber && bale.status === 'Warehouse'
+    !bale.containerNumber && bale.status !== 'Sold'
   );
   
   // Filter available bales by search term
@@ -623,7 +653,10 @@ function ContainerManagement() {
   // Get bales already assigned to the selected container (reactive)
   const getAssignedBales = () => {
     if (!selectedContainer) return [];
-    return bales.filter(bale => bale.containerNumber === selectedContainer.containerNumber);
+    // Only return non-sold bales to avoid showing historical assignments
+    return bales.filter(bale => 
+      bale.containerNumber === selectedContainer.containerNumber && bale.status !== 'Sold'
+    );
   };
   
   const [assignedBalesState, setAssignedBalesState] = useState<Bale[]>([]);
@@ -631,7 +664,9 @@ function ContainerManagement() {
   // Update assigned bales when dialog opens or bales change
   useEffect(() => {
     if (isAssignBalesDialogOpen && selectedContainer) {
-      const assigned = bales.filter(bale => bale.containerNumber === selectedContainer.containerNumber);
+      const assigned = bales.filter(bale => 
+        bale.containerNumber === selectedContainer.containerNumber && bale.status !== 'Sold'
+      );
       setAssignedBalesState(assigned);
     }
   }, [selectedContainer, bales, isAssignBalesDialogOpen]);
@@ -647,10 +682,6 @@ function ContainerManagement() {
   }, [containers]);
 
   const handleCreateContainer = async () => {
-    console.log('🚨 CREATE CONTAINER BUTTON CLICKED!');
-    console.log('[ContainerManagement] Starting container creation...');
-    console.log('[ContainerManagement] Form data:', formData);
-    
     try {
       const containerData = {
         destination: formData.destination,
@@ -665,24 +696,14 @@ function ContainerManagement() {
         assignedBales: []
       };
       
-      console.log('[ContainerManagement] Container data to create:', containerData);
-      console.log('[ContainerManagement] About to call addContainer...');
-      
       await addContainer(containerData);
       
-      console.log('[ContainerManagement] Container created successfully! Closing dialog...');
       setIsCreateDialogOpen(false);
       setFormData({ destination: '', status: 'Warehouse' });
     } catch (error) {
-      console.error('[ContainerManagement] Failed to create container:', error);
-      console.error('[ContainerManagement] Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : 'No stack trace',
-        fullError: error
-      });
+      console.error('Failed to create container:', error);
       
       // Close dialog anyway to avoid getting stuck
-      console.log('[ContainerManagement] Closing dialog due to error...');
       setIsCreateDialogOpen(false);
       setFormData({ destination: '', status: 'Warehouse' });
       
@@ -712,13 +733,120 @@ function ContainerManagement() {
 
   const handleDeleteContainer = () => {
     if (selectedContainer) {
-      // First remove all bales from container
+      // First remove all bales from container - check both assignedBales and containerNumber
+      // Handle bales in assignedBales array
       selectedContainer.assignedBales?.forEach((baleId: string) => {
         removeBaleFromContainerInBales(baleId);
       });
+      
+      // Clear containerNumber from ALL bales to prevent orphaned references
+      // when a new container with the same number is created
+      const allAffectedBales = bales.filter(b => 
+        b.containerNumber === selectedContainer.containerNumber
+      );
+      
+      allAffectedBales.forEach(bale => {
+        if (bale.status === 'Sold') {
+          // For sold bales, keep the containerNumber for display purposes
+          // The deleted container won't exist so it won't conflict with new containers
+          // The location field preserves the destination history
+          // No update needed for sold bales
+        } else {
+          // For active bales, clear containerNumber and reset status to Warehouse
+          updateBale(bale.id, { 
+            containerNumber: null, 
+            status: 'Warehouse' 
+          });
+        }
+      });
+      
       deleteContainer(selectedContainer.id);
       setIsDeleteDialogOpen(false);
       setSelectedContainer(null);
+    }
+  };
+
+  const handleSelectAll = () => {
+    const currentContainers = getFilteredContainers();
+    if (selectedContainers.size === currentContainers.length) {
+      setSelectedContainers(new Set());
+    } else {
+      setSelectedContainers(new Set(currentContainers.map(c => c.id)));
+    }
+  };
+
+  const handleSelectContainer = (containerId: string, event?: React.MouseEvent) => {
+    const filteredContainers = getFilteredContainers();
+    const clickedIndex = filteredContainers.findIndex(c => c.id === containerId);
+    
+    if (event?.shiftKey && lastSelectedIndex !== null) {
+      // Shift-click: select range
+      const start = Math.min(lastSelectedIndex, clickedIndex);
+      const end = Math.max(lastSelectedIndex, clickedIndex);
+      const newSelection = new Set(selectedContainers);
+      
+      for (let i = start; i <= end; i++) {
+        newSelection.add(filteredContainers[i].id);
+      }
+      
+      setSelectedContainers(newSelection);
+    } else {
+      // Regular click: toggle selection
+      const newSelection = new Set(selectedContainers);
+      if (newSelection.has(containerId)) {
+        newSelection.delete(containerId);
+      } else {
+        newSelection.add(containerId);
+      }
+      setSelectedContainers(newSelection);
+      setLastSelectedIndex(clickedIndex);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      // Delete all selected containers
+      const deletePromises = Array.from(selectedContainers).map(containerId => {
+        const container = containers.find(c => c.id === containerId);
+        if (container) {
+          // First remove all bales from container - check both assignedBales and containerNumber
+          // Handle bales in assignedBales array
+          container.assignedBales?.forEach((baleId: string) => {
+            removeBaleFromContainerInBales(baleId);
+          });
+          
+          // Clear containerNumber from ALL bales to prevent orphaned references
+          // when a new container with the same number is created
+          const allAffectedBales = bales.filter(b => 
+            b.containerNumber === container.containerNumber
+          );
+          
+          allAffectedBales.forEach(bale => {
+            if (bale.status === 'Sold') {
+              // For sold bales, keep the containerNumber for display purposes
+              // The deleted container won't exist so it won't conflict with new containers
+              // The location field preserves the destination history
+              // No update needed for sold bales
+            } else {
+              // For active bales, clear containerNumber and reset status to Warehouse
+              updateBale(bale.id, { 
+                containerNumber: null, 
+                status: 'Warehouse' 
+              });
+            }
+          });
+        }
+        return deleteContainer(containerId);
+      });
+      
+      await Promise.all(deletePromises);
+      
+      // Clear selection after successful deletion
+      setSelectedContainers(new Set());
+      setLastSelectedIndex(null);
+      setIsBulkDeleteDialogOpen(false);
+    } catch (error) {
+      console.error('Error deleting containers:', error);
     }
   };
 
@@ -726,7 +854,9 @@ function ContainerManagement() {
     if (selectedContainer) {
       markAsShipped(selectedContainer.id);
       // Update all bales in this container to Shipped status
-      const containerBales = bales.filter(b => b.containerNumber === selectedContainer.containerNumber);
+      const containerBales = bales.filter(b => 
+        b.containerNumber === selectedContainer.containerNumber && b.status !== 'Sold'
+      );
       containerBales.forEach(bale => {
         updateBale(bale.id, { status: 'Shipped' });
       });
@@ -739,7 +869,9 @@ function ContainerManagement() {
     if (selectedContainer) {
       unmarkAsShipped(selectedContainer.id);
       // Update all bales in this container back to Container status
-      const containerBales = bales.filter(b => b.containerNumber === selectedContainer.containerNumber);
+      const containerBales = bales.filter(b => 
+        b.containerNumber === selectedContainer.containerNumber && b.status !== 'Sold'
+      );
       containerBales.forEach(bale => {
         updateBale(bale.id, { status: 'Container' });
       });
@@ -1040,6 +1172,29 @@ function ContainerManagement() {
           
           {/* Action buttons - wrap on mobile */}
           <div className="flex flex-wrap gap-2">
+            {selectedContainers.size > 0 && (
+              <>
+                <Button 
+                  onClick={() => setIsBulkDeleteDialogOpen(true)}
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-400 text-sm"
+                >
+                  <Trash className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">Delete</span>
+                  <span className="sm:hidden">Del</span> ({selectedContainers.size})
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setSelectedContainers(new Set());
+                    setLastSelectedIndex(null);
+                  }}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              </>
+            )}
             {/* Column Visibility Dropdown */}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -1109,7 +1264,11 @@ function ContainerManagement() {
         {/* Tabs */}
         <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground w-full sm:flex-1 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('all')}
+            onClick={() => {
+              setActiveTab('all');
+              setSelectedContainers(new Set());
+              setLastSelectedIndex(null);
+            }}
             className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'all'
                 ? 'bg-background text-foreground shadow-sm'
@@ -1126,7 +1285,11 @@ function ContainerManagement() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('warehouse')}
+            onClick={() => {
+              setActiveTab('warehouse');
+              setSelectedContainers(new Set());
+              setLastSelectedIndex(null);
+            }}
             className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'warehouse'
                 ? 'bg-background text-foreground shadow-sm'
@@ -1143,7 +1306,11 @@ function ContainerManagement() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('shipped')}
+            onClick={() => {
+              setActiveTab('shipped');
+              setSelectedContainers(new Set());
+              setLastSelectedIndex(null);
+            }}
             className={`flex-1 min-w-0 inline-flex items-center justify-center gap-1 sm:gap-2 whitespace-nowrap rounded-sm px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
               activeTab === 'shipped'
                 ? 'bg-background text-foreground shadow-sm'
@@ -1185,9 +1352,15 @@ function ContainerManagement() {
           </div>
           
             <div className="inline-block min-w-full align-middle">
-              <Table className="min-w-[1000px]">
+              <Table className="min-w-[1000px] focus:outline-none" tabIndex={-1}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedContainers.size === getFilteredContainers().length && getFilteredContainers().length > 0}
+                    onCheckedChange={handleSelectAll}
+                  />
+                </TableHead>
                 {visibleColumns.has('containerNumber') && (
                   <TableHead 
                     className="cursor-pointer select-none"
@@ -1279,10 +1452,10 @@ function ContainerManagement() {
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="focus:outline-none">
               {containersLoading ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={visibleColumns.size + 1} className="h-32 text-center">
+                  <TableCell colSpan={visibleColumns.size + 2} className="h-32 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                       Loading containers...
@@ -1291,25 +1464,60 @@ function ContainerManagement() {
                 </TableRow>
               ) : filteredContainers.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={visibleColumns.size + 1} className="h-32 text-center text-gray-500">
-                    No containers found
+                  <TableCell colSpan={visibleColumns.size + 2} className="h-48 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      <Package className="w-12 h-12 text-gray-300" />
+                      <div className="space-y-1">
+                        <p className="text-gray-500 font-medium">
+                          {searchTerm ? 'No containers found matching your search' : 'No containers yet'}
+                        </p>
+                        {!searchTerm && (
+                          <p className="text-sm text-gray-400">
+                            Click the "Create Container" button above to add your first container
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredContainers.map((container) => (
                 <TableRow 
                   key={`${container.id}-${container.containerNumber}`}
-                  className={container.status === 'Shipped' ? 'bg-green-50 hover:bg-green-100' : ''}
+                  className={`cursor-pointer select-none focus:outline-none ${
+                    selectedContainers.has(container.id) ? 'bg-primary/5' : ''
+                  } ${container.status === 'Shipped' ? 'bg-green-50 hover:bg-green-100' : ''}`}
+                  onClick={(e) => {
+                    // Don't select if clicking on action buttons or dropdowns
+                    const target = e.target as HTMLElement;
+                    if (
+                      target.closest('button') || 
+                      target.closest('[role="combobox"]') ||
+                      target.closest('[role="listbox"]')
+                    ) {
+                      return;
+                    }
+                    handleSelectContainer(container.id, e);
+                  }}
                 >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedContainers.has(container.id)}
+                      onCheckedChange={() => {
+                        // Use onClick for proper event handling with shift key
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectContainer(container.id, e);
+                      }}
+                    />
+                  </TableCell>
                   {visibleColumns.has('containerNumber') && (
                     <TableCell className="font-medium">{container.containerNumber}</TableCell>
                   )}
                   {visibleColumns.has('destination') && (
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-gray-400" />
-                        {container.destination}
-                      </div>
+                      {container.destination}
                     </TableCell>
                   )}
                   {visibleColumns.has('bales') && (
@@ -1456,13 +1664,40 @@ function ContainerManagement() {
           setIsCreateDialogOpen(open);
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent 
+          className="max-w-2xl"
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on autocomplete dropdown
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // Prevent closing when interacting with autocomplete
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Create New Container</DialogTitle>
             <DialogDescription>
               Create a new shipping container and assign bales to it.
             </DialogDescription>
           </DialogHeader>
+          
+          {/* Show the container number that will be assigned */}
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium text-green-800">
+                Container Number: {generateContainerNumber()}
+              </span>
+            </div>
+          </div>
+          
           <div className="grid gap-4 py-4">
             <div>
               <Label htmlFor="destination">Destination (City, Country)</Label>
@@ -1616,7 +1851,23 @@ function ContainerManagement() {
           setIsEditDialogOpen(open);
         }}
       >
-        <DialogContent className="max-w-2xl">
+        <DialogContent 
+          className="max-w-2xl"
+          onPointerDownOutside={(e) => {
+            // Prevent closing when clicking on autocomplete dropdown
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // Prevent closing when interacting with autocomplete
+            const target = e.target as HTMLElement;
+            if (target.closest('.pac-container')) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Edit Container</DialogTitle>
             <DialogDescription>
@@ -1833,7 +2084,9 @@ function ContainerManagement() {
               <TabsContent value="bales">
                 <ScrollArea className="h-[400px]">
                   {(() => {
-                    const containerBales = bales.filter(b => b.containerNumber === selectedContainer.containerNumber);
+                    const containerBales = bales.filter(b => 
+                      b.containerNumber === selectedContainer.containerNumber && b.status !== 'Sold'
+                    );
                     return containerBales.length > 0 ? (
                       <div className="space-y-2">
                         {containerBales.map((bale) => (
@@ -2270,6 +2523,29 @@ function ContainerManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedContainers.size} Container{selectedContainers.size !== 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected container{selectedContainers.size !== 1 ? 's' : ''} and unassign any bales from {selectedContainers.size !== 1 ? 'them' : 'it'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsBulkDeleteDialogOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete {selectedContainers.size} Container{selectedContainers.size !== 1 ? 's' : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

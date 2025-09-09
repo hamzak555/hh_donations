@@ -194,16 +194,11 @@ function BinsManagement() {
       const demoApiKey = process.env.REACT_APP_SENSONEO_API_KEY || 'd9db69094ce140729a4f64c09355935f';
       const savedApiKey = localStorage.getItem('sensoneo_api_key') || demoApiKey;
       
-      console.log('[BinsManagement] Using Sensoneo API key from localStorage');
-      console.log('[BinsManagement] Bins with sensor IDs:', binsWithSensors.map(b => `${b.binNumber}: ${b.sensorId}`));
       const api = new SensoneoAPI({ apiKey: savedApiKey });
       const sensorIds = binsWithSensors.map(bin => bin.sensorId!);
       
-      console.log('[BinsManagement] Fetching sensor data for sensor IDs:', sensorIds);
       const measurements = await api.fetchBulkSensorMeasurements(sensorIds);
       setSensorData(measurements);
-      
-      console.log('Sensor data fetched:', measurements.size, 'measurements');
       
       // Update bin statuses based on sensor data
       measurements.forEach((measurement, sensorId) => {
@@ -263,14 +258,14 @@ function BinsManagement() {
       setNextSensorRefresh(next);
       
       if (!isAutoRefresh) {
-        console.log(`[BinsManagement] Next auto-refresh scheduled for: ${next.toLocaleTimeString()}`);
+        // Next auto-refresh scheduled
       }
     }
   };
 
   // Fetch sensor data on component mount and when bins with sensors change
   useEffect(() => {
-    console.log('BinsManagement component mounted, bins count:', bins.length);
+    // BinsManagement component mounted
     fetchSensorData();
   }, []);
 
@@ -288,17 +283,17 @@ function BinsManagement() {
     const refreshInterval = localStorage.getItem('sensoneo_refresh_interval');
     
     if (!refreshInterval || refreshInterval === '0') {
-      console.log('[BinsManagement] Auto-refresh is disabled');
+      // Auto-refresh is disabled
       return;
     }
     
     const minutes = parseInt(refreshInterval);
     const milliseconds = minutes * 60 * 1000;
     
-    console.log(`[BinsManagement] Setting up auto-refresh every ${minutes} minutes`);
+    // Setting up auto-refresh
     
     const interval = setInterval(() => {
-      console.log(`[BinsManagement] Auto-refreshing sensor data at ${new Date().toLocaleTimeString()}`);
+      // Auto-refreshing sensor data
       fetchSensorData(true);
     }, milliseconds);
     
@@ -307,7 +302,7 @@ function BinsManagement() {
     setNextSensorRefresh(next);
     
     return () => {
-      console.log('[BinsManagement] Clearing auto-refresh interval');
+      // Clearing auto-refresh interval
       clearInterval(interval);
     };
   }, []); // Only run once on mount
@@ -316,7 +311,7 @@ function BinsManagement() {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'sensoneo_refresh_interval') {
-        console.log('[BinsManagement] Refresh interval changed, reloading page to apply new settings');
+        // Refresh interval changed, reloading page
         window.location.reload();
       }
     };

@@ -1065,7 +1065,7 @@ function PickupRequests() {
               </div>
             </div>
             
-            <Table className="min-w-[800px]">
+            <Table className="min-w-[800px] focus:outline-none" tabIndex={-1}>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 {!isDriverRole && (
@@ -1159,7 +1159,7 @@ function PickupRequests() {
                 {!isDriverRole && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="focus:outline-none">
               {getFilteredAndSortedRequests().length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={visibleColumns.size + (!isDriverRole ? 3 : 1)} className="text-center py-8 text-gray-500">
@@ -1170,7 +1170,7 @@ function PickupRequests() {
                 getFilteredAndSortedRequests().map((request) => (
                 <TableRow 
                   key={request.id}
-                  className={`cursor-pointer select-none ${
+                  className={`cursor-pointer select-none focus:outline-none ${
                     selectedRequests.has(request.id) ? 'bg-primary/5' : ''
                   }`}
                   onClick={(e) => {
@@ -1684,7 +1684,7 @@ function PickupRequests() {
                           <TableHead>Message</TableHead>
                         </TableRow>
                       </TableHeader>
-                      <TableBody>
+                      <TableBody className="focus:outline-none">
                         {reminderResults.results.map((result: any, index: number) => (
                           <TableRow key={index}>
                             <TableCell className="text-sm">{result.email}</TableCell>

@@ -146,7 +146,7 @@ export const clearLargestItems = (additionalKeepKeys: string[] = []): void => {
       console.error(`PREVENTED: Attempted to delete protected key: ${sortedKeys[i]}`);
       continue;
     }
-    console.log(`Removing non-critical localStorage item: ${sortedKeys[i]} (${usage[sortedKeys[i]]} bytes)`);
+    // Removing non-critical localStorage item
     localStorage.removeItem(sortedKeys[i]);
   }
   
@@ -233,7 +233,9 @@ export const attemptDataRecovery = (): boolean => {
       if (key === 'adminAuth') return;
       
       const currentData = localStorage.getItem(key);
-      if ((!currentData || currentData === 'null' || currentData === '[]') && backupData[key]) {
+      // Only recover if data is missing or null, NOT if it's an empty array
+      // Empty arrays are valid states (all items deleted)
+      if ((!currentData || currentData === 'null') && backupData[key]) {
         console.log(`Recovering ${key} from backup...`);
         localStorage.setItem(key, backupData[key]);
         recovered = true;

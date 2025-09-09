@@ -85,6 +85,7 @@ const convertFromDatabase = (dbBale: any): Bale => {
     weight: dbBale.weight,
     status: dbBale.status as BaleStatus, // Direct mapping after column rename
     createdDate: dbBale.createdDate, // Direct mapping after column rename
+    location: dbBale.location || undefined, // Include location field
     soldDate: dbBale.soldDate || undefined,
     salePrice: dbBale.salePrice || undefined,
     paymentMethod: dbBale.paymentMethod as PaymentMethod || undefined,
@@ -259,7 +260,16 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
       try {
         await supabaseService.deleteBale(id);
         // Only remove from local state if Supabase deletion succeeded
-        setBales(prev => prev.filter(bale => bale.id !== id));
+        setBales(prev => {
+          const newBales = prev.filter(bale => bale.id !== id);
+          // Clear emergency backup to prevent restoration of deleted items
+          try {
+            sessionStorage.removeItem('emergency_backup');
+          } catch (e) {
+            console.warn('Could not clear emergency backup:', e);
+          }
+          return newBales;
+        });
       } catch (error) {
         console.error('Failed to delete bale from Supabase:', error);
         // Re-throw the error so the UI can handle it
@@ -268,7 +278,16 @@ export const BalesProvider = ({ children }: BalesProviderProps) => {
       }
     } else {
       // If not using Supabase, just remove from local state
-      setBales(prev => prev.filter(bale => bale.id !== id));
+      setBales(prev => {
+        const newBales = prev.filter(bale => bale.id !== id);
+        // Clear emergency backup to prevent restoration of deleted items
+        try {
+          sessionStorage.removeItem('emergency_backup');
+        } catch (e) {
+          console.warn('Could not clear emergency backup:', e);
+        }
+        return newBales;
+      });
     }
   };
 

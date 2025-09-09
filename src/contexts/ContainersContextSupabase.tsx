@@ -82,15 +82,11 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
     
     try {
       if (USE_SUPABASE) {
-        console.log('[ContainersProvider] Using Supabase for data persistence');
         const supabaseContainers = await SupabaseService.containers.getAllContainers();
-        
-        console.log('[ContainersProvider] Received containers from service:', supabaseContainers?.length);
         
         // If we get an empty array, that's valid - just set it
         if (!supabaseContainers || supabaseContainers.length === 0) {
           setContainers([]);
-          console.log('[ContainersProvider] No containers in database');
           SafeStorage.setItem(STORAGE_KEY, JSON.stringify([]));
           return; // Exit early, no need to process
         }
@@ -133,7 +129,7 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
           let containerNumber = c.containerNumber;
           if (!containerNumber || containerNumber === '') {
             containerNumber = `CNT${String(containerCounter++).padStart(4, '0')}`;
-            console.log(`[ContainersProvider] Assigned number ${containerNumber} to container ${c.id}`);
+            // Assigned container number
             
             // Update the container in the database with the new number
             if (USE_SUPABASE) {
@@ -167,12 +163,9 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
         });
         
         setContainers(formattedContainers);
-        console.log(`[ContainersProvider] Loaded ${formattedContainers.length} containers from Supabase`);
-        
         // Sync to localStorage for offline access
         SafeStorage.setItem(STORAGE_KEY, JSON.stringify(formattedContainers));
       } else {
-        console.log('[ContainersProvider] Using localStorage (Supabase not configured)');
         // Only use localStorage if Supabase is not configured
         // This prevents showing stale data while Supabase loads
         const stored = SafeStorage.getLatestValue(STORAGE_KEY);
@@ -196,7 +189,7 @@ export const ContainersProvider: React.FC<{ children: ReactNode }> = ({ children
           if (stored) {
             const parsedContainers = JSON.parse(stored);
             setContainers(parsedContainers);
-            console.log('[ContainersProvider] Using localStorage fallback due to network error');
+            // Using localStorage fallback due to network error
           }
         } catch (fallbackErr) {
           console.error('[ContainersProvider] Fallback also failed:', fallbackErr);
@@ -289,9 +282,7 @@ const addContainer = async (containerData: Omit<Container, 'id' | 'containerNumb
             dbContainer.notes = JSON.stringify([noteEntry]);
           }
           
-          console.log('[ContainersProvider] Creating container in Supabase...');
           const result = await SupabaseService.containers.createContainer(dbContainer);
-          console.log('[ContainersProvider] Container created successfully');
           
           if (result?.id) {
             newContainer.id = result.id; // Use database-generated ID
@@ -312,7 +303,7 @@ const addContainer = async (containerData: Omit<Container, 'id' | 'containerNumb
           }
           
           // Don't throw the error - allow local storage to work as fallback
-          console.log('[ContainersProvider] Continuing with local storage as fallback...');
+          // Continuing with local storage as fallback
         }
       }
 
