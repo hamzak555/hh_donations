@@ -625,10 +625,8 @@ function ContainerManagement() {
     );
     
     if (orphanedBales.length > 0) {
-      console.log(`Found ${orphanedBales.length} orphaned active bales, cleaning up...`);
       orphanedBales.forEach(bale => {
-        console.log(`Removing container reference ${bale.containerNumber} from active bale ${bale.baleNumber}`);
-        updateBale(bale.id, { containerNumber: null });
+        updateBale(bale.id, { containerNumber: undefined });
       });
     }
   }, [containers, bales, updateBale]);
@@ -754,7 +752,7 @@ function ContainerManagement() {
         } else {
           // For active bales, clear containerNumber and reset status to Warehouse
           updateBale(bale.id, { 
-            containerNumber: null, 
+            containerNumber: undefined, 
             status: 'Warehouse' 
           });
         }
@@ -830,7 +828,7 @@ function ContainerManagement() {
             } else {
               // For active bales, clear containerNumber and reset status to Warehouse
               updateBale(bale.id, { 
-                containerNumber: null, 
+                containerNumber: undefined, 
                 status: 'Warehouse' 
               });
             }

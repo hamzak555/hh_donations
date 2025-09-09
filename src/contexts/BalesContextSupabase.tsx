@@ -29,6 +29,7 @@ export interface Bale {
   notesTimeline?: NoteEntry[]; // New timeline notes
   photos?: string[]; // Array of photo IDs (stored in IndexedDB)
   containerNumber?: string; // Container assignment
+  location?: string; // Container destination when sold
 }
 
 interface BalesContextType {

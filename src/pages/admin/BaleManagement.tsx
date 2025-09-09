@@ -696,8 +696,8 @@ function BaleManagement() {
       
       // Update all sale information including location in a single call
       const soldDate = new Date().toISOString().split('T')[0];
-      const updateData = { 
-        status: 'Sold',
+      const updateData: Partial<Bale> = { 
+        status: 'Sold' as BaleStatus,
         salePrice: soldFormData.salePrice,
         paymentMethod: soldFormData.paymentMethod,
         soldDate: soldDate,
@@ -1377,17 +1377,6 @@ function BaleManagement() {
                         </div>
                       </TableHead>
                     )}
-                    {visibleActiveColumns.has('container') && (
-                      <TableHead 
-                        className="cursor-pointer select-none"
-                        onClick={() => handleSort('containerNumber')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Container
-                          {getSortIcon('containerNumber')}
-                        </div>
-                      </TableHead>
-                    )}
                     {visibleActiveColumns.has('location') && (
                       <TableHead 
                         className="cursor-pointer select-none"
@@ -1477,17 +1466,6 @@ function BaleManagement() {
                       )}
                       {visibleActiveColumns.has('status') && (
                         <TableCell>{getStatusBadge(bale.status, bale.containerNumber)}</TableCell>
-                      )}
-                      {visibleActiveColumns.has('container') && (
-                        <TableCell>
-                          {bale.containerNumber ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                              {bale.containerNumber}
-                            </Badge>
-                          ) : (
-                            <span className="text-gray-400 text-sm">-</span>
-                          )}
-                        </TableCell>
                       )}
                       {visibleActiveColumns.has('location') && (
                         <TableCell>
