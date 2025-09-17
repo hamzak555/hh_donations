@@ -433,15 +433,40 @@ function BinsManagement() {
   const renderLastUpdate = (bin: BinLocation) => {
     const measurement = getSensorMeasurement(bin);
     const lastUpdate = measurement?.measuredAt;
-    
+
     if (!lastUpdate) {
       return <span className="text-gray-400 text-sm">Never</span>;
     }
 
+    // The timestamp from the API is in UTC format
+    // Ensure it has a 'Z' at the end to indicate UTC
+    const utcTimestamp = lastUpdate.endsWith('Z') ? lastUpdate : lastUpdate + 'Z';
+
+    // Parse the UTC timestamp
+    const date = new Date(utcTimestamp);
+
+    // Format specifically for Eastern Time (Toronto)
+    const easternDateOptions: Intl.DateTimeFormatOptions = {
+      timeZone: 'America/Toronto',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    };
+
+    const easternTimeOptions: Intl.DateTimeFormatOptions = {
+      timeZone: 'America/Toronto',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+
+    const formattedDate = date.toLocaleDateString('en-US', easternDateOptions);
+    const formattedTime = date.toLocaleTimeString('en-US', easternTimeOptions);
+
     return (
       <div className="text-sm">
-        <div>{new Date(lastUpdate).toLocaleDateString()}</div>
-        <div className="text-xs text-gray-500">{new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+        <div>{formattedDate}</div>
+        <div className="text-xs text-gray-500">{formattedTime} EST</div>
       </div>
     );
   };
